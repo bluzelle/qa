@@ -2,7 +2,7 @@ const expect = require('chai').expect;
 const {startSwarm, killSwarm} = require('../utils/swarmSetup');
 const {logFileExists} = require('../utils/daemonLogHandlers');
 
-describe.only('daemon', () => {
+describe('daemon', () => {
 
     describe('on startup', () => {
 

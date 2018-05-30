@@ -5,7 +5,7 @@ const {get} = require('lodash');
 
 let socket, messages, logFileName;
 
-describe.only('web sockets interface', () => {
+describe('web sockets interface', () => {
 
     beforeEach(startSwarm);
     beforeEach('ws connection', done => {
