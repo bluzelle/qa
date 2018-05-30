@@ -1,28 +1,18 @@
-const expect = require('chai');
-const {beforeStartSwarm, afterKillSwarm, readFile} = require('../utils/swarmSetup');
-
-let logFileName;
+const expect = require('chai').expect;
+const {startSwarm, killSwarm} = require('../utils/swarmSetup');
+const {logFileExists} = require('../utils/daemonLogHandlers');
 
 describe.only('daemon', () => {
 
     describe('on startup', () => {
 
-        beforeStartSwarm();
-        afterKillSwarm();
+        beforeEach(startSwarm);
 
-        it('should create a log', () =>
-            expect(readFile('/output/logs/')).to.have.string('Loading: bluzelle.json')
-        );
-    });
+        afterEach(killSwarm);
 
-    describe('on shutdown', () => {
-
-        beforeStartSwarm();
-        afterKillSwarm();
-
-       it('should log "shutting down"', () =>
-           expect(readFile('/output/logs/')).to.have.string('signal received -- shutting down')
-       );
+        it('should create a log', () => {
+            expect(logFileExists()).to.have.string('.log')
+        });
     });
 
 });

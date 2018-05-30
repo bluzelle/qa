@@ -1,12 +1,13 @@
 {
   "scripts": {
-    "test-daemon": "mocha test/**/*.js --exit"
+    "test-daemon": "quiet=true mocha test/*.js --exit --timeout 5000"
   },
   "dependencies": {
-    "async-wait-until": "^1.1.7",
+    "async-wait-until": "^1.2.4",
     "chai": "^4.1.2",
+    "fs": "^0.0.1-security",
     "lodash": "^4.17.10",
-    "mocha": "^5.1.1",
-    "ws": "^5.1.1"
+    "mocha": "^5.2.0",
+    "ws": "^5.2.0"
   }
 }
