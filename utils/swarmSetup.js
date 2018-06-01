@@ -15,19 +15,33 @@ module.exports = {
             exec('cd ./scripts; ./run-daemon.sh bluzelle2.json')
         }, 2000);
 
-
-        await waitUntil(() => logFileName = logFileExists());
+        try {
+            await waitUntil(() => logFileName = logFileExists());
+            process.env.quiet ||
+                console.log('Log file created')
+        } catch (error) {
+            process.env.quiet ||
+                console.log('Log file not found')
+        }
 
         process.env.quiet ||
             console.log(`******** logFileName: ${logFileName} *******`);
 
-        await waitUntil(() => {
+        try {
 
-            let contents = fs.readFileSync('./daemon-build/output/' + logFileName, 'utf8');
+            await waitUntil(() => {
 
-            // raft.cpp:601 stdouts 'I AM LEADER'
-            return includes(contents, 'raft.cpp:601');
-        }, 6000);
+                let contents = fs.readFileSync('./daemon-build/output/' + logFileName, 'utf8');
+
+                // raft.cpp:601 stdouts 'I AM LEADER'
+                return includes(contents, 'raft.cpp:601');
+            }, 6000);
+            process.env.quiet ||
+                console.log('I am leader logged')
+        } catch (error) {
+            process.env.quiet ||
+                console.log('Failed to read leader log');
+        }
     },
     killSwarm: async () => {
         exec('pkill -2 swarm');
