@@ -1,11 +1,11 @@
 const expect = require('chai').expect;
 const waitUntil = require("async-wait-until");
 const {logFileExists, logFileMoved, readFile} = require('../utils/daemonLogHandlers');
-const util = require('util');
 const {exec}  = require('child_process');
+const {spawn}  = require('child_process');
 const {includes} = require('lodash');
-const execPromisified = util.promisify(exec);
 const {startSwarm, killSwarm} = require('../utils/swarmSetup');
+const fs = require('fs');
 
 let logFileName;
 
@@ -15,7 +15,7 @@ describe('daemon startup', () => {
 
         afterEach(() => killSwarm(logFileName));
 
-        describe('with valid value', () => {
+        context('with valid value', () => {
 
             it('successfully changes time scale', async () => {
                 await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=2"');
@@ -27,7 +27,7 @@ describe('daemon startup', () => {
 
         });
 
-        describe('without env variable', () => {
+        context('without env variable', () => {
 
             it('time scale is unchanged at 1', async () => {
                 await exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
@@ -38,7 +38,7 @@ describe('daemon startup', () => {
             });
         });
 
-        describe('with invalid value', () => {
+        context('with invalid value', () => {
 
             it('time scale is unchanged at 1', async () => {
                 await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=asdf"');
@@ -49,6 +49,87 @@ describe('daemon startup', () => {
             });
         });
     });
+
+    describe('requires ethereum address', () => {
+
+        afterEach(() => exec('kill -2 swarm'));
+
+        context('with valid address', () => {
+
+            context('with balance > 0', () => {
+
+                it('successfully starts up', async () => {
+
+                    await exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
+
+                    await waitUntil(() => logFileName = logFileExists());
+
+                    await waitUntil(() => includes(readFile('output/', logFileName), 'Running node with ID:'));
+
+                });
+            });
+
+            context('with balance <= 0', () => {
+
+                it('fails to start up', done => {
+
+                    let contents = fs.readFileSync('./daemon-build/output/bluzelle3.json', 'utf8').split(',');
+
+                    contents[2] = '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"';
+
+                    fs.writeFileSync('./daemon-build/output/bluzelle3.json', contents, 'utf8');
+
+                    (async () => {
+
+
+                        await exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
+                            if (error) {
+                                console.error(`exec error: ${error}`);
+                                return;
+                            }
+
+                            if (stdout.includes('No ETH balance found')) {
+                                done();
+                            }
+                        });
+
+                    })();
+                });
+            })
+
+        });
+
+        context('with invalid address', () => {
+
+            it('fails to start up', done => {
+
+                let contents = fs.readFileSync('./daemon-build/output/bluzelle3.json', 'utf8').split(',');
+
+                contents[2] = '\n  "ethereum" : "asdf"';
+
+                fs.writeFileSync('./daemon-build/output/bluzelle3.json', contents, 'utf8');
+
+                (async () => {
+                    const node = await spawn('./run-daemon.sh', ['bluzelle3.json'], { cwd: './scripts'});
+
+                    node.stdout.on('data', (data) => {
+                    });
+
+                    node.stderr.on('data', (data) => {
+                        if (data.toString().includes('Invalid Ethereum address: asdf')){
+                            done();
+                        };
+                    });
+
+                })();
+
+            });
+
+        });
+
+    });
+
+
 
     // describe('accepts flags', () => {
     //
