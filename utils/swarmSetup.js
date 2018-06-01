@@ -43,8 +43,16 @@ module.exports = {
                 console.log('Failed to read leader log');
         }
     },
-    killSwarm: async () => {
+    killSwarm: async (fileName = logFileName) => {
         exec('pkill -2 swarm');
-        await waitUntil(() => logFileMoved(logFileName));
+
+        try {
+            await waitUntil(() => logFileMoved(fileName));
+            process.env.quiet ||
+                console.log('Log file successfully moved to logs directory')
+        } catch (error) {
+            process.env.quiet ||
+                console.log('Log file not found in logs directory')
+        }
     }
 };
