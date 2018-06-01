@@ -15,15 +15,40 @@ describe('daemon startup', () => {
 
         afterEach(() => killSwarm(logFileName));
 
-        it('changes time scale', async () => {
-            await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=2"');
+        describe('with valid value', () => {
 
-            await waitUntil(() => logFileName = logFileExists());
+            it('successfully changes time scale', async () => {
+                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=2"');
 
-            await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
+                await waitUntil(() => logFileName = logFileExists());
+
+                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
+            });
+
         });
 
-    })
+        describe('without env variable', () => {
+
+            it('time scale is unchanged at 1', async () => {
+                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
+
+                await waitUntil(() => logFileName = logFileExists());
+
+                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+            });
+        });
+
+        describe('with invalid value', () => {
+
+            it('time scale is unchanged at 1', async () => {
+                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=asdf"');
+
+                await waitUntil(() => logFileName = logFileExists());
+
+                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+            });
+        });
+    });
 
     // describe('accepts flags', () => {
     //
