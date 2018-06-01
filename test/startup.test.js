@@ -1,8 +1,8 @@
 const expect = require('chai').expect;
 const waitUntil = require("async-wait-until");
 const {logFileExists, logFileMoved, readFile} = require('../utils/daemonLogHandlers');
-const {exec}  = require('child_process');
-const {spawn}  = require('child_process');
+const {exec} = require('child_process');
+const {spawn} = require('child_process');
 const {includes} = require('lodash');
 const {startSwarm, killSwarm} = require('../utils/swarmSetup');
 const fs = require('fs');
@@ -24,7 +24,6 @@ describe('daemon startup', () => {
 
                 await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
             });
-
         });
 
         context('without env variable', () => {
@@ -71,16 +70,12 @@ describe('daemon startup', () => {
 
             context('with balance <= 0', () => {
 
+                beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"'));
+
                 it('fails to start up', done => {
 
-                    let contents = fs.readFileSync('./daemon-build/output/bluzelle3.json', 'utf8').split(',');
-
-                    contents[2] = '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"';
-
-                    fs.writeFileSync('./daemon-build/output/bluzelle3.json', contents, 'utf8');
-
+                    // wrapped to avoid "Error: Resolution method is overspecified. Specify a callback *or* return a Promise; not both"
                     (async () => {
-
 
                         await exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
                             if (error) {
@@ -101,243 +96,32 @@ describe('daemon startup', () => {
 
         context('with invalid address', () => {
 
+            beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "asdf"'));
+
             it('fails to start up', done => {
 
-                let contents = fs.readFileSync('./daemon-build/output/bluzelle3.json', 'utf8').split(',');
-
-                contents[2] = '\n  "ethereum" : "asdf"';
-
-                fs.writeFileSync('./daemon-build/output/bluzelle3.json', contents, 'utf8');
-
+                // wrapped to avoid "Error: Resolution method is overspecified. Specify a callback *or* return a Promise; not both"
                 (async () => {
-                    const node = await spawn('./run-daemon.sh', ['bluzelle3.json'], { cwd: './scripts'});
 
-                    node.stdout.on('data', (data) => {
-                    });
+                    const node = await spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
 
                     node.stderr.on('data', (data) => {
-                        if (data.toString().includes('Invalid Ethereum address: asdf')){
+                        if (data.toString().includes('Invalid Ethereum address: asdf')) {
                             done();
-                        };
+                        }
                     });
 
                 })();
-
             });
-
         });
-
     });
-
-
-
-    // describe('accepts flags', () => {
-    //
-    //     it('-h', async () =>
-    //         await execAndRead('./swarm -h', 'stdout', 'Shows this information'));
-    //
-    //     it('-v', async () =>
-    //         await execAndRead('./swarm -v', 'stdout', 'Bluzelle:'));
-    //
-    //     it('-c', async () =>
-    //         await execAndRead('./swarm -c',' stderr', "ERROR: the required argument for option '--config' is missing"));
-    //
-    //     it('-a', async () =>
-    //         await execAndRead('./swarm -a 0x006eae72077449caca91078ef78552c0cd9bce8f',' stderr', 'Missing listener address entry'));
-    //
-    //     it('-l', async () =>
-    //         await execAndRead('./swarm -l 127.0.0.1',' stderr', 'Invalid listener port entry'));
-    //
-    //     it('-p', async () =>
-    //         await execAndRead('./swarm -p 49152',' stderr', 'Missing listener address entry'));
-    //
-    //     it('-b', async () =>
-    //         await execAndRead('./swarm -b', 'stderr', "ERROR: the required argument for option '--bootstrap_file' is missing"));
-    //
-    //     it('--bootstrap_url', async () =>
-    //         await execAndRead('./swarm --bootstrap_url', 'stderr', "ERROR: the required argument for option '--bootstrap_url' is missing"));
-    // });
-
-    // describe('unsuccessful connections', () => {
-    //     it('with non existent config file', async () =>
-    //         await execAndRead('./swarm -c does_not_exist.json', 'stderr', 'Unhandled Exception: Failed to load: does_not_exist.json : No such file or directory, application will now exit'));
-    //
-    //     it('with malformed config file', async () =>
-    //         await execAndRead('./swarm -c fail.json', 'stderr', 'Unhandled Exception: Failed to load: fail.json : Undefined error: 0, application will now exit'));
-    // });
-    //
-    // describe('successfully connects', () => {
-    //
-    //     let log, logFileName;
-    //
-    //     describe('with no flags, defaults to ./bluzelle.json', () => {
-    //
-    //         before( async () => {
-    //             exec(`cd ./daemon-build/output; ./swarm`);
-    //             [log, logFileName] = await waitForStartup();
-    //         });
-    //
-    //         it('logs loading ./bluzelle.json', () =>
-    //             expect(log).to.have.string('Loading: bluzelle.json'));
-    //
-    //         it('logs ethereum address', () =>
-    //             expect(log).to.have.string('"ethereum" : "0x006eae72077449caca91078ef78552c0cd9bce8f"'));
-    //
-    //         it('logs listener_address', () =>
-    //             expect(log).to.have.string('"listener_address" : "127.0.0.1"'));
-    //
-    //         it('logs listener_port', () =>
-    //             expect(log).to.have.string('"listener_port" : 49152'));
-    //
-    //         it('logs reading peers', () =>
-    //             expect(log).to.have.string('Reading peers from'));
-    //
-    //         it('logs individual peers', () =>
-    //             expect(log).to.have.string('Found peer 123.45.67.123:50000 (fake_1)'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 4 new peers'));
-    //
-    //         after( async () => {
-    //             exec('cd ../../; yarn daemon-kill');
-    //             await waitUntil( () => logFileMoved(logFileName));
-    //         });
-    //     });
-    //
-    //     describe('with -c ./bluzelle-bootstrap-url.json', () => {
-    //
-    //         before( async () => {
-    //             exec(`cd ./daemon-build/output; ./swarm -c ./bluzelle-bootstrap-url.json`);
-    //             [log, logFileName] = await waitForStartup();
-    //         });
-    //
-    //         it('logs loading ./bluzelle-bootstrap-url.json', () =>
-    //            expect(log).to.have.string('Loading: ./bluzelle-bootstrap-url.json'));
-    //
-    //         it('logs ethereum address', () =>
-    //             expect(log).to.have.string('"ethereum" : "0x006eae72077449caca91078ef78552c0cd9bce8f"'));
-    //
-    //         it('logs listener_address', () =>
-    //             expect(log).to.have.string('"listener_address" : "127.0.0.1"'));
-    //
-    //         it('logs listener_port', () =>
-    //             expect(log).to.have.string('"listener_port" : 49200'));
-    //
-    //         it('logs reading peers', () =>
-    //             expect(log).to.have.string('Downloaded peer list from pastebin.com/raw/mbdezA9Z'));
-    //
-    //         it('logs individual peers', () =>
-    //             expect(log).to.have.string('Found peer 79.80.44.60:51000 (jack)'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 4 new peers'));
-    //
-    //         after( async () => {
-    //             exec('cd ../../; yarn daemon-kill');
-    //             await waitUntil( () => logFileMoved(logFileName));
-    //         });
-    //     });
-    //
-    //     describe('with -a -l -p -b ./peers.json', () => {
-    //
-    //         before( async () => {
-    //             exec(`cd ./daemon-build/output; ./swarm -a 0xf88CD1943406a0A6c1492C35Bb0eE645CD7eA656 -l 127.0.0.1 -p 49155 -b ./peers.json`);
-    //             [log, logFileName] = await waitForStartup();
-    //         });
-    //
-    //         it('logs ethereum address passed', () =>
-    //             expect(log).to.have.string('"ethereum" : "0xf88CD1943406a0A6c1492C35Bb0eE645CD7eA656"'));
-    //
-    //         it('logs listener_address passed', () =>
-    //             expect(log).to.have.string('"listener_address" : "127.0.0.1"'));
-    //
-    //         it('logs listener_port passed', () =>
-    //             expect(log).to.have.string('"listener_port" : 49155'));
-    //
-    //         it('logs reading peers', () =>
-    //             expect(log).to.have.string('Reading peers from'));
-    //
-    //         it('logs individual peers', () =>
-    //             expect(log).to.have.string('Found peer 123.45.67.123:50000 (fake_1)'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 4 new peers'));
-    //
-    //         after( async () => {
-    //             exec('cd ../../; yarn daemon-kill');
-    //             await waitUntil( () => logFileMoved(logFileName));
-    //         });
-    //     });
-    //
-    //     describe('with -a -l -p -bootstrap_url', () => {
-    //
-    //         before( async () => {
-    //             exec(`cd ./daemon-build/output; ./swarm -a 0xf88CD1943406a0A6c1492C35Bb0eE645CD7eA656 -l 127.0.0.1 -p 49155 --bootstrap_url pastebin.com/raw/mbdezA9Z`);
-    //             [log, logFileName] = await waitForStartup();
-    //         });
-    //
-    //         it('logs ethereum address passed', () =>
-    //             expect(log).to.have.string('"ethereum" : "0xf88CD1943406a0A6c1492C35Bb0eE645CD7eA656"'));
-    //
-    //         it('logs listener_address passed', () =>
-    //             expect(log).to.have.string('"listener_address" : "127.0.0.1"'));
-    //
-    //         it('logs listener_port passed', () =>
-    //             expect(log).to.have.string('"listener_port" : 49155'));
-    //
-    //         it('logs reading peers', () =>
-    //             expect(log).to.have.string('Downloaded peer list from pastebin.com/raw/mbdezA9Z'));
-    //
-    //         it('logs individual peers', () =>
-    //             expect(log).to.have.string('Found peer 79.80.44.60:51000 (jack)'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 4 new peers'));
-    //
-    //         after( async () => {
-    //             exec('cd ../../; yarn daemon-kill');
-    //             await waitUntil( () => logFileMoved(logFileName));
-    //         });
-    //     });
-    //
-    //     describe('with -a -l -p -bootstrap_url -b', () => {
-    //
-    //         before( async () => {
-    //             exec(`cd ./daemon-build/output; ./swarm -a 0xf88CD1943406a0A6c1492C35Bb0eE645CD7eA656 -l 127.0.0.1 -p 49155 --bootstrap_url pastebin.com/raw/mbdezA9Z -b peers.json`);
-    //             [log, logFileName] = await waitForStartup();
-    //         });
-    //
-    //         it('reads from local peerlist', () =>
-    //             expect(log).to.have.string('Reading peers from peers.json'));
-    //
-    //         it('reads from remote peerlist', () =>
-    //             expect(log).to.have.string('Downloaded peer list from pastebin.com/raw/mbdezA9Z'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 4 new peers'));
-    //
-    //         it('logs number of peers found', () =>
-    //             expect(log).to.have.string('Found 3 new peers'));
-    //
-    //         it('ignores duplicate addresses, using local list as truth', () =>
-    //             expect(log).to.have.string('Ignored 1 duplicate addresses'));
-    //
-    //         after( async () => {
-    //             exec('cd ../../; yarn daemon-kill');
-    //             await waitUntil( () => logFileMoved(logFileName));
-    //         });
-    //     });
-    // });
 });
 
-const execAndRead = async (cmd, output, expected) => {
-    const {stdout, stderr} = await exec(`cd ./daemon-build/output;` + cmd);
-    output = eval(output);
-    expect(output).to.have.string(expected);
-};
+const editConfigFile = (fileName, index, value) => {
 
-const waitForStartup = async (logFileName) => {
-    await waitUntil(() => logFileName = logFileExists());
-    await waitUntil(() => includes(readFile('output/', logFileName), 'bootstrap_peers.cpp'));
-    return [readFile('output/', logFileName), logFileName];
+    let contents = fs.readFileSync(`./daemon-build/output/${fileName}`, 'utf8').split(',');
+
+    contents[index] = value;
+
+    fs.writeFileSync(`./daemon-build/output/${fileName}`, contents, 'utf8');
 };
