@@ -1,4 +1,5 @@
 .idea/
+qa.iml
 
 .DS_Store
 node_modules

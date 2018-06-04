@@ -74,21 +74,17 @@ describe('daemon startup', () => {
 
                 it('fails to start up', done => {
 
-                    // wrapped to avoid "Error: Resolution method is overspecified. Specify a callback *or* return a Promise; not both"
-                    (async () => {
+                    exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
+                        if (error) {
+                            console.error(`exec error: ${error}`);
+                            return;
+                        }
 
-                        await exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
-                            if (error) {
-                                console.error(`exec error: ${error}`);
-                                return;
-                            }
+                        if (stdout.includes('No ETH balance found')) {
+                            done();
+                        }
+                    });
 
-                            if (stdout.includes('No ETH balance found')) {
-                                done();
-                            }
-                        });
-
-                    })();
                 });
             })
 
@@ -100,18 +96,14 @@ describe('daemon startup', () => {
 
             it('fails to start up', done => {
 
-                // wrapped to avoid "Error: Resolution method is overspecified. Specify a callback *or* return a Promise; not both"
-                (async () => {
+                const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
 
-                    const node = await spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                node.stderr.on('data', (data) => {
+                    if (data.toString().includes('Invalid Ethereum address: asdf')) {
+                        done();
+                    }
+                });
 
-                    node.stderr.on('data', (data) => {
-                        if (data.toString().includes('Invalid Ethereum address: asdf')) {
-                            done();
-                        }
-                    });
-
-                })();
             });
         });
     });
