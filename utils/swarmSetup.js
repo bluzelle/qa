@@ -8,6 +8,9 @@ let logFileName;
 
 module.exports = {
     startSwarm: async function () {
+        // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+        exec('cd ./daemon-build/output/; rm -rf .state');
+
         exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader

@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test-daemon": "quiet=true mocha test/*.js --exit --timeout 5000"
+    "test-daemon": "quiet=true mocha test/*.js --exit --timeout 10000"
   },
   "dependencies": {
     "async-wait-until": "^1.2.4",
