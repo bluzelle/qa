@@ -5,7 +5,7 @@ const {includes} = require('lodash');
 
 const {logFileExists, logFileMoved, readFile} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {editConfigFile} = require('../utils/daemon/configs');
+const {editConfigFile, resetConfigFile} = require('../utils/daemon/configs');
 
 let logFileName;
 
@@ -72,6 +72,9 @@ describe('daemon startup', () => {
 
                 beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"'));
 
+                afterEach(() => resetConfigFile('bluzelle3.json'));
+
+
                 it('fails to start up', done => {
 
                     exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
@@ -93,6 +96,9 @@ describe('daemon startup', () => {
         context('with invalid address', () => {
 
             beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "asdf"'));
+
+            afterEach(() => resetConfigFile('bluzelle3.json'));
+
 
             it('fails to start up', done => {
 
