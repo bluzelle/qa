@@ -1,11 +1,11 @@
 const expect = require('chai').expect;
 const waitUntil = require("async-wait-until");
-const {logFileExists, logFileMoved, readFile} = require('../utils/daemonLogHandlers');
-const {exec} = require('child_process');
-const {spawn} = require('child_process');
+const {exec, spawn} = require('child_process');
 const {includes} = require('lodash');
-const {startSwarm, killSwarm} = require('../utils/swarmSetup');
-const fs = require('fs');
+
+const {logFileExists, logFileMoved, readFile} = require('../utils/daemon/logs');
+const {startSwarm, killSwarm} = require('../utils/daemon/setup');
+const {editConfigFile} = require('../utils/daemon/configs');
 
 let logFileName;
 
@@ -108,12 +108,3 @@ describe('daemon startup', () => {
         });
     });
 });
-
-const editConfigFile = (fileName, index, value) => {
-
-    let contents = fs.readFileSync(`./daemon-build/output/${fileName}`, 'utf8').split(',');
-
-    contents[index] = value;
-
-    fs.writeFileSync(`./daemon-build/output/${fileName}`, contents, 'utf8');
-};

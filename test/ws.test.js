@@ -1,7 +1,8 @@
 const WebSocket = require('ws');
 const waitUntil = require('async-wait-until');
-const {startSwarm, killSwarm} = require('../utils/swarmSetup');
 const {get} = require('lodash');
+
+const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 
 let socket, messages;
 

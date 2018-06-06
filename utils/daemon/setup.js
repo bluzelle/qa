@@ -1,8 +1,9 @@
 const exec = require('child_process').exec;
-const {logFileMoved, logFileExists} = require('./daemonLogHandlers');
 const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
+
+const {logFileMoved, logFileExists} = require('./logs');
 
 let logFileName;
 

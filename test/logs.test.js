@@ -1,6 +1,6 @@
 const expect = require('chai').expect;
-const {startSwarm, killSwarm} = require('../utils/swarmSetup');
-const {logFileExists} = require('../utils/daemonLogHandlers');
+const {startSwarm, killSwarm} = require('../utils/daemon/setup');
+const {logFileExists} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
 
