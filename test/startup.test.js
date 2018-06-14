@@ -3,114 +3,211 @@ const waitUntil = require("async-wait-until");
 const {exec, spawn} = require('child_process');
 const {includes} = require('lodash');
 
-const {logFileExists, logFileMoved, readFile} = require('../utils/daemon/logs');
+const {fileExists, fileMoved, readFile} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {editConfigFile, resetConfigFile} = require('../utils/daemon/configs');
+const {editConfigFile, resetConfigFile, spliceConfigFile} = require('../utils/daemon/configs');
 
 let logFileName;
 
 describe('daemon startup', () => {
 
-    describe('accepts time scaling env variable', () => {
+    describe('cmd line', () => {
 
-        afterEach(() => killSwarm(logFileName));
+        context('accepts flags', () => {
 
-        context('with valid value', () => {
-
-            it('successfully changes time scale', async () => {
-                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=2"');
-
-                await waitUntil(() => logFileName = logFileExists());
-
-                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
+            it('accepts -h', done => {
+                execAndRead('./swarm -h', 'bluzelle [OPTION]', done);
             });
+
+            it('accepts -c', done => {
+                execAndRead('./swarm -c', 'ERROR: the required argument for option \'--config\' is missing', done);
+            })
+
         });
 
-        context('without env variable', () => {
+        context('accepts time scaling env variable', () => {
 
-            it('time scale is unchanged at 1', async () => {
-                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
+            afterEach(() => killSwarm(logFileName));
 
-                await waitUntil(() => logFileName = logFileExists());
+            context('with valid value', () => {
 
-                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                it('successfully changes time scale', async () => {
+                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=2"');
+
+                    await waitUntil(() => logFileName = fileExists());
+
+                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
+                });
             });
-        });
 
-        context('with invalid value', () => {
+            context('without env variable', () => {
 
-            it('time scale is unchanged at 1', async () => {
-                await exec('cd ./scripts; ./run-daemon.sh bluzelle.json "env RAFT_TIMEOUT_SCALE=asdf"');
+                it('time scale is unchanged at 1', async () => {
+                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                await waitUntil(() => logFileName = logFileExists());
+                    await waitUntil(() => logFileName = fileExists());
 
-                await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                });
+            });
+
+            context('with invalid value', () => {
+
+                it('time scale is unchanged at 1', async () => {
+                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=asdf"');
+
+                    await waitUntil(() => logFileName = fileExists());
+
+                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                });
             });
         });
     });
 
-    describe('requires ethereum address', () => {
+    context('required arguments in config file', () => {
 
-        afterEach(() => exec('kill -2 swarm'));
+        afterEach(() => resetConfigFile('bluzelle2.json'));
 
-        context('with valid address', () => {
+        context('listener address', () => {
 
-            context('with balance > 0', () => {
+            beforeEach(() =>
+                editConfigFile('bluzelle2.json', 0, '{ "dummy" : "dummy"'));
 
-                it('successfully starts up', async () => {
-
-                    await exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
-
-                    await waitUntil(() => logFileName = logFileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Running node with ID:'));
-
-                });
+            it('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing listener address entry!', done);
             });
 
-            context('with balance <= 0', () => {
+        });
 
-                beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"'));
+        context('listener port', () => {
 
-                afterEach(() => resetConfigFile('bluzelle3.json'));
+            beforeEach(() =>
+                editConfigFile('bluzelle2.json', 1, '\n "dummy" : "dummy"'));
 
+            it('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing listener port entry!', done);
+            });
+
+        });
+
+        context('ethereum address', () => {
+
+            context('missing', () => {
+
+                beforeEach(() =>
+                    editConfigFile('bluzelle2.json', 2, '\n "dummy" : "dummy"'));
+
+                it('throws error', done => {
+                    execAndRead('./swarm -c bluzelle2.json', 'Missing Ethereum address entry!', done);
+                });
+
+            });
+
+
+            afterEach(() => exec('pkill -2 swarm'));
+
+            context('with valid address', () => {
+
+                context('with balance > 0', () => {
+
+                    it('successfully starts up', async () => {
+
+                        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+
+                        await waitUntil(() => logFileName = fileExists());
+
+                        await waitUntil(() => includes(readFile('output/', logFileName), 'Running node with ID:'));
+
+                    });
+                });
+
+                context('with balance <= 0', () => {
+
+                    beforeEach(() => editConfigFile('bluzelle2.json', 2, '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"'));
+
+                    it('fails to start up', done => {
+
+                        exec('cd ./scripts; ./run-daemon.sh bluzelle2.json', (error, stdout) => {
+                            if (error) {
+                                console.error(`exec error: ${error}`);
+                                return;
+                            }
+
+                            if (stdout.includes('No ETH balance found')) {
+                                done();
+                            }
+                        });
+
+                    });
+                })
+            });
+
+            context('with invalid address', () => {
+
+                beforeEach(() => editConfigFile('bluzelle2.json', 2, '\n  "ethereum" : "asdf"'));
 
                 it('fails to start up', done => {
 
-                    exec('cd ./scripts; ./run-daemon.sh bluzelle3.json', async (error, stdout) => {
-                        if (error) {
-                            console.error(`exec error: ${error}`);
-                            return;
-                        }
+                    const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
 
-                        if (stdout.includes('No ETH balance found')) {
+                    node.stderr.on('data', (data) => {
+                        if (data.toString().includes('Invalid Ethereum address: asdf')) {
                             done();
                         }
                     });
 
                 });
-            })
+            });
+        });
+
+        context('ethereum io api token', () => {
+
+            beforeEach(() =>
+                editConfigFile('bluzelle2.json', 3, '\n "dummy" : "dummy"'));
+
+            it('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing Ethereum IO API token entry!', done);
+            });
 
         });
 
-        context('with invalid address', () => {
+        context('bootstrap file', () => {
 
-            beforeEach(() => editConfigFile('bluzelle3.json', 2, '\n  "ethereum" : "asdf"'));
+            beforeEach(() =>
+                editConfigFile('bluzelle2.json', 4, '\n "dummy" : "dummy"'));
 
-            afterEach(() => resetConfigFile('bluzelle3.json'));
-
-
-            it('fails to start up', done => {
-
-                const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
-
-                node.stderr.on('data', (data) => {
-                    if (data.toString().includes('Invalid Ethereum address: asdf')) {
-                        done();
-                    }
-                });
-
+            // no missing peers list file error msg
+            it.skip('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing peers list entry!', done);
             });
+        });
+
+        context('uuid', () => {
+
+            beforeEach(() =>
+                editConfigFile('bluzelle2.json', 5, '\n "dummy" : "dummy"'));
+
+            // no missing uuid error msg
+            it.skip('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing uuid entry!', done);
+            });
+
         });
     });
 });
+
+const execAndRead = (cmd, matchStr, done) => {
+    exec(`cd ./daemon-build/output/; ${cmd}`, (err, stdout, stderr) => {
+
+        if (stdout.toString().includes(matchStr)) {
+            done()
+        }
+
+        if (stderr.toString().includes(matchStr)) {
+            done()
+        } else if (stderr) {
+            throw new Error(stderr)
+        }
+
+    });
+};

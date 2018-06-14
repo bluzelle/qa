@@ -2,9 +2,9 @@ const exec = require('child_process').exec;
 const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
-const WebSocket = require('ws');
 
-const {logFileMoved, logFileExists} = require('./logs');
+const api = require('../../bluzelle-js/src/api');
+const {fileMoved, fileExists} = require('./logs');
 
 let logFileName;
 
@@ -15,15 +15,15 @@ const setupUtils = {
             exec('cd ./daemon-build/output/; rm -rf .state');
         }
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
+        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader
         setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle2.json')
+            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json')
         }, 2000);
 
         try {
-            await waitUntil(() => logFileName = logFileExists());
+            await waitUntil(() => logFileName = fileExists());
             process.env.quiet ||
                 console.log('Log file created')
         } catch (error) {
@@ -53,7 +53,7 @@ const setupUtils = {
         exec('pkill -2 swarm');
 
         try {
-            await waitUntil(() => logFileMoved(fileName));
+            await waitUntil(() => fileMoved(fileName));
             process.env.quiet ||
                 console.log('Log file successfully moved to logs directory')
         } catch (error) {
@@ -61,23 +61,10 @@ const setupUtils = {
                 console.log('Log file not found in logs directory')
         }
     },
-    createState: async () => {
+    createState: async (key, value) => {
         await setupUtils.startSwarm();
-        socket = new WebSocket('ws://127.0.0.1:50000');
-
-        await new Promise((resolve, reject) => {
-            socket.on('open', () => {
-
-                socket.send('{"bzn-api" : "crud","cmd" : "create","data" :{"key" : "key1","value" : "hi"},"db-uuid" : "80174b53-2dda-49f1-9d6a-6a780d4cceca","request-id" : 85746}')
-
-                // wait for cmd to propagate in Daemon
-                setTimeout(() => {
-                    resolve();
-                }, 1000)
-            });
-        });
-
-        socket.close();
+        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        await api.create(key, value);
         await setupUtils.killSwarm();
     }
 };

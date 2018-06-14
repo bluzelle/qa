@@ -6,9 +6,15 @@ const {spliceConfigFile, resetConfigFile} = require('../utils/daemon/configs');
 
 let socket;
 
+const ENCODED_CMDS = {
+    // stringified protobuf serial output embedded in JSON
+    create: '{"bzn-api":"database","msg":"UjUSJgokNzFlMmNkMzUtYjYwNi00MWU2LWJiMDgtZjIwZGUzMGRmNzZjUgsSA2tleRoEATEyMw=="}', // create('key', 123)
+    read: '{"bzn-api":"database","msg":"Ui8SJgokNzFlMmNkMzUtYjYwNi00MWU2LWJiMDgtZjIwZGUzMGRmNzZjWgUSA2tleQ=="}' // read('key')
+};
+
 describe('web sockets interface', () => {
 
-    describe('ping', () => {
+    describe('connected', () => {
 
         beforeEach(startSwarm);
         beforeEach('open ws connection', done => {
@@ -17,18 +23,17 @@ describe('web sockets interface', () => {
         });
 
         afterEach( async () => {
-            socket.close();
             await killSwarm();
         });
 
-        it('should respond with pong', async () => {
+        it('should be responsive', async () => {
             const messagePromise = new Promise(resolve =>
-                socket.on('message', message => resolve(JSON.parse(message))));
+                socket.on('message', message => resolve(message)));
 
-            socket.send('{ "bzn-api" : "ping" }');
+            socket.send(ENCODED_CMDS.read);
 
             const message = await messagePromise;
-            expect(message['bzn-api']).to.equal('pong');
+            expect(message).to.not.be.empty;
         })
     });
 
@@ -36,20 +41,20 @@ describe('web sockets interface', () => {
 
         let startTime, timeElapsed;
 
-        beforeEach(() => spliceConfigFile('bluzelle.json', 2, '\n  "ws_idle_timeout" : 1'));
+        beforeEach(() => spliceConfigFile('bluzelle0.json', 2, '\n  "ws_idle_timeout" : 1'));
 
         beforeEach(startSwarm);
 
         beforeEach('ws connection', done => {
             startTime = Date.now();
 
-            socket = new WebSocket('ws://127.0.0.1:50000');
+            socket = new WebSocket(`ws://${process.env.address}:${process.env.port}`);
             socket.on('open', done);
         });
 
         afterEach(killSwarm);
 
-        afterEach(() => resetConfigFile('bluzelle.json'));
+        afterEach(() => resetConfigFile('bluzelle0.json'));
 
 
         it('should close after an idle period', async function () {
@@ -72,7 +77,7 @@ describe('web sockets interface', () => {
         it('write should extend idle period before close', async function () {
 
             setTimeout(() => {
-                socket.send('{"bzn-api" : "crud","cmd" : "create","data" :{"key" : "key0","value" : "I2luY2x1ZGUgPG1vY2tzL21vY2tfbm9kZV9iYXNlLmhwcD4NCiNpbmNsdWRlIDxtb2Nrcy9tb2NrX3Nlc3Npb25fYmFzZS5ocHA+DQojaW5jbHVkZSA8bW9ja3MvbW9ja19yYWZ0X2Jhc2UuaHBwPg0KI2luY2x1ZGUgPG1vY2tzL21vY2tfc3RvcmFnZV9iYXNlLmhwcD4NCg=="},"db-uuid" : "80174b53-2dda-49f1-9d6a-6a780d4cceca","request-id" : 85746}')
+                socket.send(ENCODED_CMDS.create)
             }, 500);
 
             await new Promise((resolve, reject) => {
@@ -93,7 +98,7 @@ describe('web sockets interface', () => {
         it('read should extend idle period before close', async function () {
 
             setTimeout(() => {
-                socket.send('{"bzn-api" : "crud","cmd" : "read","data" :{"key" : "key0"},"db-uuid" : "80174b53-2dda-49f1-9d6a-6a780d4cceca","request-id" : 85746}')
+                socket.send(ENCODED_CMDS.read)
             }, 500);
 
             await new Promise((resolve, reject) => {

@@ -1,0 +1,3 @@
+[submodule "bluzelle-js"]
+	path = bluzelle-js
+	url = git@github.com:bluzelle/bluzelle-js.git

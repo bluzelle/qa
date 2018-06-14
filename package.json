@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "test-daemon": "quiet=true mocha test/*.js --exit --timeout 10000"
+    "test-daemon": "port=50000 address=localhost quiet=true mocha test/*.js --exit --timeout 10000",
+    "setup-daemon": "cp -R ./configs/. ./daemon-build/output/"
   },
   "dependencies": {
     "async-wait-until": "^1.2.4",
