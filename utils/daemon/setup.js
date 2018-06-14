@@ -8,9 +8,11 @@ const {logFileMoved, logFileExists} = require('./logs');
 let logFileName;
 
 module.exports = {
-    startSwarm: async function () {
-        // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-        exec('cd ./daemon-build/output/; rm -rf .state');
+    startSwarm: async function (flag = false) {
+        if (!flag) {
+            // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+            exec('cd ./daemon-build/output/; rm -rf .state');
+        }
 
         exec('cd ./scripts; ./run-daemon.sh bluzelle.json');
 
