@@ -1,22 +1,19 @@
 const WebSocket = require('ws');
-const waitUntil = require('async-wait-until');
-const {get} = require('lodash');
+const expect = require('chai').expect;
 
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 const {spliceConfigFile, resetConfigFile} = require('../utils/daemon/configs');
 
-let socket, messages;
+let socket;
 
 describe('web sockets interface', () => {
 
     describe('ping', () => {
 
         beforeEach(startSwarm);
-        beforeEach('ws connection', done => {
-            messages = [];
+        beforeEach('open ws connection', done => {
             socket = new WebSocket('ws://127.0.0.1:50000');
             socket.on('open', done);
-            socket.on('message', message => messages.push(JSON.parse(message)));
         });
 
         afterEach( async () => {
@@ -25,8 +22,13 @@ describe('web sockets interface', () => {
         });
 
         it('should respond with pong', async () => {
+            const messagePromise = new Promise(resolve =>
+                socket.on('message', message => resolve(JSON.parse(message))));
+
             socket.send('{ "bzn-api" : "ping" }');
-            await waitUntil(() => get(messages, '[0].bzn-api') === 'pong');
+
+            const message = await messagePromise;
+            expect(message['bzn-api']).to.equal('pong');
         })
     });
 
