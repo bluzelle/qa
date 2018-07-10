@@ -1,45 +1,9 @@
-const {spawn, exec} = require('child_process');
 const waitUntil = require("async-wait-until");
 const expect = require('chai').expect;
+const {exec} = require('child_process');
 
+const {spawnSwarm, despawnSwarm, swarm} = require('../utils/daemon/setup');
 const api = require('../bluzelle-js/src/api');
-const {editConfigFile, resetConfigFile} = require('../utils/daemon/configs');
-
-const swarm = {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}};
-
-const spawnSwarm = async () => {
-
-    exec('cd ./daemon-build/output/; rm -rf .state');
-
-    editConfigFile('bluzelle0.json', 7, '\n  "log_to_stdout" : true \n }');
-
-    Object.keys(swarm.list).forEach((daemon, i) => {
-
-        swarm[daemon] = spawn('./run-daemon.sh', [`bluzelle${i}.json`], {cwd: './scripts'});
-
-        swarm[daemon].stdout.on('data', data => {
-            if (data.toString().includes('RAFT State: Leader')) {
-                swarm.leader = daemon;
-            }
-        });
-
-    });
-
-    try {
-        await waitUntil(() => swarm.leader, 10000);
-    } catch (err) {
-        console.log(`Failed to declare leader`)
-    }
-};
-
-const despawnSwarm = () => {
-
-    resetConfigFile('bluzelle0.json');
-
-    exec('pkill -2 swarm');
-
-    swarm.daemon0, swarm.daemon1, swarm.daemon2, swarm.leader = undefined;
-};
 
 
 describe('raft', () => {
