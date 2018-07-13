@@ -9,15 +9,66 @@ const api = require('../bluzelle-js/src/api');
 const {fileExists, readFile, readDir, checkFilesConsistency} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 const {editConfigFile, resetConfigFile} = require('../utils/daemon/configs');
+const shared = require('./shared');
 
 const DAEMON_UUIDS = ["60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "c7044c76-135b-452d-858a-f789d82c7eb7"];
+
+
+const jointQuorumTests = (nodeInfo) => {
+
+    it('should append joint quorum to log', async () => {
+
+        await waitUntil(() => logFileName = fileExists());
+
+        await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
+    });
+
+    it('should persist joint quorum to .dat', async () => {
+
+        await waitUntil(() => {
+            return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
+        });
+
+        const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
+
+        const text = base64toAscii(jointQuorumData);
+
+        expect(text).to.include('{"msg":{"peers":{"new":');
+        expect(text).to.include(nodeInfo)
+    });
+};
+
+const singleQuorumTests = (nodeInfo, include) => {
+
+    it('should append single quorum to log', async () => {
+
+        await waitUntil(() => logFileName = fileExists());
+
+        await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
+    });
+
+    it('should persist single quorum to .dat', async () => {
+
+        await waitUntil(() => {
+            return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 3
+        });
+
+        const singleQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[2].slice(5);
+
+        const text = base64toAscii(singleQuorumData);
+
+        expect(text).to.include('{"msg":{"peers":[{');
+
+        include ? expect(text).to.include(nodeInfo) : expect(text).to.not.include(nodeInfo)
+    });
+};
 
 
 describe('swarm membership', () => {
 
     context('adding new peer', () => {
 
-        const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":"7a55cc24-e4e3-4d88-86a6-3a501e09ee26"}'
+        const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":"7a55cc24-e4e3-4d88-86a6-3a501e09ee26"}';
         let logFileName;
 
         context('resulting swarm', () => {
@@ -45,64 +96,16 @@ describe('swarm membership', () => {
 
                 afterEach('kill swarm', killSwarm);
 
-                it('should append joint quorum to log', async () => {
+                jointQuorumTests(NEW_PEER);
 
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
-                });
-
-                it('should persist joint quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
-                    });
-
-                    const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
-
-                    const text = base64toAscii(jointQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":{"new":');
-                    expect(text).to.include(NEW_PEER);
-                });
-
-                it('should append single quorum to log', async () => {
-
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
-                });
-
-                it('should persist single quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 3
-                    });
-
-                    const singleQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[2].slice(5);
-
-                    const text = base64toAscii(singleQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":[{');
-                    expect(text).to.include(NEW_PEER);
-                });
+                singleQuorumTests(NEW_PEER, true);
 
                 context('is operational', () => {
 
                     beforeEach(() =>
                         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                    it('should be able to create', async () => {
-
-                        await api.create('key', 123);
-                    });
-
-                    it('should be able to read', async () => {
-
-                        await api.create('key', 'abc');
-
-                        expect(await api.read('key')).to.be.equal('abc')
-                    });
+                    shared.swarmIsOperational();
                 });
 
                 context('new node', () => {
@@ -153,41 +156,14 @@ describe('swarm membership', () => {
 
                 afterEach('kill swarm', killSwarm);
 
-                it('should append joint quorum to log', async () => {
-
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
-                });
-
-                it('should persist joint quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
-                    });
-
-                    const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
-
-                    const text = base64toAscii(jointQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":{"new":');
-                    expect(text).to.include(NEW_PEER);
-                });
+                jointQuorumTests(NEW_PEER);
 
                 context('is NOT operational', () => {
 
                     beforeEach(() =>
                         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                    it('create should timeout at api level', done => {
-
-                        api.create('key', 123).catch(e => {
-
-                            expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.')
-
-                            done();
-                        })
-                    });
+                    shared.createShouldTimeout();
                 });
             });
         });
@@ -223,47 +199,9 @@ describe('swarm membership', () => {
 
                 afterEach('kill swarm', killSwarm);
 
-                it('should append joint quorum to log', async () => {
+                jointQuorumTests('{"host":"127.0.0.1","http_port":8082,"name":"peer3","port":50002,"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}');
 
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
-                });
-
-                it('should persist joint quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
-                    });
-
-                    const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
-
-                    const text = base64toAscii(jointQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":{"new":');
-                    expect(text).to.include('{"host":"127.0.0.1","http_port":8082,"name":"peer3","port":50002,"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}')
-                });
-
-                it('should append single quorum to log', async () => {
-
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
-                });
-
-                it('should persist single quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 3
-                    });
-
-                    const singleQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[2].slice(5);
-
-                    const text = base64toAscii(singleQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":[{');
-                    expect(text).to.not.include('{"host":"127.0.0.1","http_port":8082,"name":"peer3","port":50002,"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}');
-                });
+                singleQuorumTests('{"host":"127.0.0.1","http_port":8082,"name":"peer3","port":50002,"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}');
 
                 context('removed node', () => {
 
@@ -282,17 +220,8 @@ describe('swarm membership', () => {
                         beforeEach(() =>
                             api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                        it('should be able to create', async () => {
+                        shared.swarmIsOperational();
 
-                            await api.create('key', 123);
-                        });
-
-                        it('should be able to read', async () => {
-
-                            await api.create('key', 'abc');
-
-                            expect(await api.read('key')).to.be.equal('abc')
-                        });
                     });
 
                     context('offline', () => {
@@ -304,17 +233,8 @@ describe('swarm membership', () => {
                             api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
                         });
 
-                        it('should be able to create', async () => {
+                        shared.swarmIsOperational();
 
-                            await api.create('key', 123);
-                        });
-
-                        it('should be able to read', async () => {
-
-                            await api.create('key', 'abc');
-
-                            expect(await api.read('key')).to.be.equal('abc');
-                        });
                     });
                 });
             });
@@ -346,60 +266,16 @@ describe('swarm membership', () => {
 
                 afterEach('kill swarm', killSwarm);
 
-                it('should append joint quorum to log', async () => {
+                jointQuorumTests('{"host":"127.0.0.1","http_port":8081,"name":"peer2","port":50001,"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}');
 
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
-                });
-
-                it('should persist joint quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
-                    });
-
-                    const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
-
-                    const text = base64toAscii(jointQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":{"new":');
-                    expect(text).to.include('{"host":"127.0.0.1","http_port":8081,"name":"peer2","port":50001,"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}')
-                });
-
-                it('should append single quorum to log', async () => {
-
-                    await waitUntil(() => logFileName = fileExists());
-
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
-                });
-
-                it('should persist single quorum to .dat', async () => {
-
-                    await waitUntil(() => {
-                        return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 3
-                    });
-
-                    const singleQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[2].slice(5);
-
-                    const text = base64toAscii(singleQuorumData);
-
-                    expect(text).to.include('{"msg":{"peers":[{');
-                    expect(text).to.not.include('{"host":"127.0.0.1","http_port":8081,"name":"peer2","port":50002,"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}');
-                });
+                singleQuorumTests('{"host":"127.0.0.1","http_port":8081,"name":"peer2","port":50001,"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}');
 
                 context('is NOT operational', () => {
 
                     beforeEach(() =>
                         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                    it('create should timeout at api level', done => {
-
-                        api.create('key', 123).catch(e => {
-                            expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.');
-                            done()
-                        });
-                    });
+                    shared.createShouldTimeout();
                 });
             });
         });
