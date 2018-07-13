@@ -14,7 +14,8 @@ const setupUtils = {
     startSwarm: async function (flag = false) {
         if (!flag) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            exec('cd ./daemon-build/output/; rm -rf .state');
+            // log file may remain if Daemon not exited gracefully
+            exec('cd ./daemon-build/output/; rm -rf .state; rm *.log');
         }
 
         exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
