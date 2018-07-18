@@ -1,4 +1,4 @@
-const {spawn, exec} = require('child_process');
+const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
@@ -110,26 +110,35 @@ describe('swarm membership', () => {
 
                 context('new node', () => {
 
-                    beforeEach('starting new node', () => {
-                        editConfigFile('bluzelle2.json', 5, '\n  "listener_port" : 50003');
-                        editConfigFile('bluzelle2.json', 1, '\n  "uuid" : "7a55cc24-e4e3-4d88-86a6-3a501e09ee26"');
+                    beforeEach(() => {
 
-                        exec('cd ./scripts; ./run-daemon.sh bluzelle2.json');
+                        execSync('cp -R ./configs/peers.json ./daemon-build/output/peers2.json');
+
+                        let data = JSON.parse(fs.readFileSync('./daemon-build/output/peers2.json', 'utf8'));
+                        data[2].uuid = '7a55cc24-e4e3-4d88-86a6-3a501e09ee26';
+                        data[2].port = 50003;
+                        data[2].http_port = 8083;
+                        fs.writeFileSync(`./daemon-build/output/peers2.json`, JSON.stringify(data), 'utf8');
+
+
+                        let data2 = JSON.parse(fs.readFileSync('./daemon-build/output/bluzelle2.json', 'utf8'));
+
+                        data2.listener_port = 50003;
+                        data2.uuid = '7a55cc24-e4e3-4d88-86a6-3a501e09ee26';
+                        data2.bootstrap_file = 'peers2.json';
+
+                        fs.writeFileSync(`./daemon-build/output/bluzelle2.json`, JSON.stringify(data2), 'utf8');
+
                     });
 
-                    afterEach(() => {
-                        resetConfigFile('bluzelle2.json');
-                    });
-
-                    // waiting for successful sync message KEP-377
-                    it.skip('should be able to sync', done => {
+                    it('should be able to sync', done => {
                         const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+
+                        let daemonData = {};
 
                         node.stdout.on('data', data => {
 
-                            let daemonData = {};
-
-                            if (data.toString().includes('Create successful.')) {
+                            if (data.toString().includes('current term out of sync:')) {
 
                                 DAEMON_UUIDS.forEach(v => {
                                     daemonData[v] = readFile('/output/.state/', v + '.dat');
