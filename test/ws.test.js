@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const expect = require('chai').expect;
 
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {spliceConfigFile, resetConfigFile} = require('../utils/daemon/configs');
+const {editFile} = require('../utils/daemon/configs');
 
 let socket;
 
@@ -17,6 +17,7 @@ describe('web sockets interface', () => {
     describe('connected', () => {
 
         beforeEach(startSwarm);
+
         beforeEach('open ws connection', done => {
             socket = new WebSocket('ws://127.0.0.1:50000');
             socket.on('open', done);
@@ -34,14 +35,15 @@ describe('web sockets interface', () => {
 
             const message = await messagePromise;
             expect(message).to.not.be.empty;
-        })
+        });
     });
 
     describe('connection', () => {
 
         let startTime, timeElapsed;
 
-        beforeEach(() => spliceConfigFile('bluzelle0.json', 2, '\n  "ws_idle_timeout" : 1'));
+        beforeEach(() =>
+            editFile({filename: 'bluzelle0.json', changes: { ws_idle_timeout: 1}}));
 
         beforeEach(startSwarm);
 
@@ -53,8 +55,6 @@ describe('web sockets interface', () => {
         });
 
         afterEach(killSwarm);
-
-        afterEach(() => resetConfigFile('bluzelle0.json'));
 
 
         it('should close after an idle period', async function () {
@@ -70,7 +70,6 @@ describe('web sockets interface', () => {
                         reject();
                     }
                 });
-
             });
         });
 
@@ -92,7 +91,6 @@ describe('web sockets interface', () => {
                     }
                 });
             });
-
         });
 
         it('read should extend idle period before close', async function () {
@@ -114,6 +112,5 @@ describe('web sockets interface', () => {
                 });
             });
         });
-
     });
 });

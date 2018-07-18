@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const api = require('../../bluzelle-js/src/api');
 const {fileMoved, fileExists} = require('./logs');
-const {editConfigFile, resetConfigFile} = require('./configs');
+const {editFile} = require('./configs');
 
 
 let logFileName;
@@ -75,8 +75,7 @@ const setupUtils = {
 
         exec('cd ./daemon-build/output/; rm -rf .state');
 
-        editConfigFile('bluzelle0.json', 7, '\n  "log_to_stdout" : true \n }');
-
+        editFile({filename: 'bluzelle0.json', changes: { log_to_stdout: true}});
 
         Object.keys(setupUtils.swarm.list).forEach((daemon, i) => {
 
@@ -96,8 +95,6 @@ const setupUtils = {
         }
     },
     despawnSwarm: () => {
-
-        resetConfigFile('bluzelle0.json');
 
         exec('pkill -2 swarm');
 

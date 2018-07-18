@@ -3,12 +3,11 @@ const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
 const expect = require('chai').expect;
-const fs = require('fs');
 
 const api = require('../bluzelle-js/src/api');
 const {fileExists, readFile, readDir, checkFilesConsistency} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {editConfigFile, resetConfigFile} = require('../utils/daemon/configs');
+const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
 const DAEMON_UUIDS = ["60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "c7044c76-135b-452d-858a-f789d82c7eb7"];
@@ -75,17 +74,11 @@ describe('swarm membership', () => {
 
             context('has sufficient nodes alive for consensus', () => {
 
-                beforeEach('setting peerlist', () => {
-
-                    const CONTENT = '[\n' +
-                        '  {"name": "peer1", "host": "127.0.0.1", "port": 50000, "uuid" : "60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "http_port": 8080},\n' +
-                        '  {"name": "peer2", "host": "127.0.0.1",  "port": 50001, "uuid" : "c7044c76-135b-452d-858a-f789d82c7eb7", "http_port": 8081}\n' +
-                        ']\n';
-
-                    fs.writeFileSync(`./daemon-build/output/peers.json`, CONTENT, 'utf8');
-                });
+                beforeEach('remove peer from peerlist', () =>
+                    editFile({filename: 'peers.json', remove: {index: 2}}));
 
                 beforeEach('start swarm', startSwarm);
+
                 beforeEach('open ws connection', done => {
                     socket = new WebSocket('ws://127.0.0.1:50000');
                     socket.on('open', () => {
@@ -114,20 +107,26 @@ describe('swarm membership', () => {
 
                         execSync('cp -R ./configs/peers.json ./daemon-build/output/peers2.json');
 
-                        let data = JSON.parse(fs.readFileSync('./daemon-build/output/peers2.json', 'utf8'));
-                        data[2].uuid = '7a55cc24-e4e3-4d88-86a6-3a501e09ee26';
-                        data[2].port = 50003;
-                        data[2].http_port = 8083;
-                        fs.writeFileSync(`./daemon-build/output/peers2.json`, JSON.stringify(data), 'utf8');
+                        editFile(
+                            {
+                                filename: 'peers2.json',
+                                changes: {
+                                    index: 2,
+                                    uuid: '7a55cc24-e4e3-4d88-86a6-3a501e09ee26',
+                                    port: 50003,
+                                    http_port: 8083
+                                }
+                            });
 
-
-                        let data2 = JSON.parse(fs.readFileSync('./daemon-build/output/bluzelle2.json', 'utf8'));
-
-                        data2.listener_port = 50003;
-                        data2.uuid = '7a55cc24-e4e3-4d88-86a6-3a501e09ee26';
-                        data2.bootstrap_file = 'peers2.json';
-
-                        fs.writeFileSync(`./daemon-build/output/bluzelle2.json`, JSON.stringify(data2), 'utf8');
+                        editFile(
+                            {
+                                filename: 'bluzelle2.json',
+                                changes: {
+                                    listener_port: 50003,
+                                    uuid: '7a55cc24-e4e3-4d88-86a6-3a501e09ee26',
+                                    bootstrap_file: './peers2.json'
+                                }
+                            })
 
                     });
 
@@ -216,11 +215,11 @@ describe('swarm membership', () => {
 
                     context('becomes a singleton swarm', () => {
 
-                        it('should remain in candidate state', async function() {
+                        it('should remain in candidate state', async function () {
                             this.timeout(12000);
 
                             await waitUntil(() =>
-                                ((daemonData.match(/RAFT State: Candidate/g) || []).length >= 2 ), 12000)
+                                ((daemonData.match(/RAFT State: Candidate/g) || []).length >= 2), 12000)
                         });
                     });
 
@@ -250,15 +249,8 @@ describe('swarm membership', () => {
 
             context('has insufficient nodes alive for consensus', () => {
 
-                beforeEach('setting peerlist', () => {
-
-                    const CONTENT = '[\n' +
-                        '  {"name": "peer1", "host": "127.0.0.1", "port": 50000, "uuid" : "60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "http_port": 8080},\n' +
-                        '  {"name": "peer2", "host": "127.0.0.1",  "port": 50001, "uuid" : "c7044c76-135b-452d-858a-f789d82c7eb7", "http_port": 8081}\n' +
-                        ']\n';
-
-                    fs.writeFileSync(`./daemon-build/output/peers.json`, CONTENT, 'utf8');
-                });
+                beforeEach('remove peer from peerlist', () =>
+                    editFile({filename: 'peers.json', remove: {index: 2}}));
 
                 beforeEach('start swarm', async () => {
                     await startSwarm();
