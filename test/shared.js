@@ -2,6 +2,10 @@ const {expect} = require('chai');
 
 const api = require('../bluzelle-js/src/api');
 
+exports.connect = (address, port, uuid) => {
+    api.connect(`ws://${address}:${port}`, uuid)
+};
+
 exports.swarmIsOperational = () => {
 
     it('should be able to create', async () => {
@@ -25,6 +29,15 @@ exports.swarmIsOperational = () => {
         expect(await api.read('key')).to.equal('abc');
 
     });
+
+    it('should be able to delete', async () => {
+
+        await api.create('key', 123);
+
+        await api.remove('key');
+
+        expect(await api.has('key')).to.be.false;
+    })
 };
 
 exports.createShouldTimeout = () => {
