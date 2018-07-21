@@ -66,8 +66,7 @@ describe('raft', () => {
 
         context('leader dies', () => {
 
-            it('should elect a new leader', async function () {
-                this.timeout(15000);
+            it('should elect a new leader', async () => {
 
                 const killedLeader = swarm.leader;
 
@@ -75,7 +74,7 @@ describe('raft', () => {
 
                 exec(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`);
 
-                await waitUntil(() => swarm.leader !== killedLeader, 15000);
+                await waitUntil(() => swarm.leader !== killedLeader, 2000);
             })
         })
     });

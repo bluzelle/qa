@@ -12,44 +12,60 @@ let logFileName;
 
 const setupUtils = {
     startSwarm: async function (flag = false) {
-        if (!flag) {
-            // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            // log file may remain if Daemon not exited gracefully
-            exec('cd ./daemon-build/output/; rm -rf .state; rm *.log');
-        }
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+        const start = async () => {
+            if (!flag) {
+                // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+                // log file may remain if Daemon not exited gracefully
+                exec('cd ./daemon-build/output/; rm -rf .state; rm *.log');
+            }
 
-        // Waiting briefly before starting second Daemon ensures the first starts as leader
-        setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json')
-        }, 2000);
+            exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+
+            // Waiting briefly before starting second Daemon ensures the first starts as leader
+            setTimeout(() => {
+                exec('cd ./scripts; ./run-daemon.sh bluzelle1.json')
+            }, 500);
+
+            try {
+                await waitUntil(() => logFileName = fileExists());
+                process.env.quiet ||
+                    console.log('\x1b[36m%s\x1b[0m', 'Log file created')
+            } catch (error) {
+                process.env.quiet ||
+                    console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
+            }
+        };
+
+        start();
 
         try {
             await waitUntil(() => logFileName = fileExists());
             process.env.quiet ||
-                console.log('Log file created')
+                console.log('\x1b[36m%s\x1b[0m', 'Log file created')
         } catch (error) {
             process.env.quiet ||
-                console.log('Log file not found')
+                console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
         }
 
         process.env.quiet ||
-            console.log(`******** logFileName: ${logFileName} *******`);
+            console.log('\x1b[36m%s\x1b[0m', `******** logFileName: ${logFileName} *******`);
 
         try {
-
             await waitUntil(() => {
 
                 let contents = fs.readFileSync('./daemon-build/output/' + logFileName, 'utf8');
 
                 return includes(contents, 'RAFT State: Leader');
-            }, 10000);
+            }, 3000);
             process.env.quiet ||
-                console.log('I am leader logged')
+                console.log('\x1b[36m%s\x1b[0m', 'I am leader logged')
         } catch (error) {
+
             process.env.quiet ||
-                console.log('Failed to read leader log');
+                console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log, trying again');
+
+            start()
         }
     },
     killSwarm: async (fileName = logFileName) => {

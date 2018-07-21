@@ -38,7 +38,8 @@ describe('web sockets interface', () => {
         });
     });
 
-    describe('connection', () => {
+    // ws idle timeout disabled for pub / sub
+    describe.skip('connection', () => {
 
         let startTime, timeElapsed;
 
