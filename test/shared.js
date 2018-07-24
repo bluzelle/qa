@@ -10,7 +10,7 @@ exports.swarmIsOperational = () => {
 
     it('should be able to create', async () => {
 
-        await api.create('key', 123);
+        await api.create('key', '123');
     });
 
     it('should be able to read', async () => {
@@ -22,7 +22,7 @@ exports.swarmIsOperational = () => {
 
     it('should be able to update', async () => {
 
-        await api.create('key', 123);
+        await api.create('key', '123');
 
         await api.update('key', 'abc');
 
@@ -32,7 +32,7 @@ exports.swarmIsOperational = () => {
 
     it('should be able to delete', async () => {
 
-        await api.create('key', 123);
+        await api.create('key', '123');
 
         await api.remove('key');
 
@@ -44,7 +44,7 @@ exports.createShouldTimeout = () => {
 
     it('create should timeout at api level', done => {
 
-        api.create('key', 123)
+        api.create('key', '123')
             .catch(e => {
                 expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.');
                 done();
