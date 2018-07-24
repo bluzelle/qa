@@ -2,20 +2,18 @@ const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
-const expect = require('chai').expect;
+const {expect} = require('chai');
 
 const api = require('../bluzelle-js/src/api');
-const {fileExists, readFile, readDir, checkFilesConsistency} = require('../utils/daemon/logs');
+const {fileExists, readFile, readDir, compareData} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
-const DAEMON_UUIDS = ["60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "c7044c76-135b-452d-858a-f789d82c7eb7"];
-
 
 const jointQuorumTests = (nodeInfo) => {
 
-    it('should append joint quorum to log', async () => {
+    it('should log joint quorum', async () => {
 
         await waitUntil(() => logFileName = fileExists());
 
@@ -24,11 +22,12 @@ const jointQuorumTests = (nodeInfo) => {
 
     it('should persist joint quorum to .dat', async () => {
 
-        await waitUntil(() => {
-            return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 2
-        });
+        const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
-        const jointQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[1].slice(5);
+        // joint quorum is recorded as 2nd entry
+        await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 2);
+
+        const jointQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[1].slice(5);
 
         const text = base64toAscii(jointQuorumData);
 
@@ -39,7 +38,7 @@ const jointQuorumTests = (nodeInfo) => {
 
 const singleQuorumTests = (nodeInfo, include) => {
 
-    it('should append single quorum to log', async () => {
+    it('should log single quorum', async () => {
 
         await waitUntil(() => logFileName = fileExists());
 
@@ -48,11 +47,12 @@ const singleQuorumTests = (nodeInfo, include) => {
 
     it('should persist single quorum to .dat', async () => {
 
-        await waitUntil(() => {
-            return readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n').length > 3
-        });
+        const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
-        const singleQuorumData = readFile('output/.state/', DAEMON_UUIDS[0] + '.dat').split('\n')[2].slice(5);
+        // single quorum is recorded as 3rd entry
+        await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 3);
+
+        const singleQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[2].slice(5);
 
         const text = base64toAscii(singleQuorumData);
 
@@ -68,7 +68,6 @@ describe('swarm membership', () => {
     context('adding new peer', () => {
 
         const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":"7a55cc24-e4e3-4d88-86a6-3a501e09ee26"}';
-        let logFileName;
 
         context('resulting swarm', () => {
 
@@ -126,11 +125,12 @@ describe('swarm membership', () => {
                                     uuid: '7a55cc24-e4e3-4d88-86a6-3a501e09ee26',
                                     bootstrap_file: './peers2.json'
                                 }
-                            })
+                            });
 
                     });
 
                     it('should be able to sync', done => {
+
                         const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
 
                         let daemonData = {};
@@ -139,11 +139,17 @@ describe('swarm membership', () => {
 
                             if (data.toString().includes('current term out of sync:')) {
 
-                                DAEMON_UUIDS.forEach(v => {
-                                    daemonData[v] = readFile('/output/.state/', v + '.dat');
-                                });
+                                const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
-                                checkFilesConsistency(done, daemonData);
+                                // waiting on finished sync message KEP-377, setTimeout for now
+                                setTimeout(() => {
+                                    DAEMON_STORAGE_LOG_NAMES.forEach(filename => {
+                                        daemonData[filename] = readFile('output/.state/', filename);
+                                    });
+
+                                }, 100);
+
+                                compareData(done, daemonData, true);
                             }
                         });
                     });
@@ -284,4 +290,4 @@ describe('swarm membership', () => {
 });
 
 const base64toAscii = data =>
-    new Buffer(data, 'base64').toString('ascii');
+    new Buffer.from(data, 'base64').toString('ascii');
