@@ -4,7 +4,7 @@ const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
 const {expect} = require('chai');
 
-const api = require('../bluzelle-js/src/api');
+const api = require('../bluzelle-js/lib/bluzelle.node');
 const {fileExists, readFile, readDir, compareData} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');

@@ -3,7 +3,7 @@ const expect = require('chai').expect;
 const {exec} = require('child_process');
 
 const {spawnSwarm, despawnSwarm, swarm} = require('../utils/daemon/setup');
-const api = require('../bluzelle-js/src/api');
+const api = require('../bluzelle-js/lib/bluzelle.node');
 const shared = require('./shared');
 
 

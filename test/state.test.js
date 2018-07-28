@@ -5,7 +5,7 @@ const {includes, filter} = require('lodash');
 
 const {startSwarm, killSwarm, createState} = require('../utils/daemon/setup');
 const {fileExists, readFile, readDir, compareData} = require('../utils/daemon/logs');
-const api = require('../bluzelle-js/src/api');
+const api = require('../bluzelle-js/lib/bluzelle.node');
 
 
 describe('states', () => {

@@ -3,7 +3,7 @@ const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
 
-const api = require('../../bluzelle-js/src/api');
+const api = require('../../bluzelle-js/lib/bluzelle.node');
 const {fileMoved, fileExists} = require('./logs');
 const {editFile} = require('./configs');
 

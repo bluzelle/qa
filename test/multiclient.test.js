@@ -1,18 +1,16 @@
 const assert = require('assert');
-const path = require('path');
 
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 
 
 const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};
 
-clients.api1 = require('../bluzelle-js/src/api');
+clients.api1 = require('../bluzelle-js/lib/bluzelle.node');
 
 // This enables us to have two copies of the library with separate state
-delete require.cache[path.resolve(__dirname + '/../bluzelle-js/src/communication.js')];
-delete require.cache[path.resolve(__dirname + '/../bluzelle-js/src/api.js')];
+delete require.cache[require.resolve('../bluzelle-js/lib/bluzelle.node')];
 
-clients.api2 = require('../bluzelle-js/src/api');
+clients.api2 = require('../bluzelle-js/lib/bluzelle.node');
 
 
 describe('multi-client', () => {

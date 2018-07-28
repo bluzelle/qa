@@ -1,6 +1,6 @@
 const {expect} = require('chai');
 
-const api = require('../bluzelle-js/src/api');
+const api = require('../bluzelle-js/lib/bluzelle.node');
 
 exports.connect = (address, port, uuid) => {
     api.connect(`ws://${address}:${port}`, uuid)
