@@ -1,4 +1,4 @@
-const expect = require('chai').expect;
+const {expect} = require('chai');
 
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 const {fileExists} = require('../utils/daemon/logs');
