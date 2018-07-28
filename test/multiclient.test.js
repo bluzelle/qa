@@ -1,4 +1,5 @@
 const assert = require('assert');
+const {expect} = require('chai');
 
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 
@@ -77,15 +78,27 @@ describe('multi-client', () => {
                 });
 
                 it('when trying to read a key not in its database', done => {
-                    clients.api2.read('onlyInOne').catch(() => done());
+                    clients.api2.read('onlyInOne')
+                        .catch(error => {
+                            expect(error.toString()).to.include('RECORD_NOT_FOUND');
+                            done()
+                        });
                 });
 
                 it('when trying to update a key not in its database', done => {
-                    clients.api2.update('onlyInOne', '123').catch(() => done());
+                    clients.api2.update('onlyInOne', '123')
+                        .catch(error => {
+                            expect(error.toString()).to.include('RECORD_NOT_FOUND');
+                            done()
+                        });
                 });
 
                 it('when trying to delete a key not in its database', done => {
-                    clients.api2.remove('onlyInOne').catch(() => done());
+                    clients.api2.remove('onlyInOne')
+                        .catch(error => {
+                            expect(error.toString()).to.include('RECORD_NOT_FOUND');
+                            done()
+                        });
                 });
             });
         });
@@ -113,7 +126,11 @@ describe('multi-client', () => {
 
             clients.api1.create('mykey', '123').then(() => {
 
-                clients.api2.create('mykey', '321').catch(() => done());
+                clients.api2.create('mykey', '321')
+                    .catch(error => {
+                        expect(error.toString()).to.include('RECORD_EXISTS');
+                        done()
+                    });
 
             });
 
@@ -141,7 +158,11 @@ describe('multi-client', () => {
             });
 
             it('should throw error when attempting to read', done => {
-                clients.api1.read('myTextKey').catch(() => done());
+                clients.api1.read('myTextKey')
+                    .catch(error => {
+                        expect(error.toString()).to.include('RECORD_NOT_FOUND');
+                        done()
+                    });
             });
         });
     });
