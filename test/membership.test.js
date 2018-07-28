@@ -129,6 +129,8 @@ describe('swarm membership', () => {
 
                     });
 
+                    afterEach('kill swarm', killSwarm);
+
                     it('should be able to sync', done => {
 
                         const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
