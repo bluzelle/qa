@@ -112,7 +112,7 @@ const setupUtils = {
         });
 
         try {
-            await waitUntil(() => setupUtils.swarm.leader, 7000);
+            await waitUntil(() => setupUtils.swarm.leader, 3000);
         } catch (err) {
             console.log(`Failed to declare leader`)
         }
