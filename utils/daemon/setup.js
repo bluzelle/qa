@@ -13,31 +13,40 @@ let logFileName;
 const setupUtils = {
     startSwarm: async function (flag = false) {
 
-        const start = async () => {
-            if (!flag) {
-                // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-                // log file may remain if Daemon not exited gracefully
-                exec('cd ./daemon-build/output/; rm -rf .state; rm *.log');
+        if (!flag) {
+            // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+            // log file may remain if Daemon not exited gracefully
+            exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+                // code 130 is thrown when process is ended with SIGINT
+                if (error && error.code !== 130) {
+                    throw new Error(error);
+                }
+            });
+        }
+
+        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', (error, stdout, stderr) => {
+            if (error && error.code !== 130) {
+                throw new Error(error);
             }
+        });
 
-            exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+        // Waiting briefly before starting second Daemon ensures the first starts as leader
+        setTimeout(() => {
+            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', (error, stdout, stderr) => {
+                if (error && error.code !== 130) {
+                    throw new Error(error);
+                }
+            })
+        }, 500);
 
-            // Waiting briefly before starting second Daemon ensures the first starts as leader
-            setTimeout(() => {
-                exec('cd ./scripts; ./run-daemon.sh bluzelle1.json')
-            }, 500);
-
-            try {
-                await waitUntil(() => logFileName = fileExists());
-                process.env.quiet ||
-                    console.log('\x1b[36m%s\x1b[0m', 'Log file created')
-            } catch (error) {
-                process.env.quiet ||
-                    console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
-            }
-        };
-
-        start();
+        try {
+            await waitUntil(() => logFileName = fileExists());
+            process.env.quiet ||
+                console.log('\x1b[36m%s\x1b[0m', 'Log file created')
+        } catch (error) {
+            process.env.quiet ||
+                console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
+        }
 
         try {
             await waitUntil(() => logFileName = fileExists());
@@ -64,8 +73,6 @@ const setupUtils = {
 
             process.env.quiet ||
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log, trying again');
-
-            start()
         }
     },
     killSwarm: async (fileName = logFileName) => {
@@ -74,10 +81,10 @@ const setupUtils = {
         try {
             await waitUntil(() => fileMoved(fileName));
             process.env.quiet ||
-                console.log('Log file successfully moved to logs directory')
+            console.log('Log file successfully moved to logs directory')
         } catch (error) {
             process.env.quiet ||
-                console.log('Log file not found in logs directory')
+            console.log('Log file not found in logs directory')
         }
     },
     createState: async (key, value) => {
@@ -91,7 +98,7 @@ const setupUtils = {
 
         exec('cd ./daemon-build/output/; rm -rf .state');
 
-        editFile({filename: 'bluzelle0.json', changes: { log_to_stdout: true}});
+        editFile({filename: 'bluzelle0.json', changes: {log_to_stdout: true}});
 
         Object.keys(setupUtils.swarm.list).forEach((daemon, i) => {
 
