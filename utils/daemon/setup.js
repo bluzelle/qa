@@ -16,7 +16,7 @@ const setupUtils = {
         if (!flag) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
             // log file may remain if Daemon not exited gracefully
-            exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+            exec('cd ./daemon-build/output/; rm -rf .state', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
                 // code 130 is thrown when process is ended with SIGINT
                 if (error && error.code !== 130) {
                     throw new Error(error);
@@ -24,7 +24,7 @@ const setupUtils = {
             });
         }
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', (error, stdout, stderr) => {
+        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
             if (error && error.code !== 130) {
                 throw new Error(error);
             }
@@ -32,7 +32,7 @@ const setupUtils = {
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader
         setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', (error, stdout, stderr) => {
+            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
                 if (error && error.code !== 130) {
                     throw new Error(error);
                 }
@@ -66,13 +66,12 @@ const setupUtils = {
                 let contents = fs.readFileSync('./daemon-build/output/' + logFileName, 'utf8');
 
                 return includes(contents, 'RAFT State: Leader');
-            }, 3000);
+            }, 5000);
             process.env.quiet ||
                 console.log('\x1b[36m%s\x1b[0m', 'I am leader logged')
         } catch (error) {
-
             process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log, trying again');
+                console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
         }
     },
     killSwarm: async (fileName = logFileName) => {
@@ -87,13 +86,16 @@ const setupUtils = {
             console.log('Log file not found in logs directory')
         }
     },
+
     createState: async (key, value) => {
         await setupUtils.startSwarm();
         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
         await api.create(key, value);
         await setupUtils.killSwarm();
     },
+
     swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}},
+
     spawnSwarm: async () => {
 
         exec('cd ./daemon-build/output/; rm -rf .state');
@@ -117,6 +119,7 @@ const setupUtils = {
             console.log(`Failed to declare leader`)
         }
     },
+
     despawnSwarm: () => {
 
         exec('pkill -2 swarm');
