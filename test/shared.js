@@ -45,6 +45,9 @@ exports.createShouldTimeout = () => {
     it('create should timeout at api level', done => {
 
         api.create('key', '123')
+            .then(() => {
+                throw new Error('Create was successful, expected to fail.')
+            })
             .catch(e => {
                 expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.');
                 done();
