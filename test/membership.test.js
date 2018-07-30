@@ -15,9 +15,18 @@ const jointQuorumTests = (nodeInfo) => {
 
     it('should log joint quorum', async () => {
 
-        await waitUntil(() => logFileName = fileExists());
+        try {
+            await waitUntil(() => logFileName = fileExists());
+        } catch (error) {
+            throw new Error(`Log file failed to exist.`);
+        }
 
-        await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
+        try {
+            await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
+        } catch (error) {
+            throw new Error(`Joint quorum not logged to log file.`)
+        }
+
     });
 
     it('should persist joint quorum to .dat', async () => {
@@ -25,7 +34,11 @@ const jointQuorumTests = (nodeInfo) => {
         const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
         // joint quorum is recorded as 2nd entry
-        await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 2);
+        try {
+            await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 2)
+        } catch (error) {
+            throw new Error(`Joint quorum not logged to .dat file`)
+        }
 
         const jointQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[1].slice(5);
 
@@ -40,9 +53,17 @@ const singleQuorumTests = (nodeInfo, include) => {
 
     it('should log single quorum', async () => {
 
-        await waitUntil(() => logFileName = fileExists());
+        try {
+            await waitUntil(() => logFileName = fileExists());
+        } catch (error) {
+            throw new Error(`Log file failed to exist`);
+        }
 
-        await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
+        try {
+            await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
+        } catch (error) {
+            throw new Error(`Single quorum not logged to log file`)
+        }
     });
 
     it('should persist single quorum to .dat', async () => {
@@ -50,7 +71,11 @@ const singleQuorumTests = (nodeInfo, include) => {
         const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
         // single quorum is recorded as 3rd entry
-        await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 3);
+        try {
+            await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 3);
+        } catch (error) {
+            throw new Error(`Single quorum not logged to .dat file`)
+        }
 
         const singleQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[2].slice(5);
 
@@ -223,11 +248,10 @@ describe('swarm membership', () => {
 
                     context('becomes a singleton swarm', () => {
 
-                        it('should remain in candidate state', async function () {
-                            this.timeout(12000);
+                        it('should remain in candidate state', async () => {
 
                             await waitUntil(() =>
-                                ((daemonData.match(/RAFT State: Candidate/g) || []).length >= 2), 12000)
+                                ((daemonData.match(/RAFT State: Candidate/g) || []).length >= 2), 4000)
                         });
                     });
 
@@ -260,9 +284,7 @@ describe('swarm membership', () => {
                 beforeEach('remove peer from peerlist', () =>
                     editFile({filename: 'peers.json', remove: {index: 2}}));
 
-                beforeEach('start swarm', async () => {
-                    await startSwarm();
-                });
+                beforeEach('start swarm', startSwarm);
 
                 beforeEach('open ws connection and send msg', done => {
 
