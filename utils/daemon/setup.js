@@ -80,10 +80,10 @@ const setupUtils = {
         try {
             await waitUntil(() => fileMoved(fileName));
             process.env.quiet ||
-            console.log('Log file successfully moved to logs directory')
+                console.log('Log file successfully moved to logs directory')
         } catch (error) {
             process.env.quiet ||
-            console.log('Log file not found in logs directory')
+                console.log('Log file not found in logs directory')
         }
     },
 
