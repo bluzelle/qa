@@ -1,29 +1,46 @@
 const fs = require('fs');
 
-let originalContents;
-
 module.exports = {
-    editConfigFile: (fileName, index, value) => {
+    editFile: ({filename, changes, remove, deleteKey}) => {
+        changes = {...changes};
 
-        let contents = fs.readFileSync(`./daemon-build/output/${fileName}`, 'utf8').split(',');
+        if (deleteKey) {
+            deleteKey = [...deleteKey];
+        }
 
-        originalContents = contents.slice();
+        let fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/${filename}`, 'utf8'));
 
-        contents[index] = value;
+        if (remove) {
+            removeValues(fileContent, remove);
+        } else if (deleteKey) {
+            delKey(fileContent, deleteKey);
+        } else {
+            setValues(fileContent, changes);
+        }
 
-        fs.writeFileSync(`./daemon-build/output/${fileName}`, contents, 'utf8');
-    },
-    spliceConfigFile: (fileName, index, value) => {
-
-        let contents = fs.readFileSync(`./daemon-build/output/${fileName}`, 'utf8').split(',');
-
-        originalContents = contents.slice();
-
-        contents.splice(index, 0, value);
-
-        fs.writeFileSync(`./daemon-build/output/${fileName}`, contents, 'utf8');
-
-    },
-    resetConfigFile: (fileName) =>
-        fs.writeFileSync(`./daemon-build/output/${fileName}`, originalContents, 'utf8')
+        fs.writeFileSync(`./daemon-build/output/${filename}`, JSON.stringify(fileContent), 'utf8');
+    }
 };
+
+const setValues = (fileContent, changes) => {
+    for (let key in changes) {
+
+        if (key === 'index') {
+            continue;
+        }
+
+        if (changes.index || changes.index === 0) {
+
+            fileContent[changes.index][key] = changes[key]
+        }
+
+        fileContent[key] = changes[key]
+    }
+};
+
+const removeValues = (fileContent, remove) =>
+    fileContent.splice(remove.index, 1);
+
+const delKey = (fileContent, deleteKey) =>
+    Object.values(deleteKey).forEach(key =>
+        delete fileContent[key]);

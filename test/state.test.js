@@ -1,20 +1,19 @@
-const spawn = require('child_process').spawn;
-const expect = require('chai').expect;
+const {spawn} = require('child_process');
+const {expect} = require('chai');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
 
 const {startSwarm, killSwarm, createState} = require('../utils/daemon/setup');
-const {fileExists, readFile, readDir, checkFilesConsistency} = require('../utils/daemon/logs');
-const api = require('../bluzelle-js/src/api');
+const {fileExists, readFile, readDir, compareData} = require('../utils/daemon/logs');
+const api = require('../bluzelle-js/lib/bluzelle.node');
 
 
-describe.skip('states', () => {
+describe('states', () => {
 
-    // daemon returning invalid state documented in KEP-376
     context('storage', () => {
 
         beforeEach('create state', async () => {
-            await createState('key', 123);
+            await createState('key', '123');
         });
 
         beforeEach(async () => {
@@ -28,24 +27,19 @@ describe.skip('states', () => {
 
         context('values', () => {
 
-            it('should persist through shut down', async () => {
+            it.skip('should persist through shut down', async () => {
                 expect(await api.read('key')).to.equal('hi');
             });
         });
 
         context('a new node, after connecting to peers', () => {
 
-            const DAEMON_UUIDS = ["60ba0788-9992-4cdb-b1f7-9f68eef52ab9", "c7044c76-135b-452d-858a-f789d82c7eb7", "3726ec5f-72b4-4ce6-9e60-f5c47f619a41"];
-
-            beforeEach(async () => {
-                await startSwarm(true);
-            });
-
             it('should sync with swarm', done => {
                 const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
 
                 node.stdout.on('data', data => {
-                    if (data.toString().includes('Create successful.')) {
+
+                    if (data.toString().includes('current term out of sync:')) {
                         done();
                     }
                 });
@@ -54,17 +48,18 @@ describe.skip('states', () => {
             it('should fully replicate .state file of leader', done => {
                 const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
 
+                let daemonData = {};
+
                 node.stdout.on('data', data => {
 
-                    let daemonData = {};
+                    if (data.toString().includes('current term out of sync:')) {
 
-                    if (data.toString().includes('Create successful.')) {
+                        const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
-                        DAEMON_UUIDS.forEach(v => {
-                            daemonData[v] = readFile('/output/.state/', v + '.dat');
-                        });
+                        DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
+                            daemonData[filename] = readFile('/output/.state/', filename));
 
-                        checkFilesConsistency(done, daemonData);
+                        compareData(done, daemonData);
                     }
                 });
             });
@@ -79,28 +74,8 @@ describe.skip('states', () => {
             api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
         it('should have .dat and .state file for both nodes', async () => {
-            await api.create('myKey', 123);
-            expect(await api.read('myKey')).to.equal(123);
-
-            await killSwarm();
-
-            await waitUntil(() =>
-                filter(readDir('output/'), contents => includes(contents, '.state'))[0]);
-
-            let contents = readDir('output/.state/');
-            expect(contents.length).to.be.equal(4)
-        });
-
-        it('should pass, demonstrating timing issue', async () => {
-            await api.create('myKey', 123);
-            expect(await api.read('myKey')).to.equal(123);
-
-            // wait for a second before killing swarm
-            await new Promise(resolve => {
-                setTimeout(() => {
-                    resolve()
-                }, 1000)
-            });
+            await api.create('myKey', '123');
+            expect(await api.read('myKey')).to.equal('123');
 
             await killSwarm();
 

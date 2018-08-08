@@ -18,16 +18,26 @@ const logUtils = {
     readDir: path => {
         return readdirSync(PATH_TO_DAEMON + path);
     },
-    checkFilesConsistency: (done, dataObj) => {
+    compareData: (done, dataObj, removeFlag = false) => {
         let value;
         let results = [];
 
         for (let key in dataObj) {
-            if (!value) {
-                value = dataObj[key];
+
+            let data = dataObj[key];
+
+            if (removeFlag) {
+                // remove first entry
+                let arr = data.split('\n');
+                arr.splice(0,1);
+                data = arr.toString();
             }
 
-            results.push(value === dataObj[key]);
+            if (!value) {
+                value = data;
+            }
+
+            results.push(value === data);
         }
 
         if (results.every(v => v)) {

@@ -1,11 +1,11 @@
-const expect = require('chai').expect;
+const {expect} = require('chai');
 const waitUntil = require("async-wait-until");
 const {exec, spawn} = require('child_process');
 const {includes} = require('lodash');
 
 const {fileExists, fileMoved, readFile} = require('../utils/daemon/logs');
 const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {editConfigFile, resetConfigFile, spliceConfigFile} = require('../utils/daemon/configs');
+const {editFile} = require('../utils/daemon/configs');
 
 let logFileName;
 
@@ -66,12 +66,10 @@ describe('daemon startup', () => {
 
     context('required arguments in config file', () => {
 
-        afterEach(() => resetConfigFile('bluzelle2.json'));
-
         context('listener address', () => {
 
             beforeEach(() =>
-                editConfigFile('bluzelle2.json', 0, '{ "dummy" : "dummy"'));
+                editFile({filename: 'bluzelle2.json', deleteKey: ['listener_address']}));
 
             it('throws error if not present', done => {
                 execAndRead('./swarm -c bluzelle2.json', 'Missing listener address entry!', done);
@@ -82,7 +80,7 @@ describe('daemon startup', () => {
         context('listener port', () => {
 
             beforeEach(() =>
-                editConfigFile('bluzelle2.json', 1, '\n "dummy" : "dummy"'));
+                editFile({filename: 'bluzelle2.json', deleteKey: ['listener_port']}));
 
             it('throws error if not present', done => {
                 execAndRead('./swarm -c bluzelle2.json', 'Missing listener port entry!', done);
@@ -95,7 +93,7 @@ describe('daemon startup', () => {
             context('missing', () => {
 
                 beforeEach(() =>
-                    editConfigFile('bluzelle2.json', 2, '\n "dummy" : "dummy"'));
+                    editFile({filename: 'bluzelle2.json', deleteKey: ['ethereum']}));
 
                 it('throws error', done => {
                     execAndRead('./swarm -c bluzelle2.json', 'Missing Ethereum address entry!', done);
@@ -123,7 +121,8 @@ describe('daemon startup', () => {
 
                 context('with balance <= 0', () => {
 
-                    beforeEach(() => editConfigFile('bluzelle2.json', 2, '\n  "ethereum" : "0x20B289a92d504d82B1502996b3E439072FC66489"'));
+                    beforeEach(() =>
+                        editFile({filename: 'bluzelle2.json', changes: { ethereum: '0x20B289a92d504d82B1502996b3E439072FC66489'}}));
 
                     it('fails to start up', done => {
 
@@ -144,7 +143,8 @@ describe('daemon startup', () => {
 
             context('with invalid address', () => {
 
-                beforeEach(() => editConfigFile('bluzelle2.json', 2, '\n  "ethereum" : "asdf"'));
+                beforeEach(() =>
+                    editFile({filename: 'bluzelle2.json', changes: { ethereum: 'asdf' }}));
 
                 it('fails to start up', done => {
 
@@ -163,7 +163,7 @@ describe('daemon startup', () => {
         context('ethereum io api token', () => {
 
             beforeEach(() =>
-                editConfigFile('bluzelle2.json', 3, '\n "dummy" : "dummy"'));
+                editFile({filename: 'bluzelle2.json', deleteKey: ['ethereum_io_api_token']}));
 
             it('throws error if not present', done => {
                 execAndRead('./swarm -c bluzelle2.json', 'Missing Ethereum IO API token entry!', done);
@@ -174,7 +174,7 @@ describe('daemon startup', () => {
         context('bootstrap file', () => {
 
             beforeEach(() =>
-                editConfigFile('bluzelle2.json', 4, '\n "dummy" : "dummy"'));
+                editFile({filename: 'bluzelle2.json', deleteKey: ['bootstrap_file']}));
 
             // no missing peers list file error msg
             it.skip('throws error if not present', done => {
@@ -185,7 +185,7 @@ describe('daemon startup', () => {
         context('uuid', () => {
 
             beforeEach(() =>
-                editConfigFile('bluzelle2.json', 5, '\n "dummy" : "dummy"'));
+                editFile({filename: 'bluzelle2.json', deleteKey: ['uuid']}));
 
             // no missing uuid error msg
             it.skip('throws error if not present', done => {

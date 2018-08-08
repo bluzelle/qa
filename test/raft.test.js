@@ -3,15 +3,13 @@ const expect = require('chai').expect;
 const {exec} = require('child_process');
 
 const {spawnSwarm, despawnSwarm, swarm} = require('../utils/daemon/setup');
-const api = require('../bluzelle-js/src/api');
+const api = require('../bluzelle-js/lib/bluzelle.node');
+const shared = require('./shared');
 
 
 describe('raft', () => {
 
     beforeEach('spawn swarm and elect leader', spawnSwarm);
-
-    beforeEach(() =>
-        api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
     afterEach('despawn swarm', despawnSwarm);
 
@@ -25,6 +23,7 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('kill one follower', () => {
+
                     const daemons = Object.keys(swarm.list);
 
                     daemons.splice(daemons.indexOf(swarm.leader), 1);
@@ -34,17 +33,17 @@ describe('raft', () => {
                     exec(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`)
                 });
 
-                it('should write successfully', async () => {
-
-                    await api.create('key1', 123);
-
-                    expect(await api.read('key1')).to.equal(123)
+                beforeEach(() => {
+                    shared.connect(process.env.address, swarm.list[swarm.leader], '71e2cd35-b606-41e6-bb08-f20de30df76c');
                 });
+
+                shared.swarmIsOperational();
             });
 
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('kill all followers', () => {
+
                     const daemons = Object.keys(swarm.list);
 
                     daemons.splice(daemons.indexOf(swarm.leader), 1);
@@ -57,22 +56,17 @@ describe('raft', () => {
                     })
                 });
 
-                it('should timeout at api level', done => {
+                beforeEach(() => {
+                    shared.connect(process.env.address, swarm.list[swarm.leader], '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                });
 
-                    api.create('key2', 123).catch(e => {
-
-                        expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.')
-
-                        done();
-                    });
-                })
+                shared.createShouldTimeout();
             })
         });
 
         context('leader dies', () => {
 
-            it('should elect a new leader', async function () {
-                this.timeout(15000);
+            it('should elect a new leader', async () => {
 
                 const killedLeader = swarm.leader;
 
@@ -80,7 +74,7 @@ describe('raft', () => {
 
                 exec(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`);
 
-                await waitUntil(() => swarm.leader !== killedLeader, 15000);
+                await waitUntil(() => swarm.leader !== killedLeader, 2000);
             })
         })
     });
