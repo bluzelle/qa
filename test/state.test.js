@@ -66,14 +66,14 @@ describe('states', () => {
         });
     });
 
-    context('committed value should be persisted to .state and .dat', () => {
+    context('committed value should be persisted to .dat', () => {
 
         beforeEach(startSwarm);
 
         beforeEach(() =>
             api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-        it('should have .dat and .state file for both nodes', async () => {
+        it('should have .dat file for both nodes', async () => {
             await api.create('myKey', '123');
             expect(await api.read('myKey')).to.equal('123');
 
@@ -83,7 +83,7 @@ describe('states', () => {
                 filter(readDir('output/'), contents => includes(contents, '.state'))[0]);
 
             let contents = readDir('output/.state/');
-            expect(contents.length).to.be.equal(4)
+            expect(contents.length).to.be.equal(2)
         });
     });
 });
