@@ -154,8 +154,6 @@ describe('swarm membership', () => {
 
                     });
 
-                    afterEach('kill swarm', killSwarm);
-
                     it('should be able to sync', done => {
 
                         const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
@@ -173,7 +171,6 @@ describe('swarm membership', () => {
                                     DAEMON_STORAGE_LOG_NAMES.forEach(filename => {
                                         daemonData[filename] = readFile('output/.state/', filename);
                                     });
-
                                 }, 100);
 
                                 compareData(done, daemonData, true);

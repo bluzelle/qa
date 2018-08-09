@@ -1,4 +1,4 @@
-const {exec, spawn} = require('child_process');
+const {exec, execSync, spawn} = require('child_process');
 const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
@@ -16,7 +16,7 @@ const setupUtils = {
         if (!flag) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
             // log file may remain if Daemon not exited gracefully
-            exec('cd ./daemon-build/output/; rm -rf .state', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
+            execSync('cd ./daemon-build/output/; rm -rf .state', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
                 // code 130 is thrown when process is ended with SIGINT
                 if (error && error.code !== 130) {
                     throw new Error(error);
@@ -75,15 +75,15 @@ const setupUtils = {
         }
     },
     killSwarm: async (fileName = logFileName) => {
-        exec('pkill -2 swarm');
+        execSync('pkill -2 swarm');
 
         try {
             await waitUntil(() => fileMoved(fileName));
             process.env.quiet ||
-            console.log('Log file successfully moved to logs directory')
+                console.log('Log file successfully moved to logs directory')
         } catch (error) {
             process.env.quiet ||
-            console.log('Log file not found in logs directory')
+                console.log('Log file not found in logs directory')
         }
     },
 
@@ -98,7 +98,7 @@ const setupUtils = {
 
     spawnSwarm: async () => {
 
-        exec('cd ./daemon-build/output/; rm -rf .state');
+        execSync('cd ./daemon-build/output/; rm -rf .state');
 
         editFile({filename: 'bluzelle0.json', changes: {log_to_stdout: true}});
 
@@ -122,7 +122,7 @@ const setupUtils = {
 
     despawnSwarm: () => {
 
-        exec('pkill -2 swarm');
+        execSync('pkill -2 swarm');
 
         setupUtils.swarm.daemon0, setupUtils.swarm.daemon1, setupUtils.swarm.daemon2, setupUtils.swarm.leader = undefined;
     }
