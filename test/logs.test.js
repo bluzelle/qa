@@ -1,7 +1,6 @@
 const {expect} = require('chai');
 
-const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {fileExists} = require('../utils/daemon/logs');
+const {startSwarm, killSwarm, swarm} = require('../utils/daemon/setup');
 
 describe('daemon', () => {
 
@@ -12,7 +11,7 @@ describe('daemon', () => {
         afterEach(killSwarm);
 
         it('should create a log', () => {
-            expect(fileExists()).to.have.string('.log')
+            expect(swarm.logs[0]).to.have.string('.log')
         });
     });
 });
