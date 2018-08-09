@@ -8,7 +8,7 @@ const {fileMoved, fileExists, readDir} = require('./logs');
 const {editFile} = require('./configs');
 
 
-let logFileName;
+let leaderLogName;
 
 const setupUtils = {
     startSwarm: async function (flag = false) {
@@ -56,17 +56,17 @@ const setupUtils = {
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to find new logs')
         }
 
-        let diff = difference(beforeContents, afterContents);
+        let logNames = difference(beforeContents, afterContents);
 
-        logFileName = diff[0];
+        leaderLogName = logNames[0];
 
         process.env.quiet ||
-            console.log('\x1b[36m%s\x1b[0m', `******** logFileName: ${logFileName} *******`);
+            console.log('\x1b[36m%s\x1b[0m', `******** leaderLogName: ${leaderLogName} *******`);
 
         try {
             await waitUntil(() => {
 
-                let contents = fs.readFileSync('./daemon-build/output/logs/' + logFileName, 'utf8');
+                let contents = fs.readFileSync('./daemon-build/output/logs/' + leaderLogName, 'utf8');
 
                 return includes(contents, 'RAFT State: Leader');
             }, 5000);
@@ -76,8 +76,13 @@ const setupUtils = {
             process.env.quiet ||
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
         }
+
+        setupUtils.swarm.logs = [];
+
+        logNames.forEach(logName => setupUtils.swarm.logs.push(logName));
     },
-    killSwarm: async (fileName = logFileName) => {
+
+    killSwarm: async (fileName = leaderLogName) => {
         execSync('pkill -2 swarm');
 
         try {
