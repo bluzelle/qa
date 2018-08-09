@@ -77,22 +77,11 @@ const setupUtils = {
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
         }
 
-        setupUtils.swarm.logs = [];
-
         logNames.forEach(logName => setupUtils.swarm.logs.push(logName));
     },
 
-    killSwarm: async (fileName = leaderLogName) => {
-        execSync('pkill -2 swarm');
-
-        try {
-            await waitUntil(() => fileMoved(fileName));
-            process.env.quiet ||
-                console.log('Log file successfully moved to logs directory')
-        } catch (error) {
-            process.env.quiet ||
-                console.log('Log file not found in logs directory')
-        }
+    killSwarm: () => {
+        exec('pkill -2 swarm');
     },
 
     createState: async (key, value) => {
@@ -102,7 +91,7 @@ const setupUtils = {
         await setupUtils.killSwarm();
     },
 
-    swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}},
+    swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}, logs: []},
 
     spawnSwarm: async () => {
 
