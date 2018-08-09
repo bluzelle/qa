@@ -10,6 +10,6 @@
   "log_to_stdout" : false,
   "max_storage" : "2GB",
   "logfile_dir" : "logs/",
-  "logfile_rotation_size" : "64K",
-  "logfile_max_size" : "640K"
+  "logfile_rotation_size" : "1MB",
+  "logfile_max_size" : "10MB"
 }
