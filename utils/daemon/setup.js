@@ -80,8 +80,16 @@ const setupUtils = {
         logNames.forEach(logName => setupUtils.swarm.logs.push(logName));
     },
 
-    killSwarm: () => {
+    killSwarm: async () => {
         exec('pkill -2 swarm');
+
+        setupUtils.swarm.logs = [];
+
+        await new Promise(resolve => {
+            setTimeout(() => {
+                resolve()
+            }, 200)
+        })
     },
 
     createState: async (key, value) => {
