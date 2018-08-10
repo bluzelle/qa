@@ -4,7 +4,7 @@ const {includes} = require('lodash');
 const fs = require('fs');
 
 const api = require('../../bluzelle-js/lib/bluzelle.node');
-const {fileMoved, fileExists, readDir} = require('./logs');
+const {readDir} = require('./logs');
 const {editFile} = require('./configs');
 
 
