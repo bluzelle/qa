@@ -16,13 +16,7 @@ const jointQuorumTests = (nodeInfo) => {
     it('should log joint quorum', async () => {
 
         try {
-            await waitUntil(() => leaderLogName = swarm.logs[0]);
-        } catch (error) {
-            throw new Error(`Log file failed to exist.`);
-        }
-
-        try {
-            await waitUntil(() => includes(readFile('output/logs/', leaderLogName), 'Appending joint_quorum to my log'));
+            await waitUntil(() => includes(readFile('output/logs/', swarm.logs[0]), 'Appending joint_quorum to my log'));
         } catch (error) {
             throw new Error(`Joint quorum not logged to log file.`)
         }
@@ -54,13 +48,7 @@ const singleQuorumTests = (nodeInfo, include) => {
     it('should log single quorum', async () => {
 
         try {
-            await waitUntil(() => leaderLogName = swarm.logs[0]);
-        } catch (error) {
-            throw new Error(`Log file failed to exist`);
-        }
-
-        try {
-            await waitUntil(() => includes(readFile('output/logs/', leaderLogName), 'Appending single_quorum to my log'));
+            await waitUntil(() => includes(readFile('output/logs/', swarm.logs[0]), 'Appending single_quorum to my log'));
         } catch (error) {
             throw new Error(`Single quorum not logged to log file`)
         }
