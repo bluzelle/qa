@@ -15,10 +15,8 @@ const setupUtils = {
 
         if (!flag) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            // log file may remain if Daemon not exited gracefully
-            execSync('cd ./daemon-build/output/; rm -rf .state', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-                // code 130 is thrown when process is ended with SIGINT
-                if (error && error.code !== 130) {
+            exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+                if (error) {
                     throw new Error(error);
                 }
             });
@@ -27,6 +25,7 @@ const setupUtils = {
         let beforeContents = readDir('output/logs');
 
         exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
+            // code 130 is thrown when process is ended with SIGINT
             if (error && error.code !== 130) {
                 throw new Error(error);
             }
