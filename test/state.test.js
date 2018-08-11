@@ -27,8 +27,8 @@ describe('states', () => {
 
         context('values', () => {
 
-            it.skip('should persist through shut down', async () => {
-                expect(await api.read('key')).to.equal('hi');
+            it('should persist through shut down', async () => {
+                expect(await api.read('key')).to.equal('123');
             });
         });
 
