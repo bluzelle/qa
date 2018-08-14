@@ -7,7 +7,7 @@ const {killSwarm} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
-describe.only('daemon', () => {
+describe('daemon', () => {
 
     after(() => {
         exec('cd ./daemon-build/output/; rm -rf newlogsdir')
@@ -27,7 +27,9 @@ describe.only('daemon', () => {
             });
 
             beforeEach('start daemon', () => {
-                node = spawn('./run-daemon.sh', ['bluzelle0.json'], {cwd: './scripts'});
+                // https://stackoverflow.com/questions/11337041/force-line-buffering-of-stdout-when-piping-to-tee/11349234#11349234
+                // force daemon stdout to output more frequently
+                node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
             });
 
             afterEach('kill daemons', killSwarm);
@@ -41,7 +43,8 @@ describe.only('daemon', () => {
                 expect(logs[0]).to.have.string('.log')
             });
 
-            it.skip('should output to stdout', async () => {
+            it('should output to stdout', async () => {
+
                 await new Promise(resolve => {
 
                     node.stdout.on('data', data => {
@@ -66,7 +69,7 @@ describe.only('daemon', () => {
             });
 
             beforeEach('start daemon', () => {
-                node = spawn('./run-daemon.sh', ['bluzelle0.json'], {cwd: './scripts'});
+                node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
             });
 
             afterEach('kill daemons', killSwarm);
@@ -80,7 +83,21 @@ describe.only('daemon', () => {
                 expect(logs[0]).to.have.string('.log')
             });
 
-            it.skip('should not output to stdout', async () => {
+            it('should not output to stdout', async () => {
+                await new Promise(resolve => {
+
+                    let chunk = 0;
+
+                    node.stdout.on('data', data => {
+                        chunk += 1;
+                    });
+
+                    setTimeout(() => {
+                        if (chunk === 1) {
+                            resolve()
+                        }
+                    }, 2000)
+                });
                 
             });
         });
