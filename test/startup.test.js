@@ -176,9 +176,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle2.json', deleteKey: ['bootstrap_file']}));
 
-            // no missing peers list file error msg
-            it.skip('throws error if not present', done => {
-                execAndRead('./swarm -c bluzelle2.json', 'Missing peers list entry!', done);
+            it('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing Bootstrap URL or FILE entry!', done);
             });
         });
 
@@ -187,9 +186,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle2.json', deleteKey: ['uuid']}));
 
-            // no missing uuid error msg
-            it.skip('throws error if not present', done => {
-                execAndRead('./swarm -c bluzelle2.json', 'Missing uuid entry!', done);
+            it('throws error if not present', done => {
+                execAndRead('./swarm -c bluzelle2.json', 'Missing UUID entry!', done);
             });
 
         });
