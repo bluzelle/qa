@@ -189,52 +189,86 @@ describe('daemon startup', () => {
     });
 
     context('optional arguments in config file', () => {
-       context('http_port', () => {
 
-           context('does not exist', () => {
-               beforeEach('remove http_port setting', () =>
-                   editFile({filename: 'bluzelle0.json', deleteKey: ['http_port']}));
+        context('http_port', () => {
 
-               beforeEach('start daemon', () => {
-                   exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
-               });
+            context('does not exist', () => {
+                beforeEach('remove http_port setting', () =>
+                    editFile({filename: 'bluzelle0.json', deleteKey: ['http_port']}));
 
-               afterEach('kill daemon', killSwarm);
+                beforeEach('start daemon', () => {
+                    exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
+                });
 
-               it('defaults to 8080', done => {
+                afterEach('kill daemon', killSwarm);
 
-                   setTimeout(() => {
-                       exec('lsof -i:8080', (error, stdout, stderr) => {
-                           if (stdout.includes('swarm')) {
-                               done()
-                           }
-                       });
-                   }, 1000)
-               });
-           });
+                it('defaults to 8080', done => {
 
-           context('exists', () => {
-               beforeEach('remove http_port setting', () =>
-                   editFile({filename: 'bluzelle0.json', changes: { http_port: 8081 }}));
+                    setTimeout(() => {
+                        exec('lsof -i:8080', (error, stdout, stderr) => {
+                            if (stdout.includes('swarm')) {
+                                done()
+                            }
+                        });
+                    }, 1000)
+                });
+            });
 
-               beforeEach('start daemon', () => {
-                   exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
-               });
+            context('exists', () => {
+                beforeEach('remove http_port setting', () =>
+                    editFile({filename: 'bluzelle0.json', changes: { http_port: 8081 }}));
 
-               afterEach('kill daemon', killSwarm);
+                beforeEach('start daemon', () => {
+                    exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
+                });
 
-               it('overrides default port', done => {
+                afterEach('kill daemon', killSwarm);
 
-                   setTimeout(() => {
-                       exec('lsof -i:8081', (error, stdout, stderr) => {
-                           if (stdout.includes('swarm')) {
-                               done()
-                           }
-                       });
-                   }, 1000)
-               });
-           });
-       });
+                it('overrides default port', done => {
+
+                    setTimeout(() => {
+                        exec('lsof -i:8081', (error, stdout, stderr) => {
+                            if (stdout.includes('swarm')) {
+                                done()
+                            }
+                        });
+                    }, 1000)
+                });
+            });
+        });
+
+        context('max storage', () => {
+
+            context('does not exist', () => {
+
+                beforeEach(() =>
+                    editFile({filename: 'bluzelle0.json', deleteKey: ['max_storage']}));
+
+                afterEach('kill swarm', killSwarm);
+
+                it('should default to 2GB', async () => {
+
+                    const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximimum Storage: 2147483648 Bytes'));
+                });
+            });
+
+            context('exists', () => {
+
+                beforeEach(() =>
+                    editFile({filename: 'bluzelle0.json', changes: {max_storage: '500B'}}));
+
+                afterEach('kill swarm', killSwarm);
+
+                it('should change maximum storage allotted', async () => {
+
+                    const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximimum Storage: 500 Bytes'));
+                });
+            });
+        });
     });
 });
 
