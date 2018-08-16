@@ -187,6 +187,55 @@ describe('daemon startup', () => {
 
         });
     });
+
+    context('optional arguments in config file', () => {
+       context('http_port', () => {
+
+           context('does not exist', () => {
+               beforeEach('remove http_port setting', () =>
+                   editFile({filename: 'bluzelle0.json', deleteKey: ['http_port']}));
+
+               beforeEach('start daemon', () => {
+                   exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
+               });
+
+               afterEach('kill daemon', killSwarm);
+
+               it('defaults to 8080', done => {
+
+                   setTimeout(() => {
+                       exec('lsof -i:8080', (error, stdout, stderr) => {
+                           if (stdout.includes('swarm')) {
+                               done()
+                           }
+                       });
+                   }, 1000)
+               });
+           });
+
+           context('exists', () => {
+               beforeEach('remove http_port setting', () =>
+                   editFile({filename: 'bluzelle0.json', changes: { http_port: 8081 }}));
+
+               beforeEach('start daemon', () => {
+                   exec('cd ./daemon-build/output/; ./swarm -c bluzelle0.json')
+               });
+
+               afterEach('kill daemon', killSwarm);
+
+               it('overrides default port', done => {
+
+                   setTimeout(() => {
+                       exec('lsof -i:8081', (error, stdout, stderr) => {
+                           if (stdout.includes('swarm')) {
+                               done()
+                           }
+                       });
+                   }, 1000)
+               });
+           });
+       });
+    });
 });
 
 const execAndRead = (cmd, matchStr, done) => {
