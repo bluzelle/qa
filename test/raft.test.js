@@ -131,20 +131,19 @@ describe('raft', () => {
                         fs.writeFileSync(`./daemon-build/output/.state/3dd73906-3315-4991-b53d-81ffdf77360c.dat`, fileContent, 'utf8');
                     });
 
-                    it('should reject AppendEntries', done => {
+                    it('should reject AppendEntries', async () => {
 
                         const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
 
-                        let flag = false;
+                        await new Promise(resolve => {
+                            node.stdout.on('data', data => {
 
-                        node.stdout.on('data', data => {
+                                if (data.toString().includes('Rejecting AppendEntries because I do not agree with the previous index')) {
+                                    resolve()
+                                }
+                            });
+                        })
 
-                            if (!flag && data.toString().includes('Rejecting AppendEntries because I do not agree with the previous index')) {
-                                flag = true;
-                                done()
-                            }
-
-                        });
                     });
                 });
             });

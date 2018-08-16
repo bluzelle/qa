@@ -19,6 +19,8 @@ module.exports = {
         }
 
         fs.writeFileSync(`./daemon-build/output/${filename}`, JSON.stringify(fileContent), 'utf8');
+
+        return fileContent
     }
 };
 

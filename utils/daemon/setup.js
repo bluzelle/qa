@@ -4,27 +4,28 @@ const {includes} = require('lodash');
 const fs = require('fs');
 
 const api = require('../../bluzelle-js/lib/bluzelle.node');
-const {fileMoved, fileExists} = require('./logs');
+const {readDir} = require('./logs');
 const {editFile} = require('./configs');
 
 
-let logFileName;
+let leaderLogName;
 
 const setupUtils = {
     startSwarm: async function (flag = false) {
 
         if (!flag) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            // log file may remain if Daemon not exited gracefully
-            execSync('cd ./daemon-build/output/; rm -rf .state', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
-                // code 130 is thrown when process is ended with SIGINT
-                if (error && error.code !== 130) {
+            exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+                if (error) {
                     throw new Error(error);
                 }
             });
         }
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
+        let beforeContents = readDir('output/logs');
+
+        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
+            // code 130 is thrown when process is ended with SIGINT
             if (error && error.code !== 130) {
                 throw new Error(error);
             }
@@ -32,38 +33,39 @@ const setupUtils = {
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader
         setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', {maxBuffer: 1024 * 1000}, (error, stdout, stderr) => {
+            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
                 if (error && error.code !== 130) {
                     throw new Error(error);
                 }
             })
         }, 500);
 
-        try {
-            await waitUntil(() => logFileName = fileExists());
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Log file created')
-        } catch (error) {
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
-        }
+        let afterContents;
 
         try {
-            await waitUntil(() => logFileName = fileExists());
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Log file created')
+            await waitUntil(() => {
+                afterContents = readDir('output/logs');
+
+                if (afterContents.length === beforeContents.length + 2) {
+                    return afterContents
+                }
+            })
         } catch (error) {
             process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Log file not found')
+                console.log('\x1b[36m%s\x1b[0m', 'Failed to find new logs')
         }
+
+        let logNames = difference(beforeContents, afterContents);
+
+        leaderLogName = logNames[0];
 
         process.env.quiet ||
-            console.log('\x1b[36m%s\x1b[0m', `******** logFileName: ${logFileName} *******`);
+            console.log('\x1b[36m%s\x1b[0m', `******** leaderLogName: ${leaderLogName} *******`);
 
         try {
             await waitUntil(() => {
 
-                let contents = fs.readFileSync('./daemon-build/output/' + logFileName, 'utf8');
+                let contents = fs.readFileSync('./daemon-build/output/logs/' + leaderLogName, 'utf8');
 
                 return includes(contents, 'RAFT State: Leader');
             }, 5000);
@@ -73,18 +75,20 @@ const setupUtils = {
             process.env.quiet ||
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
         }
-    },
-    killSwarm: async (fileName = logFileName) => {
-        execSync('pkill -2 swarm');
 
-        try {
-            await waitUntil(() => fileMoved(fileName));
-            process.env.quiet ||
-                console.log('Log file successfully moved to logs directory')
-        } catch (error) {
-            process.env.quiet ||
-                console.log('Log file not found in logs directory')
-        }
+        logNames.forEach(logName => setupUtils.swarm.logs.push(logName));
+    },
+
+    killSwarm: async () => {
+        exec('pkill -2 swarm');
+
+        setupUtils.swarm.logs = [];
+
+        await new Promise(resolve => {
+            setTimeout(() => {
+                resolve()
+            }, 200)
+        })
     },
 
     createState: async (key, value) => {
@@ -94,7 +98,7 @@ const setupUtils = {
         await setupUtils.killSwarm();
     },
 
-    swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}},
+    swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}, logs: []},
 
     spawnSwarm: async () => {
 
@@ -126,6 +130,12 @@ const setupUtils = {
 
         setupUtils.swarm.daemon0, setupUtils.swarm.daemon1, setupUtils.swarm.daemon2, setupUtils.swarm.leader = undefined;
     }
+};
+
+const difference = (arr1, arr2) => {
+    return arr1
+        .filter(item => !arr2.includes(item))
+        .concat(arr2.filter(item => !arr1.includes(item)));
 };
 
 module.exports = setupUtils;

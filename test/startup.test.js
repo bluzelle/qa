@@ -3,11 +3,9 @@ const waitUntil = require("async-wait-until");
 const {exec, spawn} = require('child_process');
 const {includes} = require('lodash');
 
-const {fileExists, fileMoved, readFile} = require('../utils/daemon/logs');
-const {startSwarm, killSwarm} = require('../utils/daemon/setup');
+const {readFile, readDir} = require('../utils/daemon/logs');
+const {killSwarm} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
-
-let logFileName;
 
 describe('daemon startup', () => {
 
@@ -27,38 +25,35 @@ describe('daemon startup', () => {
 
         context('accepts time scaling env variable', () => {
 
-            afterEach(() => killSwarm(logFileName));
+            afterEach(killSwarm);
 
             context('with valid value', () => {
 
                 it('successfully changes time scale', async () => {
-                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=2"');
 
-                    await waitUntil(() => logFileName = fileExists());
+                    const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=2"');
 
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 2'));
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'RAFT_TIMEOUT_SCALE: 2'));
                 });
             });
 
             context('without env variable', () => {
 
                 it('time scale is unchanged at 1', async () => {
-                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                    await waitUntil(() => logFileName = fileExists());
+                    const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'RAFT_TIMEOUT_SCALE: 1'));
                 });
             });
 
             context('with invalid value', () => {
 
                 it('time scale is unchanged at 1', async () => {
-                    exec('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=asdf"');
 
-                    await waitUntil(() => logFileName = fileExists());
+                    const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json "env RAFT_TIMEOUT_SCALE=asdf"');
 
-                    await waitUntil(() => includes(readFile('output/', logFileName), 'RAFT_TIMEOUT_SCALE: 1'));
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Invalid RAFT_TIMEOUT_SCALE value: asdf'));
                 });
             });
         });
@@ -101,8 +96,7 @@ describe('daemon startup', () => {
 
             });
 
-
-            afterEach(() => exec('pkill -2 swarm'));
+            afterEach(killSwarm);
 
             context('with valid address', () => {
 
@@ -110,11 +104,9 @@ describe('daemon startup', () => {
 
                     it('successfully starts up', async () => {
 
-                        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json');
+                        const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                        await waitUntil(() => logFileName = fileExists());
-
-                        await waitUntil(() => includes(readFile('output/', logFileName), 'Running node with ID:'));
+                        await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Running node with ID:'));
 
                     });
                 });
@@ -122,7 +114,10 @@ describe('daemon startup', () => {
                 context('with balance <= 0', () => {
 
                     beforeEach(() =>
-                        editFile({filename: 'bluzelle2.json', changes: { ethereum: '0x20B289a92d504d82B1502996b3E439072FC66489'}}));
+                        editFile({
+                            filename: 'bluzelle2.json',
+                            changes: {ethereum: '0x20B289a92d504d82B1502996b3E439072FC66489'}
+                        }));
 
                     it('fails to start up', done => {
 
@@ -144,7 +139,7 @@ describe('daemon startup', () => {
             context('with invalid address', () => {
 
                 beforeEach(() =>
-                    editFile({filename: 'bluzelle2.json', changes: { ethereum: 'asdf' }}));
+                    editFile({filename: 'bluzelle2.json', changes: {ethereum: 'asdf'}}));
 
                 it('fails to start up', done => {
 
@@ -208,4 +203,33 @@ const execAndRead = (cmd, matchStr, done) => {
         }
 
     });
+};
+
+const execAndReturnLogNames = async (cmd) => {
+    let beforeContents = readDir('output/logs');
+
+    exec(cmd);
+
+    let afterContents;
+
+    try {
+        await waitUntil(() => {
+            afterContents = readDir('output/logs');
+
+            if (afterContents.length === beforeContents.length + 1) {
+                return afterContents
+            }
+        })
+    } catch (error) {
+        process.env.quiet ||
+        console.log('\x1b[36m%s\x1b[0m', 'Failed to find new logs')
+    }
+
+    return difference(beforeContents, afterContents);
+};
+
+const difference = (arr1, arr2) => {
+    return arr1
+        .filter(item => !arr2.includes(item))
+        .concat(arr2.filter(item => !arr1.includes(item)));
 };

@@ -5,8 +5,8 @@ const {includes, filter} = require('lodash');
 const {expect} = require('chai');
 
 const api = require('../bluzelle-js/lib/bluzelle.node');
-const {fileExists, readFile, readDir, compareData} = require('../utils/daemon/logs');
-const {startSwarm, killSwarm} = require('../utils/daemon/setup');
+const {readFile, readDir, compareData} = require('../utils/daemon/logs');
+const {startSwarm, killSwarm, swarm} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
@@ -16,13 +16,7 @@ const jointQuorumTests = (nodeInfo) => {
     it('should log joint quorum', async () => {
 
         try {
-            await waitUntil(() => logFileName = fileExists());
-        } catch (error) {
-            throw new Error(`Log file failed to exist.`);
-        }
-
-        try {
-            await waitUntil(() => includes(readFile('output/', logFileName), 'Appending joint_quorum to my log'));
+            await waitUntil(() => includes(readFile('output/logs/', swarm.logs[0]), 'Appending joint_quorum to my log'));
         } catch (error) {
             throw new Error(`Joint quorum not logged to log file.`)
         }
@@ -54,13 +48,7 @@ const singleQuorumTests = (nodeInfo, include) => {
     it('should log single quorum', async () => {
 
         try {
-            await waitUntil(() => logFileName = fileExists());
-        } catch (error) {
-            throw new Error(`Log file failed to exist`);
-        }
-
-        try {
-            await waitUntil(() => includes(readFile('output/', logFileName), 'Appending single_quorum to my log'));
+            await waitUntil(() => includes(readFile('output/logs/', swarm.logs[0]), 'Appending single_quorum to my log'));
         } catch (error) {
             throw new Error(`Single quorum not logged to log file`)
         }
