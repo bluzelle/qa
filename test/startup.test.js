@@ -202,7 +202,7 @@ describe('daemon startup', () => {
 
                 afterEach('kill daemon', killSwarm);
 
-                it('defaults to 8080', done => {
+                it('should default to 8080', done => {
 
                     setTimeout(() => {
                         exec('lsof -i:8080', (error, stdout, stderr) => {
@@ -224,7 +224,7 @@ describe('daemon startup', () => {
 
                 afterEach('kill daemon', killSwarm);
 
-                it('overrides default port', done => {
+                it('should override default port', done => {
 
                     setTimeout(() => {
                         exec('lsof -i:8081', (error, stdout, stderr) => {
@@ -261,7 +261,7 @@ describe('daemon startup', () => {
 
                 afterEach('kill swarm', killSwarm);
 
-                it('should change maximum storage allotted', async () => {
+                it('should override default limit', async () => {
 
                     const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
