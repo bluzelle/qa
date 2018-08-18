@@ -207,7 +207,7 @@ describe('swarm membership', () => {
 
                     await startSwarm();
 
-                    const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+                    const node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
 
                     node.stdout.on('data', data => {
                         daemonData += data.toString();
