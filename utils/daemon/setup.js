@@ -11,15 +11,11 @@ const {editFile} = require('./configs');
 let leaderLogName;
 
 const setupUtils = {
-    startSwarm: async function (flag = false) {
+    startSwarm: async function ({maintainState} = {}) {
 
-        if (!flag) {
+        if (!maintainState) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
-                if (error) {
-                    throw new Error(error);
-                }
-            });
+            setupUtils.clearState();
         }
 
         let beforeContents = readDir('output/logs');
@@ -129,6 +125,14 @@ const setupUtils = {
         execSync('pkill -2 swarm');
 
         setupUtils.swarm.daemon0, setupUtils.swarm.daemon1, setupUtils.swarm.daemon2, setupUtils.swarm.leader = undefined;
+    },
+
+    clearState: () => {
+        exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+            if (error) {
+                throw new Error(error);
+            }
+        });
     }
 };
 

@@ -17,7 +17,7 @@ describe('storage', () => {
     });
 
     beforeEach(async () => {
-        await startSwarm(true);
+        await startSwarm({maintainState: true});
         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
     });
 
