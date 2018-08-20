@@ -55,6 +55,14 @@ describe('daemon', () => {
                     });
                 });
             });
+
+            it('should be able to change logs dir path and name', async () => {
+
+                await waitUntil(() => readDir('output/').includes('newlogsdir'));
+
+                expect(readDir('output/').includes('newlogsdir')).to.be.true;
+
+            });
         });
 
         context('with log_to_stdout: false', () => {
@@ -103,7 +111,7 @@ describe('daemon', () => {
         });
 
         context('log sizes', () => {
-           it('should not have files over 2KB', (done) => {
+           it('should not have files over set limit', (done) => {
                exec("cd ./daemon-build/output/newlogsdir; ls -l | awk '{print $5}' ", (error, stdout, stderr) => {
 
                    const sizes = stdout.trim().split('\n').map(Number);
@@ -115,7 +123,7 @@ describe('daemon', () => {
                });
            });
 
-           it('dir should not total over 10KB', done => {
+           it('dir should not total over set limit', done => {
                exec("cd ./daemon-build/output/newlogsdir; ls -l | awk '{print $5}' ", (error, stdout, stderr) => {
 
                    const sizes = stdout.trim().split('\n').map(Number);
