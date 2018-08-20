@@ -4,10 +4,12 @@ const {exec, spawn} = require('child_process');
 const {includes} = require('lodash');
 
 const {readFile, readDir} = require('../utils/daemon/logs');
-const {killSwarm} = require('../utils/daemon/setup');
+const {killSwarm, clearState} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 
 describe('daemon startup', () => {
+
+    beforeEach('clear state', clearState);
 
     describe('cmd line', () => {
 
