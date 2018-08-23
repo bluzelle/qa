@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
 
-const {startSwarm, killSwarm, createState} = require('../utils/daemon/setup');
+const {startSwarm, killSwarm, createState, createKeys} = require('../utils/daemon/setup');
 const {readFile, readDir, compareData} = require('../utils/daemon/logs');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
@@ -22,6 +22,10 @@ describe('storage', () => {
 
     beforeEach(async () => {
         await startSwarm({maintainState: true});
+    });
+
+    beforeEach('populate db', done => {
+        createKeys(done, api, process.env.numOfKeys);
     });
 
     afterEach(async () => {
@@ -61,23 +65,20 @@ describe('storage', () => {
             });
         });
 
-        it('should fully replicate .state file of leader', done => {
-            const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+        it('should fully replicate .state file of leader', async () => {
+            spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
 
             let daemonData = {};
 
-            node.stdout.on('data', data => {
+            await waitUntil(() => {
 
-                if (data.toString().includes('current term out of sync:')) {
+                const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
 
-                    const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
+                DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
+                    daemonData[filename] = readFile('/output/.state/', filename));
 
-                    DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
-                        daemonData[filename] = readFile('/output/.state/', filename));
-
-                    compareData(done, daemonData);
-                }
-            });
+                return compareData(daemonData);
+            })
         });
     });
 

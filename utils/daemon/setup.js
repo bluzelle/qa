@@ -108,7 +108,7 @@ const setupUtils = {
 
         chain.then(() => api.keys()
             .then(v => {
-                if (v.length === numOfKeys) {
+                if (v.length >= numOfKeys) {
                     done()
                 } else {
                     throw new Error(`Failed to create ${numOfKeys} keys`);

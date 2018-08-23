@@ -9,7 +9,7 @@ const logUtils = {
     readDir: path => {
         return readdirSync(PATH_TO_DAEMON + path);
     },
-    compareData: (done, dataObj, removeFlag = false) => {
+    compareData: (dataObj, removeFlag = false) => {
         let value;
         let results = [];
 
@@ -31,9 +31,7 @@ const logUtils = {
             results.push(value === data);
         }
 
-        if (results.every(v => v)) {
-            done()
-        }
+        return results.every(v => v)
     }
 };
 
