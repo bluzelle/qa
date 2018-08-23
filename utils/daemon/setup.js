@@ -95,6 +95,8 @@ const setupUtils = {
 
     createKeys: (done, api, numOfKeys) => {
 
+        numOfKeys = parseInt(numOfKeys);
+
         const arr = [...Array(numOfKeys).keys()];
 
         const chunkedArr = chunk(arr);
@@ -109,7 +111,7 @@ const setupUtils = {
                 if (v.length === numOfKeys) {
                     done()
                 } else {
-                    throw new Error(`Failed to create ${keys} keys`);
+                    throw new Error(`Failed to create ${numOfKeys} keys`);
                 }
             })
         )

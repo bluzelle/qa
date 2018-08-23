@@ -6,7 +6,7 @@ const {expect} = require('chai');
 
 const api = require('../bluzelle-js/lib/bluzelle.node');
 const {readFile, readDir, compareData} = require('../utils/daemon/logs');
-const {startSwarm, killSwarm, swarm} = require('../utils/daemon/setup');
+const {startSwarm, killSwarm, swarm, createKeys} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
@@ -90,6 +90,14 @@ describe('swarm membership', () => {
                     editFile({filename: 'peers.json', remove: {index: 2}}));
 
                 beforeEach('start swarm', startSwarm);
+
+                beforeEach('initialize client api', () => {
+                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                });
+
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
+                });
 
                 beforeEach('open ws connection', done => {
                     socket = new WebSocket('ws://127.0.0.1:50000');

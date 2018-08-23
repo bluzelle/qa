@@ -3,7 +3,7 @@ const expect = require('chai').expect;
 const {exec, execSync, spawn} = require('child_process');
 const fs = require('fs');
 
-const {spawnSwarm, despawnSwarm, swarm} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, swarm, createKeys} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 const shared = require('./shared');
@@ -36,11 +36,9 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-                afterEach('despawn swarm', despawnSwarm);
-
                 beforeEach(() => {
 
-                    execSync('cp -R ./configs/bluzelle2.json ./daemon-build/output/bluzelle3.json')
+                    execSync('cp -R ./configs/bluzelle2.json ./daemon-build/output/bluzelle3.json');
 
                     editFile({
                         filename: 'bluzelle3.json',
@@ -51,6 +49,8 @@ describe('raft', () => {
                         }
                     });
                 });
+
+                afterEach('despawn swarm', despawnSwarm);
 
                 context('with no .dat file', () => {
 
@@ -75,7 +75,7 @@ describe('raft', () => {
 
                         setTimeout(async () => {
 
-                            await api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                            api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
 
                             await api.create('key', '123');
 
@@ -107,11 +107,11 @@ describe('raft', () => {
 
                     beforeEach('start node, create state, kill node', done => {
 
-                        spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                        spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
 
                         setTimeout(async () => {
 
-                            await api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                            api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
 
                             await api.create('key', '123');
 
@@ -133,7 +133,7 @@ describe('raft', () => {
 
                     it('should reject AppendEntries', async () => {
 
-                        const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                        const node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
@@ -151,6 +151,14 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
+
+                beforeEach('initialize client api', () => {
+                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                });
+
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
+                });
 
                 beforeEach('kill one follower', () => {
 
@@ -175,6 +183,14 @@ describe('raft', () => {
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
+
+                beforeEach('initialize client api', () => {
+                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                });
+
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
+                });
 
                 beforeEach('kill all followers', () => {
 
@@ -203,6 +219,14 @@ describe('raft', () => {
         context('leader dies', () => {
 
             beforeEach('spawn swarm and elect leader', spawnSwarm);
+
+            beforeEach('initialize client api', () => {
+                api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+            });
+
+            beforeEach('populate db', done => {
+                createKeys(done, api, process.env.numOfKeys);
+            });
 
             afterEach('despawn swarm', despawnSwarm);
 

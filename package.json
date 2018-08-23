@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test-daemon": "port=50000 address=localhost quiet=true mocha test/*test.js --exit --timeout 10000",
+    "test-daemon": "numOfKeys=30 port=50000 address=localhost quiet=true mocha test/*test.js --exit --timeout 10000",
     "setup-bluzelle-js": "git submodule init; git submodule update; cd bluzelle-js && yarn && webpack"
   },
   "dependencies": {
