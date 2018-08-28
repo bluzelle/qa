@@ -3,7 +3,6 @@ const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
 
-const api = require('../../bluzelle-js/lib/bluzelle.node');
 const {readDir} = require('./logs');
 const {editFile} = require('./configs');
 
@@ -20,21 +19,11 @@ const setupUtils = {
 
         let beforeContents = readDir('output/logs');
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-            // code 130 is thrown when process is ended with SIGINT
-            if (error && error.code !== 130) {
-                throw new Error(error);
-            }
-        });
+        setupUtils.execDaemon('bluzelle0');
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader
-        setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-                if (error && error.code !== 130) {
-                    throw new Error(error);
-                }
-            })
-        }, 500);
+        setTimeout(() =>
+            setupUtils.execDaemon('bluzelle1'), 500);
 
         let afterContents;
 
@@ -87,11 +76,30 @@ const setupUtils = {
         })
     },
 
-    createState: async (key, value) => {
+    createState: async (api, key, value) => {
         await setupUtils.startSwarm();
         api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
         await api.create(key, value);
         await setupUtils.killSwarm();
+    },
+
+    createKeys: (done, api, numOfKeys) => {
+
+        const chunkedArr = chunk([...Array(parseInt(numOfKeys)).keys()]);
+
+        chunkedArr.reduce((acc, batch) =>
+            acc.then(() => Promise.all(
+                batch.map((v) => api.create(`batch-key${v}`, 'value'))
+            )), Promise.resolve())
+            .then(() => api.keys()
+            .then(keys => {
+                if (keys.length >= numOfKeys) {
+                    done()
+                } else {
+                    throw new Error(`Failed to create ${numOfKeys} keys`);
+                }
+            })
+        )
     },
 
     swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}, logs: []},
@@ -133,6 +141,15 @@ const setupUtils = {
                 throw new Error(error);
             }
         });
+    },
+
+    execDaemon: (cfgName) => {
+        exec(`cd ./scripts; ./run-daemon.sh ${cfgName}.json`, {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
+            // code 130 is thrown when process is ended with SIGINT
+            if (error && error.code !== 130) {
+                throw new Error(error);
+            }
+        });
     }
 };
 
@@ -140,6 +157,16 @@ const difference = (arr1, arr2) => {
     return arr1
         .filter(item => !arr2.includes(item))
         .concat(arr2.filter(item => !arr1.includes(item)));
+};
+
+const chunk = (array, batchSize = 10) => {
+    const chunked = [];
+
+    for(let i = 0; i < array.length; i += batchSize) {
+        chunked.push(array.slice(i, i + batchSize))
+    }
+
+    return chunked;
 };
 
 module.exports = setupUtils;

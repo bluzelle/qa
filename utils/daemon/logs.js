@@ -9,7 +9,8 @@ const logUtils = {
     readDir: path => {
         return readdirSync(PATH_TO_DAEMON + path);
     },
-    compareData: (done, dataObj, removeFlag = false) => {
+    compareData: (dataObj, {removeFirstLine} = {}) => {
+
         let value;
         let results = [];
 
@@ -17,8 +18,8 @@ const logUtils = {
 
             let data = dataObj[key];
 
-            if (removeFlag) {
-                // remove first entry
+            if (removeFirstLine) {
+                // remove first entry, initial bootstrap peers list
                 let arr = data.split('\n');
                 arr.splice(0,1);
                 data = arr.toString();
@@ -31,9 +32,7 @@ const logUtils = {
             results.push(value === data);
         }
 
-        if (results.every(v => v)) {
-            done()
-        }
+        return results.every(v => v)
     }
 };
 

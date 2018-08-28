@@ -3,22 +3,28 @@ const {expect} = require('chai');
 const waitUntil = require("async-wait-until");
 const {includes, filter} = require('lodash');
 
-const {startSwarm, killSwarm, createState} = require('../utils/daemon/setup');
+const {startSwarm, killSwarm, createState, createKeys} = require('../utils/daemon/setup');
 const {readFile, readDir, compareData} = require('../utils/daemon/logs');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 
 
+before('initialize client api', () =>
+    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
 describe('storage', () => {
 
     beforeEach('create state', async () => {
-        await createState('stateExists', '123');
+        await createState(api, 'stateExists', '123');
     });
 
     beforeEach(async () => {
         await startSwarm({maintainState: true});
-        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+    });
+
+    beforeEach('populate db', done => {
+        createKeys(done, api, process.env.numOfKeys);
     });
 
     afterEach(async () => {
@@ -47,35 +53,8 @@ describe('storage', () => {
 
     context('a new node, after connecting to peers', () => {
 
-        it('should sync with swarm', done => {
-            const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+        shared.daemonShouldSync('bluzelle2', '3726ec5f-72b4-4ce6-9e60-f5c47f619a41');
 
-            node.stdout.on('data', data => {
-
-                if (data.toString().includes('current term out of sync:')) {
-                    done();
-                }
-            });
-        });
-
-        it('should fully replicate .state file of leader', done => {
-            const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
-
-            let daemonData = {};
-
-            node.stdout.on('data', data => {
-
-                if (data.toString().includes('current term out of sync:')) {
-
-                    const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
-
-                    DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
-                        daemonData[filename] = readFile('/output/.state/', filename));
-
-                    compareData(done, daemonData);
-                }
-            });
-        });
     });
 
     context('limit', () => {
@@ -162,11 +141,7 @@ describe('storage', () => {
 
                 context('daemon is operational', () => {
 
-                    beforeEach(() => {
-                        shared.connect(process.env.address, parseInt(process.env.port) + 2, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                    });
-
-                    shared.swarmIsOperational();
+                    shared.swarmIsOperational(api);
                 });
             });
         });
