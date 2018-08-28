@@ -25,16 +25,14 @@ const jointQuorumTests = (nodeInfo) => {
 
     it('should persist joint quorum to .dat', async () => {
 
-        const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
-
         // joint quorum is recorded as 2nd entry
         try {
-            await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 2)
+            await waitUntil(() => readFile('output/.state/', '60ba0788-9992-4cdb-b1f7-9f68eef52ab9.dat').split('\n').length >= 2)
         } catch (error) {
             throw new Error(`Joint quorum not logged to .dat file`)
         }
 
-        const jointQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[1].slice(5);
+        const jointQuorumData = readFile('output/.state/', '60ba0788-9992-4cdb-b1f7-9f68eef52ab9.dat').split('\n')[1].slice(5);
 
         const text = base64toAscii(jointQuorumData);
 
@@ -56,16 +54,14 @@ const singleQuorumTests = (nodeInfo, include) => {
 
     it('should persist single quorum to .dat', async () => {
 
-        const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
-
         // single quorum is recorded as 3rd entry
         try {
-            await waitUntil(() => readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n').length > 3);
+            await waitUntil(() => readFile('output/.state/', '60ba0788-9992-4cdb-b1f7-9f68eef52ab9.dat').split('\n').length > 3);
         } catch (error) {
             throw new Error(`Single quorum not logged to .dat file`)
         }
 
-        const singleQuorumData = readFile('output/.state/', DAEMON_STORAGE_LOG_NAMES[0]).split('\n')[2].slice(5);
+        const singleQuorumData = readFile('output/.state/', '60ba0788-9992-4cdb-b1f7-9f68eef52ab9.dat').split('\n')[2].slice(5);
 
         const text = base64toAscii(singleQuorumData);
 
@@ -91,28 +87,20 @@ describe('swarm membership', () => {
 
                 beforeEach('start swarm', startSwarm);
 
-                beforeEach('initialize client api', () => {
-                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                });
+                beforeEach('initialize client api', () =>
+                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                beforeEach('open ws connection', done => {
-                    socket = new WebSocket('ws://127.0.0.1:50000');
-                    socket.on('open', () => {
-                        socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
-                        setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
-                    });
-                });
+                beforeEach('open ws connection and send msg', done =>
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
-                });
+                beforeEach('populate db', done =>
+                    createKeys(done, api, process.env.numOfKeys));
 
                 afterEach('kill swarm', killSwarm);
 
                 jointQuorumTests(NEW_PEER);
 
                 singleQuorumTests(NEW_PEER, true);
-
 
                 context('is operational', () => {
 
@@ -148,7 +136,6 @@ describe('swarm membership', () => {
                                     bootstrap_file: './peers2.json'
                                 }
                             });
-
                     });
 
                     shared.daemonShouldSync('bluzelle2', '7a55cc24-e4e3-4d88-86a6-3a501e09ee26');
@@ -160,11 +147,9 @@ describe('swarm membership', () => {
                 beforeEach('start swarm', startSwarm);
 
                 beforeEach('open ws connection and send msg', done => {
-                    socket = new WebSocket('ws://127.0.0.1:50000');
-                    socket.on('open', () => {
-                        socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
-                        setTimeout(done, 500);
-                    });
+
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`)
+
                 });
 
                 afterEach('kill swarm', killSwarm);
@@ -201,14 +186,14 @@ describe('swarm membership', () => {
                     });
                 });
 
-                beforeEach('open ws connection', done => {
+                beforeEach('initialize client api', () =>
+                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                    socket = new WebSocket('ws://127.0.0.1:50000');
-                    socket.on('open', () => {
-                        socket.send(`{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}}`);
-                        done();
-                    });
-                });
+                beforeEach('open ws connection and send msg', done =>
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}}`));
+
+                beforeEach('populate db', done =>
+                    createKeys(done, api, process.env.numOfKeys));
 
                 afterEach('kill swarm', killSwarm);
 
@@ -258,14 +243,8 @@ describe('swarm membership', () => {
 
                 beforeEach('start swarm', startSwarm);
 
-                beforeEach('open ws connection and send msg', done => {
-
-                    socket = new WebSocket('ws://127.0.0.1:50000');
-                    socket.on('open', () => {
-                        socket.send(`{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}}`);
-                        done()
-                    });
-                });
+                beforeEach('open ws connection and send msg', done =>
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}}`));
 
                 afterEach('kill swarm', killSwarm);
 
@@ -287,3 +266,16 @@ describe('swarm membership', () => {
 
 const base64toAscii = data =>
     new Buffer.from(data, 'base64').toString('ascii');
+
+const openSocketAndSendMsg = (done, msg) => {
+
+    socket = new WebSocket('ws://127.0.0.1:50000');
+
+    socket.on('open', () => {
+
+        socket.send(msg);
+
+        setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+
+    });
+};
