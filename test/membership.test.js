@@ -135,6 +135,9 @@ describe('swarm membership', () => {
                             });
                     });
 
+                    afterEach(() =>
+                        execSync('rm ./daemon-build/output/peers2.json'));
+
                     shared.daemonShouldSync('bluzelle2', '7a55cc24-e4e3-4d88-86a6-3a501e09ee26');
                 });
             });
