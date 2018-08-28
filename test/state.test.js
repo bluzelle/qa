@@ -54,32 +54,8 @@ describe('storage', () => {
 
     context('a new node, after connecting to peers', () => {
 
-        it('should sync with swarm', done => {
-            const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+        shared.daemonShouldSync('bluzelle2', '3726ec5f-72b4-4ce6-9e60-f5c47f619a41');
 
-            node.stdout.on('data', data => {
-
-                if (data.toString().includes('current term out of sync:')) {
-                    done();
-                }
-            });
-        });
-
-        it('should fully replicate .state file of leader', async () => {
-            spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
-
-            let daemonData = {};
-
-            await waitUntil(() => {
-
-                const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
-
-                DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
-                    daemonData[filename] = readFile('/output/.state/', filename));
-
-                return compareData(daemonData);
-            })
-        });
     });
 
     context('limit', () => {
