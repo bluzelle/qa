@@ -6,7 +6,7 @@ const {expect} = require('chai');
 
 const api = require('../bluzelle-js/lib/bluzelle.node');
 const {readFile, readDir, compareData} = require('../utils/daemon/logs');
-const {startSwarm, killSwarm, swarm, createKeys} = require('../utils/daemon/setup');
+const {startSwarm, killSwarm, swarm, createKeys, execDaemon} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
@@ -95,16 +95,16 @@ describe('swarm membership', () => {
                     api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
                 });
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
-                });
-
                 beforeEach('open ws connection', done => {
                     socket = new WebSocket('ws://127.0.0.1:50000');
                     socket.on('open', () => {
                         socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
-                        done();
+                        setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
                     });
+                });
+
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
                 });
 
                 afterEach('kill swarm', killSwarm);
@@ -112,6 +112,7 @@ describe('swarm membership', () => {
                 jointQuorumTests(NEW_PEER);
 
                 singleQuorumTests(NEW_PEER, true);
+
 
                 context('is operational', () => {
 
@@ -150,29 +151,7 @@ describe('swarm membership', () => {
 
                     });
 
-                    it('should be able to sync', done => {
-
-                        const node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
-
-                        let daemonData = {};
-
-                        node.stdout.on('data', data => {
-
-                            if (data.toString().includes('current term out of sync:')) {
-
-                                const DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
-
-                                // waiting on finished sync message KEP-377, setTimeout for now
-                                setTimeout(() => {
-                                    DAEMON_STORAGE_LOG_NAMES.forEach(filename => {
-                                        daemonData[filename] = readFile('output/.state/', filename);
-                                    });
-                                }, 100);
-
-                                compareData(done, daemonData, true);
-                            }
-                        });
-                    });
+                    shared.daemonShouldSync('bluzelle2', '7a55cc24-e4e3-4d88-86a6-3a501e09ee26');
                 });
             });
 
@@ -184,7 +163,7 @@ describe('swarm membership', () => {
                     socket = new WebSocket('ws://127.0.0.1:50000');
                     socket.on('open', () => {
                         socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
-                        done();
+                        setTimeout(done, 500);
                     });
                 });
 
