@@ -85,20 +85,15 @@ const setupUtils = {
 
     createKeys: (done, api, numOfKeys) => {
 
-        numOfKeys = parseInt(numOfKeys);
+        const chunkedArr = chunk([...Array(parseInt(numOfKeys)).keys()]);
 
-        const arr = [...Array(numOfKeys).keys()];
-
-        const chunkedArr = chunk(arr);
-
-        const chain = chunkedArr.reduce((acc, batch) =>
+        chunkedArr.reduce((acc, batch) =>
             acc.then(() => Promise.all(
                 batch.map((v) => api.create(`batch-key${v}`, 'value'))
-            )), Promise.resolve());
-
-        chain.then(() => api.keys()
-            .then(v => {
-                if (v.length >= numOfKeys) {
+            )), Promise.resolve())
+            .then(() => api.keys()
+            .then(keys => {
+                if (keys.length >= numOfKeys) {
                     done()
                 } else {
                     throw new Error(`Failed to create ${numOfKeys} keys`);
