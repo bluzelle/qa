@@ -19,21 +19,11 @@ const setupUtils = {
 
         let beforeContents = readDir('output/logs');
 
-        exec('cd ./scripts; ./run-daemon.sh bluzelle0.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-            // code 130 is thrown when process is ended with SIGINT
-            if (error && error.code !== 130) {
-                throw new Error(error);
-            }
-        });
+        setupUtils.execDaemon('bluzelle0');
 
         // Waiting briefly before starting second Daemon ensures the first starts as leader
-        setTimeout(() => {
-            exec('cd ./scripts; ./run-daemon.sh bluzelle1.json', {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-                if (error && error.code !== 130) {
-                    throw new Error(error);
-                }
-            })
-        }, 500);
+        setTimeout(() =>
+            setupUtils.execDaemon('bluzelle1'), 500);
 
         let afterContents;
 
@@ -153,6 +143,15 @@ const setupUtils = {
     clearState: () => {
         exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
             if (error) {
+                throw new Error(error);
+            }
+        });
+    },
+
+    execDaemon: (cfgName) => {
+        exec(`cd ./scripts; ./run-daemon.sh ${cfgName}.json`, {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
+            // code 130 is thrown when process is ended with SIGINT
+            if (error && error.code !== 130) {
                 throw new Error(error);
             }
         });
