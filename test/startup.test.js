@@ -252,7 +252,7 @@ describe('daemon startup', () => {
 
                     const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximimum Storage: 2147483648 Bytes'));
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximum Storage: 2147483648 Bytes'));
                 });
             });
 
@@ -267,7 +267,7 @@ describe('daemon startup', () => {
 
                     const logNames = await execAndReturnLogNames('cd ./scripts; ./run-daemon.sh bluzelle0.json');
 
-                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximimum Storage: 500 Bytes'));
+                    await waitUntil(() => includes(readFile('output/logs/', logNames[0]), 'Maximum Storage: 500 Bytes'));
                 });
             });
         });
