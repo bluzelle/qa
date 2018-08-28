@@ -8,6 +8,8 @@ const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 const shared = require('./shared');
 
+before('initialize client api', () =>
+    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
 describe('raft', () => {
 
@@ -152,10 +154,6 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-                beforeEach('initialize client api', () => {
-                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                });
-
                 beforeEach('populate db', done => {
                     createKeys(done, api, process.env.numOfKeys);
                 });
@@ -171,22 +169,14 @@ describe('raft', () => {
                     execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`)
                 });
 
-                beforeEach(() => {
-                    shared.connect(process.env.address, swarm.list[swarm.leader], '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                });
-
                 afterEach('despawn swarm', despawnSwarm);
 
-                shared.swarmIsOperational();
+                shared.swarmIsOperational(api);
             });
 
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
-
-                beforeEach('initialize client api', () => {
-                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                });
 
                 beforeEach('populate db', done => {
                     createKeys(done, api, process.env.numOfKeys);
@@ -206,23 +196,15 @@ describe('raft', () => {
                     })
                 });
 
-                beforeEach(() => {
-                    shared.connect(process.env.address, swarm.list[swarm.leader], '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                });
-
                 afterEach('despawn swarm', despawnSwarm);
 
-                shared.createShouldTimeout();
+                shared.createShouldTimeout(api);
             })
         });
 
         context('leader dies', () => {
 
             beforeEach('spawn swarm and elect leader', spawnSwarm);
-
-            beforeEach('initialize client api', () => {
-                api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-            });
 
             beforeEach('populate db', done => {
                 createKeys(done, api, process.env.numOfKeys);

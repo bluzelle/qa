@@ -71,6 +71,8 @@ const singleQuorumTests = (nodeInfo, include) => {
     });
 };
 
+before('initialize client api', () =>
+    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
 describe('swarm membership', () => {
 
@@ -87,9 +89,6 @@ describe('swarm membership', () => {
 
                 beforeEach('start swarm', startSwarm);
 
-                beforeEach('initialize client api', () =>
-                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
                 beforeEach('open ws connection and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
 
@@ -104,10 +103,8 @@ describe('swarm membership', () => {
 
                 context('is operational', () => {
 
-                    beforeEach(() =>
-                        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                    shared.swarmIsOperational(api);
 
-                    shared.swarmIsOperational();
                 });
 
                 context('new node', () => {
@@ -146,11 +143,8 @@ describe('swarm membership', () => {
 
                 beforeEach('start swarm', startSwarm);
 
-                beforeEach('open ws connection and send msg', done => {
-
-                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`)
-
-                });
+                beforeEach('open ws connection and send msg', done =>
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
 
                 afterEach('kill swarm', killSwarm);
 
@@ -158,10 +152,7 @@ describe('swarm membership', () => {
 
                 context('is NOT operational', () => {
 
-                    beforeEach(() =>
-                        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
-                    shared.createShouldTimeout();
+                    shared.createShouldTimeout(api);
                 });
             });
         });
@@ -185,9 +176,6 @@ describe('swarm membership', () => {
                         daemonData += data.toString();
                     });
                 });
-
-                beforeEach('initialize client api', () =>
-                    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
                 beforeEach('open ws connection and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}}`));
@@ -214,23 +202,16 @@ describe('swarm membership', () => {
 
                     context('still online', () => {
 
-                        beforeEach(() =>
-                            api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
-                        shared.swarmIsOperational();
+                        shared.swarmIsOperational(api);
 
                     });
 
                     context('offline', () => {
 
-                        beforeEach(() => {
+                        beforeEach('kill removed peer', () =>
+                            exec(`kill $(ps aux | grep 'bluzelle2' | awk '{print $2}')`));
 
-                            exec(`kill $(ps aux | grep 'bluzelle2' | awk '{print $2}')`);
-
-                            api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                        });
-
-                        shared.swarmIsOperational();
+                        shared.swarmIsOperational(api);
 
                     });
                 });
@@ -254,10 +235,7 @@ describe('swarm membership', () => {
 
                 context('is NOT operational', () => {
 
-                    beforeEach(() =>
-                        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
-                    shared.createShouldTimeout();
+                    shared.createShouldTimeout(api);
                 });
             });
         });

@@ -1,16 +1,11 @@
 const {expect} = require('chai');
 const waitUntil = require("async-wait-until");
 
-const api = require('../bluzelle-js/lib/bluzelle.node');
 const {execDaemon} = require('../utils/daemon/setup');
 const {readFile, readDir, compareData} = require('../utils/daemon/logs');
 
 
-exports.connect = (address, port, uuid) => {
-    api.connect(`ws://${address}:${port}`, uuid)
-};
-
-exports.swarmIsOperational = () => {
+exports.swarmIsOperational = api => {
 
     it('should be able to create', async () => {
 
@@ -44,7 +39,7 @@ exports.swarmIsOperational = () => {
     })
 };
 
-exports.createShouldTimeout = () => {
+exports.createShouldTimeout = api => {
 
     it('create should timeout at api level', done => {
 

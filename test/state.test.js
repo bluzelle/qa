@@ -10,11 +10,10 @@ const shared = require('./shared');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 
 
-describe('storage', () => {
+before('initialize client api', () =>
+    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-    beforeEach('initialize client api', () => {
-        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-    });
+describe('storage', () => {
 
     beforeEach('create state', async () => {
         await createState(api, 'stateExists', '123');
@@ -142,11 +141,7 @@ describe('storage', () => {
 
                 context('daemon is operational', () => {
 
-                    beforeEach(() => {
-                        shared.connect(process.env.address, parseInt(process.env.port) + 2, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-                    });
-
-                    shared.swarmIsOperational();
+                    shared.swarmIsOperational(api);
                 });
             });
         });
