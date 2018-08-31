@@ -7,6 +7,7 @@ const {spawnSwarm, despawnSwarm, swarm, createKeys} = require('../utils/daemon/s
 const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 const shared = require('./shared');
+const uuids = require('../utils/daemon/uuids');
 
 before('initialize client api', () =>
     api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
