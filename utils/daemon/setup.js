@@ -2,6 +2,7 @@ const {exec, execSync, spawn} = require('child_process');
 const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
+const split = require('split');
 
 const {readDir} = require('./logs');
 const {editFile} = require('./configs');
@@ -104,27 +105,45 @@ const setupUtils = {
 
     swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}, logs: []},
 
-    spawnSwarm: async () => {
+    spawnSwarm: (done, consensusAlgo) => {
 
         execSync('cd ./daemon-build/output/; rm -rf .state');
 
         editFile({filename: 'bluzelle0.json', changes: {log_to_stdout: true}});
 
         Object.keys(setupUtils.swarm.list).forEach((daemon, i) => {
-
-            setupUtils.swarm[daemon] = spawn('./run-daemon.sh', [`bluzelle${i}.json`], {cwd: './scripts'});
-
-            setupUtils.swarm[daemon].stdout.on('data', data => {
-                if (data.toString().includes('RAFT State: Leader')) {
-                    setupUtils.swarm.leader = daemon;
-                }
-            });
+            setupUtils.swarm[daemon] = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', `bluzelle${i}.json`], {cwd: './scripts'});
         });
 
-        try {
-            await waitUntil(() => setupUtils.swarm.leader, 3000);
-        } catch (err) {
-            console.log(`Failed to declare leader`)
+        if (consensusAlgo === 'raft') {
+            Object.keys(setupUtils.swarm.list).forEach((daemon) => {
+
+                setupUtils.swarm[daemon].stdout
+                    .pipe(split())
+                    .on('data', function(line) {
+                        if (line.toString().includes('RAFT State: Leader')) {
+                            setupUtils.swarm.leader = daemon;
+                        }
+                    });
+            });
+
+            const intervalId = setInterval(() => {
+                if (setupUtils.swarm.leader) {
+                    clearInterval(intervalId);
+                    done();
+                }
+            }, 500)
+        }
+
+        if (consensusAlgo === 'pbft') {
+
+            setupUtils.swarm.daemon0.stdout
+                .pipe(split())
+                .on('data', function(line) {
+                    if (line.toString().includes('primary: "60ba0788-9992-4cdb-b1f7-9f68eef52ab9"')) {
+                        done()
+                    }
+                });
         }
     },
 
