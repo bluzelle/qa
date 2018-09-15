@@ -1,0 +1,41 @@
+git:
+  submodules: true
+
+sudo: false
+
+language: node_js
+
+node_js:
+  - node
+
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - sourceline: 'deb https://bluzelle.jfrog.io/bluzelle/debian-local all unstable'
+            - sourceline: 'deb http://ppa.launchpad.net/maarten-fonville/protobuf/ubuntu trusty main'
+              key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x4DEA8909DC6A13A3'
+          update: true
+          packages:
+            - protobuf-compiler
+            - g++-7
+
+before_install:
+  - sudo apt-get install --no-install-recommends ca-certificates --allow-unauthenticated bluzelle-swarmdb
+
+before_script:
+  - rm -rf daemon-build
+  - mkdir -p daemon-build/output/logs
+  - cd daemon-build/output
+  - ln -s `which swarm`
+  - cd ../..
+  - cd bluzelle-js
+  - yarn
+  - webpack
+  - cd ..
+
+script:
+  - yarn test-daemon
