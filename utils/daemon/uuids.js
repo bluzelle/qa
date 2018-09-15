@@ -1,9 +1,22 @@
 const fs = require('fs');
+const uuid = require('uuid/v4');
 
-let uuids;
+let blacklist;
 
-if (!uuids) {
-    uuids = fs.readFileSync('./configs/uuidslist.txt').toString().split('\n');
-}
+module.exports = {
+    generate: (num) => {
+        return [...Array(num).keys()].reduce(acc => {
+            acc.push(uuid());
+            return acc;
+        }, []).sort()
+    },
 
-module.exports = uuids;
+    blacklist: () => {
+
+        if (!blacklist) {
+            blacklist = fs.readFileSync('./configs/uuidslist.txt').toString().split('\n')
+        }
+
+        return blacklist;
+    }
+};
