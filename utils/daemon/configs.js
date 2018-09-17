@@ -34,9 +34,11 @@ const setValues = (fileContent, changes) => {
         if (changes.index || changes.index === 0) {
 
             fileContent[changes.index][key] = changes[key]
+        } else {
+
+            fileContent[key] = changes[key]
         }
 
-        fileContent[key] = changes[key]
     }
 };
 
