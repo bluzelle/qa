@@ -2,7 +2,7 @@ const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 
-const api = require('../bluzelle-js/lib/bluzelle.node');
+const api = require('bluzelle');
 const {startSwarm, killSwarm, createKeys} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
@@ -13,7 +13,7 @@ before('initialize client api', () =>
 
 describe.only('swarm membership', () => {
 
-    context('adding', () => {
+    context.only('adding', () => {
 
         context('signed peer', () => {
 
@@ -26,17 +26,6 @@ describe.only('swarm membership', () => {
                     let newPeer;
 
                     beforeEach(() => {
-
-                        editFile(
-                            {
-                                filename: 'peers.json',
-                                changes: {
-                                    index: 2,
-                                    uuid: '81ca538-a222-4add-8cb8-065c8b65a391',
-                                    port: 50003,
-                                    http_port: 8083
-                                }
-                            });
 
                         editFile(
                             {
@@ -104,6 +93,65 @@ describe.only('swarm membership', () => {
                     });
                 });
             });
+        });
+
+        context.only('unsigned peer', () => {
+
+            const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":"asdf"}';
+
+            let newPeer;
+
+            beforeEach(() => {
+
+                editFile(
+                    {
+                        filename: 'bluzelle2.json',
+                        changes: {
+                            listener_port: 50003,
+                            uuid: 'asdf',
+                            bootstrap_file: './peers.json'
+                        }
+                    });
+
+            });
+
+            beforeEach('start swarm', startSwarm);
+
+            beforeEach('open ws connection and send msg', done =>
+                openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
+
+            beforeEach('spawn new peer', () => {
+                newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+
+                newPeer.stdout.on('data', () => {});
+            });
+
+            beforeEach('populate db', done =>
+                createKeys(done, api, process.env.numOfKeys));
+
+            afterEach('kill swarm', killSwarm);
+
+            context('new node', () => {
+
+                it.only('should not be able to communicate with swarm', async () => {
+
+                    // node is connecting properly.
+
+                    return new Promise((res, rej) => {
+                        newPeer.stdout.on('data', data => {
+
+                            if (data.toString().includes('Received WS message:')) {
+                                rej()
+                            }
+
+                        });
+
+                        setTimeout(res, 5000)
+                    })
+
+                })
+            });
+
         });
     });
 
