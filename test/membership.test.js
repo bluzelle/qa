@@ -2,29 +2,27 @@ const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 
-const api = require('bluzelle');
+const api = require('../bluzelle-js/lib/bluzelle-node');
 const {startSwarm, killSwarm, createKeys} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
 
-before('initialize client api', () =>
-    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
 describe.only('swarm membership', () => {
 
     context('adding', () => {
 
-        context('peer with valid siganture', () => {
+        context('peer with valid signature', () => {
 
             const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":' +
-                '"81ca538-a222-4add-8cb8-065c8b65a391", "signature" : "Oo8ZlDQcMlZF4hqnhN/2Dz3FYarZHrGf+87i+JUSxBu2GK' +
-                'Fk8SYcDrwjc0DuhUCxpRVQppMk5fjZtJ3r6I9066jcEpJPljU1SC1Thpy+AUEYx0r640SKRw KwmJMe6mRdSJ75rcYHu5+etajOW' +
-                'WjMs4vYQtcwfVF3oEd9/pZjea8x6PuhnM50+FPpnvgu57L8vHdeWjCqAiPyomQSLgIJPjvMJw4aHUUE3tHX1WOB8XDH dvuhi9gZ' +
+                '"81ca538-a222-4add-8cb8-065c8b65a391","signature":"Oo8ZlDQcMlZF4hqnhN/2Dz3FYarZHrGf+87i+JUSxBu2GK' +
+                'Fk8SYcDrwjc0DuhUCxpRVQppMk5fjZtJ3r6I9066jcEpJPljU1SC1Thpy+AUEYx0r640SKRwKwmJMe6mRdSJ75rcYHu5+etajOW' +
+                'WjMs4vYQtcwfVF3oEd9/pZjea8x6PuhnM50+FPpnvgu57L8vHdeWjCqAiPyomQSLgIJPjvMJw4aHUUE3tHX1WOB8XDHdvuhi9gZ' +
                 'ODzZWbdI92JNhoLbwvjmhKTeTN+FbBtdJIjC0+V0sMFmGNJQ8WIkJscN0hzRkmdlU965lHe4hqlcMyEdTSnYSnC7NIHFfvJFBBYi' +
-                '9kcAVBwkYy ALQDv6iTGMSI11/ncwdTz4/GGPodaUPFxf/WVHUz6rBAtTKvn8Kg61F6cVhcFSCjiw2bWGpeWcWTL+CGbfYCvZNiA' +
-                'VyO7Qdmfj5hoLu7KG+nxBLF8uoUl6 t3BdKz9Dqg9Vf+QVtaVj/COD1nUykXXRVxfLo4dNBS+aVsmOFjppKaEvmeT5SwWOSVrKZw' +
-                'PuTilV9jCehFbFZF6MPyiW5mcp9t4D27hMoz/SiKjCqdN93Y dBO4FBF/cWD5WHmD7KaaJYmnztz3W+xS7b/qk2PcN+qpZEXsfrW' +
+                '9kcAVBwkYyALQDv6iTGMSI11/ncwdTz4/GGPodaUPFxf/WVHUz6rBAtTKvn8Kg61F6cVhcFSCjiw2bWGpeWcWTL+CGbfYCvZNiA' +
+                'VyO7Qdmfj5hoLu7KG+nxBLF8uoUl6t3BdKz9Dqg9Vf+QVtaVj/COD1nUykXXRVxfLo4dNBS+aVsmOFjppKaEvmeT5SwWOSVrKZw' +
+                'PuTilV9jCehFbFZF6MPyiW5mcp9t4D27hMoz/SiKjCqdN93YdBO4FBF/cWD5WHmD7KaaJYmnztz3W+xS7b/qk2PcN+qpZEXsfrW' +
                 'ie4prB1umESavYLC1pLhoEgc0jRUl1b9mHSY7E4puk="}';
 
             context('resulting swarm', () => {
@@ -49,6 +47,9 @@ describe.only('swarm membership', () => {
 
                     beforeEach('start swarm', startSwarm);
 
+                    beforeEach('initialize client api', async () =>
+                        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
                     beforeEach('open ws connection and send msg', done =>
                         openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
 
@@ -58,8 +59,10 @@ describe.only('swarm membership', () => {
                         newPeer.stdout.on('data', () => {});
                     });
 
-                    beforeEach('populate db', done =>
-                        createKeys(done, api, process.env.numOfKeys));
+                    // beforeEach('populate db', done =>
+                    //     createKeys(done, api, process.env.numOfKeys));
+
+                    afterEach('disconnect client', () => api.disconnect());
 
                     afterEach('kill swarm', killSwarm);
 
@@ -153,7 +156,7 @@ describe.only('swarm membership', () => {
                 beforeEach('start swarm', startSwarm);
 
                 beforeEach('open ws connection and send msg', done =>
-                    console.log(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`) || openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
+                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
 
                 beforeEach('spawn new peer', () => {
                     newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
@@ -161,8 +164,11 @@ describe.only('swarm membership', () => {
                     newPeer.stdout.on('data', () => {});
                 });
 
-                beforeEach('populate db', done =>
-                    createKeys(done, api, process.env.numOfKeys));
+                // beforeEach('populate db', done =>
+                //     createKeys(done, api, process.env.numOfKeys));
+
+                afterEach('disconnect client', () => api.disconnect());
+
 
                 afterEach('kill swarm', killSwarm);
 
@@ -207,11 +213,17 @@ describe.only('swarm membership', () => {
                     });
                 });
 
+                beforeEach('initialize client api', async () =>
+                    await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+
                 beforeEach('open ws connection and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"3726ec5f-72b4-4ce6-9e60-f5c47f619a41"}}`));
 
-                beforeEach('populate db', done =>
-                    createKeys(done, api, process.env.numOfKeys));
+                // beforeEach('populate db', done =>
+                //     createKeys(done, api, process.env.numOfKeys));
+
+                afterEach('disconnect client', () => api.disconnect());
 
                 afterEach('kill swarm', killSwarm);
 
@@ -250,8 +262,13 @@ describe.only('swarm membership', () => {
 
                 beforeEach('start swarm', startSwarm);
 
+                beforeEach('initialize client api', async () =>
+                    await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
                 beforeEach('open ws connection and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"c7044c76-135b-452d-858a-f789d82c7eb7"}}`));
+
+                afterEach('disconnect client', () => api.disconnect());
 
                 afterEach('kill swarm', killSwarm);
 

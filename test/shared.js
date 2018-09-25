@@ -48,7 +48,7 @@ exports.createShouldTimeout = api => {
                 throw new Error('Create was successful, expected to fail.')
             })
             .catch(e => {
-                expect(e.toString()).to.include('Error: Bluzelle poll timeout - command not commited to swarm.');
+                expect(e.message.toString()).to.include('Timed out after waiting for 5000ms');
                 done();
             })
     });
