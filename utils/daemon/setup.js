@@ -53,7 +53,7 @@ const setupUtils = {
                 let contents = fs.readFileSync('./daemon-build/output/logs/' + leaderLogName, 'utf8');
 
                 return includes(contents, 'RAFT State: Leader');
-            }, 5000);
+            }, 8000);
             process.env.quiet ||
                 console.log('\x1b[36m%s\x1b[0m', 'I am leader logged')
         } catch (error) {
@@ -78,7 +78,7 @@ const setupUtils = {
 
     createState: async (api, key, value) => {
         await setupUtils.startSwarm();
-        api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
         await api.create(key, value);
         await setupUtils.killSwarm();
     },
