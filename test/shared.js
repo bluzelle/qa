@@ -1,8 +1,5 @@
 const {expect} = require('chai');
-const waitUntil = require("async-wait-until");
-
-const {execDaemon} = require('../utils/daemon/setup');
-const {readFile, readDir, compareData} = require('../utils/daemon/logs');
+const {spawn} = require('child_process');
 
 
 exports.swarmIsOperational = api => {
@@ -48,51 +45,48 @@ exports.createShouldTimeout = api => {
                 throw new Error('Create was successful, expected to fail.')
             })
             .catch(e => {
-                expect(e.message.toString()).to.include('Timed out after waiting for 5000ms');
-                done();
+                if (e.message.toString().includes('Timed out after waiting for 5000ms')) {
+                    done();
+                }
             })
     });
 };
 
-exports.daemonShouldSync = (cfgName, uuid) => {
+exports.daemonShouldSync = (api, cfgName, numOfKeys) => {
 
-    it('should fully replicate .state file of peers', async () => {
+    let newPeer;
 
-        execDaemon(cfgName);
+    beforeEach('disconnect api', api.disconnect);
 
-        let daemonData = {};
+    beforeEach('start daemon', () => new Promise((res) => {
+        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `${cfgName}.json`], {cwd: './scripts'})
+        newPeer.stdout.on('data', (data) => {
+            if (data.toString().includes('Received WS message:')) {
+                res();
+            }
+        });
+    }));
 
-        let DAEMON_STORAGE_LOG_NAMES;
+    beforeEach('connect to specific daemon', async () =>
+        await api.connect(`ws://${process.env.address}:50002`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-        try {
-            await waitUntil(() => {
-                DAEMON_STORAGE_LOG_NAMES = readDir('output/.state').filter(file => file.endsWith('.dat'));
+    it('should sync and return full keylist', async () => new Promise((res, rej) => {
 
-                return (DAEMON_STORAGE_LOG_NAMES.length === 3);
-            });
-        } catch (e) {
-            throw new Error('.state dir does not have expected amount of .dat files')
-        }
+        const startTime = new Date();
 
-        try {
-            await waitUntil(() => {
-                return (readFile('output/.state/', `${uuid}.dat`).split('\n').length >= parseInt(process.env.numOfKeys))
-            }, 10000)
-        } catch (e) {
-            throw new Error('daemon .dat did not reach expected length')
-        }
+        const timeId = setInterval(() => {
+            let timeElapsed = () => (new Date) - startTime;
 
-        try {
-            await waitUntil(() => {
-                DAEMON_STORAGE_LOG_NAMES.forEach(filename =>
-                    daemonData[filename] = readFile('/output/.state/', filename));
+            api.keys().then((keys) => {
 
-                if (compareData(daemonData, {removeFirstLine: true})){
-                    return true
-                };
-            });
-        } catch (e) {
-            throw new Error('.dat files are inconsistent')
-        }
-    });
+                if (keys.length === numOfKeys) {
+                    clearInterval(timeId);
+                    res();
+                } else if (timeElapsed() >= 6000){
+                    rej(new Error(`Daemon returned ${keys.length}, expected ${numOfKeys} keys`))
+                }
+            })
+        }, 500);
+
+    }));
 };

@@ -1,19 +1,15 @@
 const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
-const waitUntil = require("async-wait-until");
-const {includes, filter} = require('lodash');
 
 const {startSwarm, killSwarm, createState, createKeys} = require('../utils/daemon/setup');
-const {readFile, readDir, compareData} = require('../utils/daemon/logs');
 const {editFile} = require('../utils/daemon/configs');
 const shared = require('./shared');
-const api = require('../bluzelle-js/lib/bluzelle.node');
+const api = require('../bluzelle-js/lib/bluzelle-node');
 
 
-before('initialize client api', () =>
-    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+let numOfKeys = 5;
 
-describe('storage', () => {
+describe.only('storage', () => {
 
     beforeEach('create state', async () => {
         await createState(api, 'stateExists', '123');
@@ -23,9 +19,14 @@ describe('storage', () => {
         await startSwarm({maintainState: true});
     });
 
+    beforeEach('initialize client api', async () =>
+        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
     beforeEach('populate db', done => {
-        createKeys(done, api, process.env.numOfKeys);
+        createKeys(done, api, numOfKeys);
     });
+
+    afterEach('disconnect api', api.disconnect);
 
     afterEach(async () => {
         await killSwarm();
@@ -37,23 +38,11 @@ describe('storage', () => {
             expect(await api.read('stateExists')).to.equal('123');
         });
 
-        it('should be persisted to .dat files for all nodes', async () => {
-            await api.create('myKey', '123');
-            expect(await api.read('myKey')).to.equal('123');
-
-            await killSwarm();
-
-            await waitUntil(() =>
-                filter(readDir('output/'), contents => includes(contents, '.state'))[0]);
-
-            let contents = readDir('output/.state/');
-            expect(contents.length).to.be.equal(2)
-        });
     });
 
     context('a new node, after connecting to peers', () => {
 
-        shared.daemonShouldSync('bluzelle2', '3726ec5f-72b4-4ce6-9e60-f5c47f619a41');
+        shared.daemonShouldSync(api, 'bluzelle2', numOfKeys + 1);
 
     });
 
@@ -63,20 +52,20 @@ describe('storage', () => {
 
             let node;
 
-            beforeEach(() =>
+            beforeEach('edit config', () =>
                 editFile({filename: 'bluzelle2.json', changes: {max_storage: '700B'}}));
 
-            beforeEach(() => {
-                node = spawn('./run-daemon.sh', ['bluzelle2.json'], {cwd: './scripts'});
+            beforeEach('spawn node', () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
             });
 
-            beforeEach('create key, exceed limit', () =>
-                api.create('key01', '123'));
-
+            beforeEach('create key, exceed limit', () => {
+                api.create('key01', '123');
+            });
 
             it('should log exceeded storage msg', async () => {
 
-                await new Promise( resolve => {
+                await new Promise(resolve => {
                     node.stdout.on('data', data => {
                         if (data.toString().includes('Maximum storage has been exceeded, please update the options file.')) {
                             resolve();
@@ -85,7 +74,7 @@ describe('storage', () => {
                 });
             });
 
-            it('should stop', async () => {
+            it('should exit', async () => {
 
                 await new Promise(resolve => {
                     node.on('close', code => {
@@ -125,19 +114,17 @@ describe('storage', () => {
                     editFile({filename: 'bluzelle2.json', changes: {max_storage: '1GB'}}));
 
                 beforeEach('start daemon with increased limit', async () => {
-                    node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+                    node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
 
                     await new Promise(resolve => {
                         node.stdout.on('data', data => {
                             // connected to peer log msg: [debug] (node.cpp:84) - connection from: 127.0.0.1:62506
-                            if (data.toString().includes('connection from:')) {
+                            if (data.toString().includes('Received WS message:')) {
                                 resolve()
                             }
                         })
                     })
                 });
-
-                afterEach(killSwarm);
 
                 context('daemon is operational', () => {
 
