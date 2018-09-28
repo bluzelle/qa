@@ -8,7 +8,7 @@
   "uuid" : "60ba0788-9992-4cdb-b1f7-9f68eef52ab9",
   "debug_logging" : true,
   "log_to_stdout" : true,
-  "enable_whitelist" : true,
+  "peer_validation_enabled" : true,
   "max_storage" : "2GB",
   "logfile_dir" : "logs/",
   "logfile_rotation_size" : "1MB",
