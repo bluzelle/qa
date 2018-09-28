@@ -45,8 +45,9 @@ exports.createShouldTimeout = api => {
                 throw new Error('Create was successful, expected to fail.')
             })
             .catch(e => {
-                expect(e.message.toString()).to.include('Timed out after waiting for 5000ms');
-                done();
+                if (e.message.toString().includes('Timed out after waiting for 5000ms')) {
+                    done();
+                }
             })
     });
 };

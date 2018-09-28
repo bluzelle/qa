@@ -5,13 +5,11 @@ const fs = require('fs');
 
 const {spawnSwarm, despawnSwarm, swarm, createKeys} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
-const api = require('../bluzelle-js/lib/bluzelle.node');
+const api = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
-before('initialize client api', () =>
-    api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-describe('raft', () => {
+describe.only('raft', () => {
 
     context('swarm', () => {
 
@@ -22,7 +20,7 @@ describe('raft', () => {
 
             context('reconnecting', () => {
 
-                beforeEach('add node to peerlist', () => {
+                beforeEach('add new node to peerlist', () => {
                     let fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/peers.json`, 'utf8'));
 
                     fileContent[3] = {
@@ -38,7 +36,10 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-                beforeEach(() => {
+                beforeEach('initialize client api', async () =>
+                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+                beforeEach('create new node config', () => {
 
                     execSync('cp -R ./configs/bluzelle2.json ./daemon-build/output/bluzelle3.json');
 
@@ -52,13 +53,15 @@ describe('raft', () => {
                     });
                 });
 
+                afterEach('disconnect api', api.disconnect);
+
                 afterEach('despawn swarm', despawnSwarm);
 
-                context('with no .dat file', () => {
+                context('with clear local state', () => {
 
                     it('should sync', done => {
 
-                        const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                        const node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
 
                         node.stdout.on('data', data => {
 
@@ -69,60 +72,58 @@ describe('raft', () => {
                     });
                 });
 
-                context('with consistent but outdated .dat file', () => {
+                context('with consistent but outdated state', () => {
 
-                    beforeEach('start node, create state, kill node, create state', done => {
+                    let node;
 
-                        spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                    beforeEach('start new node', () => new Promise((res) => {
 
-                        setTimeout(async () => {
-
-                            api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
-
-                            await api.create('key', '123');
-
-                            execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`);
-
-                            await api.create('key2', '123');
-
-                            done()
-
-                        }, 500);
-                    });
-
-                    it('should sync', done => {
-
-                        const node = spawn('./run-daemon.sh', ['bluzelle3.json'], {cwd: './scripts'});
+                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
 
                         node.stdout.on('data', data => {
-
-                            if (data.toString().includes('Follower inserting entry with message index')) {
-
-                                done();
-
+                            if (data.toString().includes('Received WS message:')) {
+                                res()
                             }
                         });
+                    }));
+
+                    beforeEach('create key', async () => {
+                        await api.create('key1', '123')
                     });
+
+                    beforeEach('kill node', () =>
+                        execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`));
+
+                    beforeEach('create keys after disconnect', async () => {
+                        await api.create('key2', '123');
+                        await api.create('key3', '123');
+                    });
+
+                    shared.daemonShouldSync(api, 'bluzelle3', 3)
+
                 });
 
                 context('with inconsistent .dat file', () => {
 
-                    beforeEach('start node, create state, kill node', done => {
+                    let node;
 
-                        spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
+                    beforeEach('start new node', () => new Promise((res) => {
 
-                        setTimeout(async () => {
+                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
 
-                            api.connect('ws://127.0.0.1:50003', '71e2cd35-b606-41e6-bb08-f20de30df76c');
+                        node.stdout.on('data', data => {
+                            if (data.toString().includes('Received WS message:')) {
+                                res()
+                            }
+                        });
+                    }));
 
-                            await api.create('key', '123');
-
-                            execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`);
-
-                            done()
-
-                        }, 500);
+                    beforeEach('create key', async () => {
+                        await api.create('key1', '123')
                     });
+
+                    beforeEach('kill node', () =>
+                        execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`));
 
                     beforeEach('change index to render .dat file inconsistent', () => {
 
@@ -154,9 +155,12 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
-                });
+                beforeEach('initialize client api', async () =>
+                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+                // beforeEach('populate db', done => {
+                //     createKeys(done, api, process.env.numOfKeys);
+                // });
 
                 beforeEach('kill one follower', () => {
 
@@ -178,9 +182,12 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
-                });
+                beforeEach('initialize client api', async () => console.log(`leader port: ${swarm.list[swarm.leader]}`) ||
+                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+                // beforeEach('populate db', done => {
+                //     createKeys(done, api, process.env.numOfKeys);
+                // });
 
                 beforeEach('kill all followers', () => {
 
@@ -206,9 +213,12 @@ describe('raft', () => {
 
             beforeEach('spawn swarm and elect leader', spawnSwarm);
 
-            beforeEach('populate db', done => {
-                createKeys(done, api, process.env.numOfKeys);
-            });
+            beforeEach('initialize client api', async () =>
+                await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+            // beforeEach('populate db', done => {
+            //     createKeys(done, api, process.env.numOfKeys);
+            // });
 
             afterEach('despawn swarm', despawnSwarm);
 
