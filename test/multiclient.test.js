@@ -1,7 +1,9 @@
 const assert = require('assert');
 const {expect} = require('chai');
 
-const {startSwarm, killSwarm} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, clearDaemonState} = require('../utils/daemon/setup');
+const {generateJsonsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
+const {deleteConfigs} = require('../utils/daemon/setup');
 
 
 const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};
@@ -14,18 +16,40 @@ delete require.cache[require.resolve('../bluzelle-js/lib/bluzelle-node')];
 clients.api2 = require('../bluzelle-js/lib/bluzelle-node');
 
 
+let swarm;
+
 describe('multi-client', () => {
 
-    beforeEach(startSwarm);
+    beforeEach('clear daemon state state', clearDaemonState);
 
-    afterEach(killSwarm);
+    beforeEach('generate configs and set harness state', async () => {
+        await generateJsonsAndSetState(20);
+        swarm = getSwarmObj();
+    });
+
+    beforeEach('spawn swarm', function (done) {
+        this.timeout(20000);
+        spawnSwarm(done, 'raft')
+    });
+
+    afterEach('remove configs and peerslist and clear harness state', () => {
+        deleteConfigs();
+        resetHarnessState();
+    });
+
+    afterEach(despawnSwarm);
 
     context('distinct uuids', () => {
 
-        beforeEach(async () => {
-            await clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        beforeEach('initialize clients', async () => {
+            await clients.api1.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
 
-            await clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+            await clients.api2.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        });
+
+        afterEach('disconnect clients', () => {
+            clients.api1.disconnect();
+            clients.api2.disconnect();
         });
 
         it('client1 should be able to write to database', async () => {
@@ -40,7 +64,7 @@ describe('multi-client', () => {
 
         context('clients', async () => {
 
-            beforeEach(async () => {
+            beforeEach('creating keys', async () => {
                 await clients.api1.create('myKey', 'hello world');
                 await clients.api2.create('myKey', 'good morning');
             });
@@ -67,7 +91,7 @@ describe('multi-client', () => {
 
         describe('attempting to access keys of another client', () => {
 
-            beforeEach(async () => {
+            beforeEach('creating keys', async () => {
                 await clients.api1.create('onlyInOne', 'something');
             });
 
@@ -106,10 +130,15 @@ describe('multi-client', () => {
 
     describe('colliding uuid', () => {
 
-        beforeEach(async () => {
-            await clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        beforeEach('initializing clients', async () => {
+            await clients.api1.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
 
-            await clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+            await clients.api2.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        });
+
+        afterEach('disconnect clients', () => {
+            clients.api1.disconnect();
+            clients.api2.disconnect();
         });
 
         it('client1 should be able to write to database', async () => {
@@ -138,7 +167,7 @@ describe('multi-client', () => {
 
         context('creating, updating, and then reading', () => {
 
-            beforeEach(async () => {
+            beforeEach('creating state', async () => {
                 await clients.api1.create('myTextKey', 'hello world');
                 await clients.api2.update('myTextKey', 'goodbye world');
             });
@@ -152,7 +181,7 @@ describe('multi-client', () => {
 
         context('creating, deleting, and then reading', () => {
 
-            beforeEach(async () => {
+            beforeEach('creating state', async () => {
                 await clients.api1.create('myTextKey', 'hello world');
                 await clients.api2.remove('myTextKey');
             });
