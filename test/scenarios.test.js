@@ -10,14 +10,14 @@ describe('scenarios', () => {
     // KEP-489
     context('recover from restart', () => {
 
-        before('initialize client api', () =>
-            api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
         beforeEach('start swarm', async () => {
             await startSwarm();
 
             await spawnNode('bluzelle2');
         });
+
+        beforeEach('initialize client api', async () =>
+            await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
         beforeEach('populate db', done =>
             createKeys(done, api, process.env.numOfKeys));

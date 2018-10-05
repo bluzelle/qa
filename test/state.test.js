@@ -9,7 +9,7 @@ const api = require('../bluzelle-js/lib/bluzelle-node');
 
 let numOfKeys = 5;
 
-describe.only('storage', () => {
+describe('storage', () => {
 
     beforeEach('create state', async () => {
         await createState(api, 'stateExists', '123');

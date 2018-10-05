@@ -19,7 +19,7 @@ const killNodes = num => {
     });
 };
 
-describe.only('pbft', () => {
+describe('pbft', () => {
 
     before('initialize client api', () =>
         api.connect(`ws://${process.env.address}:${Object.values(swarmObj)[0].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));

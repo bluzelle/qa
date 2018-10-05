@@ -6,12 +6,12 @@ const {startSwarm, killSwarm} = require('../utils/daemon/setup');
 
 const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};
 
-clients.api1 = require('../bluzelle-js/lib/bluzelle.node');
+clients.api1 = require('../bluzelle-js/lib/bluzelle-node');
 
 // This enables us to have two copies of the library with separate state
-delete require.cache[require.resolve('../bluzelle-js/lib/bluzelle.node')];
+delete require.cache[require.resolve('../bluzelle-js/lib/bluzelle-node')];
 
-clients.api2 = require('../bluzelle-js/lib/bluzelle.node');
+clients.api2 = require('../bluzelle-js/lib/bluzelle-node');
 
 
 describe('multi-client', () => {
@@ -22,10 +22,10 @@ describe('multi-client', () => {
 
     context('distinct uuids', () => {
 
-        beforeEach(() => {
-            clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        beforeEach(async () => {
+            await clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
 
-            clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+            await clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
         });
 
         it('client1 should be able to write to database', async () => {
@@ -106,10 +106,10 @@ describe('multi-client', () => {
 
     describe('colliding uuid', () => {
 
-        beforeEach(() => {
-            clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        beforeEach(async () => {
+            await clients.api1.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
 
-            clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+            await clients.api2.connect(`ws://${process.env.address}:${process.env.port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
         });
 
         it('client1 should be able to write to database', async () => {

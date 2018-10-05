@@ -9,7 +9,7 @@ const shared = require('./shared');
 
 
 
-describe.only('swarm membership', () => {
+describe('swarm membership', () => {
 
     context('adding', () => {
 

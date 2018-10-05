@@ -10,7 +10,7 @@ const shared = require('./shared');
 const uuids = require('../utils/daemon/uuids');
 
 
-describe.only('raft', () => {
+describe('raft', () => {
 
     context('swarm', () => {
 
