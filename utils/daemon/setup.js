@@ -5,7 +5,7 @@ const fs = require('fs');
 const split = require('split');
 
 const {readDir} = require('./logs');
-const {editFile, getSwarmObj, clearSwarmObj} = require('./configs');
+const {editFile, getSwarmObj} = require('./configs');
 
 
 let leaderLogName;

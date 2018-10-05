@@ -8,12 +8,12 @@ const {deleteConfigs} = require('../utils/daemon/setup');
 
 describe('daemon startup', () => {
 
-    beforeEach('clear state', clearDaemonState);
+    beforeEach('clear daemon state state', clearDaemonState);
 
-    beforeEach('generate configs', async () =>
-        await generateJsonsAndSetState(4));
+    beforeEach('generate configs and set harness state', async () =>
+        await generateJsonsAndSetState(1));
 
-    afterEach('clear jsons and swarmObj', () => {
+    afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
         resetHarnessState();
     });
