@@ -43,17 +43,17 @@ const configUtils = {
 
         const configsWithIndex = await generateConfigs(numOfConfigs);
 
-        setSwarmData(configsWithIndex);
+        const peersList = await generatePeersList(configsWithIndex);
 
-        const peersList = generatePeersList();
+        setHarnessState(configsWithIndex);
 
         return [swarm, peersList]
     },
 
     getSwarmObj: () => swarm,
 
-    clearSwarmObj: () => {
-
+    resetHarnessState: () => {
+        configCounter.reset();
         swarm = {};
     }
 };
@@ -61,7 +61,7 @@ const configUtils = {
 module.exports = configUtils;
 
 
-const setSwarmData = (configsWithIndex) => {
+const setHarnessState = (configsWithIndex) => {
 
     configsWithIndex.forEach(data => {
 
@@ -83,7 +83,7 @@ const generateConfigs = async (numOfConfigs) => {
 
     let configsWithIndex = [...Array(numOfConfigs).keys()].map(() => {
 
-        let currentIndex = configCounter();
+        let currentIndex = configCounter.increment();
 
         return {
             content: new Config(template,
@@ -102,32 +102,30 @@ const generateConfigs = async (numOfConfigs) => {
     return Promise.resolve(configsWithIndex);
 };
 
-const generatePeersList = () => {
+const generatePeersList = async (configsWithIndex) => {
 
     let peers = [];
 
-    Object.keys(swarm).forEach(daemon => peers.push(
-        {
-            name: daemon,
+    configsWithIndex.forEach(data => {
+        peers.push({
+            name: `daemon${data.index}`,
             host: '127.0.0.1',
-            port: swarm[daemon].port,
-            uuid: swarm[daemon].uuid,
-            http_port: swarm[daemon].http_port
-        }));
+            port: data.content.listener_port,
+            uuid: data.content.uuid,
+            http_port: data.content.http_port
+        })
+    });
 
-    try {
-        fs.writeFileSync(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
-    } catch (e) {
-        throw new Error('Peers list write failed.')
-    }
+    await fsPromises.writeFile(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
 
     return peers
 };
 
-const configCounter = (() => {
-    let counter = -1;
-    return () => counter += 1;
-})();
+const configCounter = {
+    counter: -1,
+    increment() { return this.counter += 1 },
+    reset() { this.counter = -1 }
+};
 
 function Config(keys, edits) {
     Object.entries(keys).forEach((key) => this[key[0]] = key[1]);
