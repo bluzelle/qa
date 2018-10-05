@@ -3,6 +3,8 @@ const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
 const split = require('split');
+const PromiseSome = require('bluebird').some;
+const WebSocket = require('ws');
 
 const {readDir} = require('./logs');
 const {editFile, getSwarmObj} = require('./configs');
@@ -107,28 +109,64 @@ const setupUtils = {
 
         let swarm = getSwarmObj();
 
-        Object.keys(swarm).forEach((daemon) => {
-            swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`], {cwd: './scripts'});
-        });
+        const FAILURE_ALLOWED = 0.2;
+
+        const MINIMUM_NODES = Math.floor(Object.keys(swarm).length * ( 1 - FAILURE_ALLOWED));
+
+        let successNodes;
+
+        try {
+            successNodes = await PromiseSome(Object.keys(swarm).map((daemon) => new Promise((res, rej) => {
+
+                const rejTimer = setTimeout(() => {
+                    rej(new Error(`${daemon} stdout: \n ${buffer}`))
+                }, 20000);
+
+                let buffer = '';
+
+                swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`], {cwd: './scripts'});
+
+                swarm[daemon].stream.stdout.on('data', (data) => {
+                    buffer += data.toString();
+
+                    if (data.toString().includes('Running node with ID:')) {
+                        clearInterval(rejTimer);
+                        res(daemon)
+                    }
+                })
+
+            })), MINIMUM_NODES)
+        } catch(err) {
+
+            err.forEach((e) => {
+                console.log(`Daemon failed to startup in time:\n${e}`)
+            })
+
+        }
+
+        console.log('success: ', successNodes);
+
 
         if (consensusAlgo === 'raft') {
-            Object.keys(swarm.list).forEach((daemon) => {
 
-                swarm[daemon].stream.stdout
-                    .pipe(split())
-                    .on('data', function (line) {
-                        if (line.toString().includes('RAFT State: Leader')) {
-                            swarm.leader = daemon;
-                        }
-                    });
+            socket = new WebSocket(`ws://127.0.0.1:${swarm[successNodes[0]].port}`);
+
+            socket.on('open', () => {
+                // timeout required until KEP-684 bug resolved
+                setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 1500)
             });
 
-            const intervalId = setInterval(() => {
-                if (swarm.leader) {
-                    clearInterval(intervalId);
-                    done();
+            socket.on('message', (message) => {
+
+                let msg = JSON.parse(message);
+
+                if (msg.error) {
+                    swarm.leader = msg.message.leader.name
+                } else {
+                    swarm.leader = successNodes[0];
                 }
-            }, 500)
+                done()
+            })
         }
 
         if (consensusAlgo === 'pbft') {
