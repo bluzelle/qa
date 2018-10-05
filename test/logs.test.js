@@ -1,16 +1,28 @@
 const {expect} = require('chai');
-const {exec, spawn} = require('child_process');
+const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {killSwarm} = require('../utils/daemon/setup');
+const {killSwarm, clearDaemonState} = require('../utils/daemon/setup');
 const {editFile} = require('../utils/daemon/configs');
+const {generateJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {deleteConfigs} = require('../utils/daemon/setup');
 const {readDir} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
 
+    beforeEach('clear daemon state state', clearDaemonState);
+
+    beforeEach('generate configs and set harness state', async () =>
+        await generateJsonsAndSetState(1));
+
+    afterEach('remove configs and peerslist and clear harness state', () => {
+        deleteConfigs();
+        resetHarnessState();
+    });
+
     after(() => {
-        exec('cd ./daemon-build/output/; rm -rf newlogsdir')
+        execSync('cd ./daemon-build/output/; rm -rf newlogsdir')
     });
 
     describe('on startup', () => {
