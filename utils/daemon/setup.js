@@ -15,7 +15,7 @@ const setupUtils = {
 
         if (!maintainState) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            setupUtils.clearState();
+            setupUtils.clearDaemonState();
         }
 
         let beforeContents = readDir('output/logs');
@@ -68,8 +68,6 @@ const setupUtils = {
     killSwarm: async () => {
         exec('pkill -2 swarm');
 
-        swarm.logs = [];
-
         await new Promise(resolve => {
             setTimeout(() => {
                 resolve()
@@ -105,7 +103,7 @@ const setupUtils = {
 
     spawnSwarm: async (done, consensusAlgo) => {
 
-        setupUtils.clearState();
+        setupUtils.clearDaemonState();
 
         let swarm = getSwarmObj();
 
@@ -150,16 +148,16 @@ const setupUtils = {
         execSync('pkill -2 swarm');
     },
 
-    clearConfigs: () => {
-        exec('cd ./daemon-build/output/; rm *.json', (error, stdout, stderr) => {
+    deleteConfigs: () => {
+        execSync('cd ./daemon-build/output/; rm *.json', (error, stdout, stderr) => {
             if (error) {
                 throw new Error(error);
             }
         });
     },
 
-    clearState: () => {
-        exec('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
+    clearDaemonState: () => {
+        execSync('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
             if (error) {
                 throw new Error(error);
             }
