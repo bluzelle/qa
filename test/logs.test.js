@@ -3,10 +3,8 @@ const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {killSwarm, clearDaemonState} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
-const {generateJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
-const {deleteConfigs} = require('../utils/daemon/setup');
+const {killSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
+const {editFile, generateJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
