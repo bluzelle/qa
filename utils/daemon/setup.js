@@ -2,9 +2,10 @@ const {exec, execSync, spawn} = require('child_process');
 const waitUntil = require('async-wait-until');
 const {includes} = require('lodash');
 const fs = require('fs');
+const split = require('split');
 
 const {readDir} = require('./logs');
-const {editFile} = require('./configs');
+const {editFile, getSwarmObj, clearSwarmObj} = require('./configs');
 
 
 let leaderLogName;
@@ -61,13 +62,13 @@ const setupUtils = {
                 console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
         }
 
-        logNames.forEach(logName => setupUtils.swarm.logs.push(logName));
+        logNames.forEach(logName => swarm.logs.push(logName));
     },
 
     killSwarm: async () => {
         exec('pkill -2 swarm');
 
-        setupUtils.swarm.logs = [];
+        swarm.logs = [];
 
         await new Promise(resolve => {
             setTimeout(() => {
@@ -92,47 +93,69 @@ const setupUtils = {
                 batch.map((v) => api.create(`batch-key${v}`, 'value'))
             )), Promise.resolve())
             .then(() => api.keys()
-            .then(keys => {
-                if (keys.length >= numOfKeys) {
-                    done()
-                } else {
-                    throw new Error(`Failed to create ${numOfKeys} keys`);
-                }
-            })
-        )
+                .then(keys => {
+                    if (keys.length >= numOfKeys) {
+                        done()
+                    } else {
+                        throw new Error(`Failed to create ${numOfKeys} keys`);
+                    }
+                })
+            )
     },
 
-    swarm: {list: {'daemon0': 50000, 'daemon1': 50001, 'daemon2': 50002}, logs: []},
+    spawnSwarm: async (done, consensusAlgo) => {
 
-    spawnSwarm: async () => {
+        setupUtils.clearState();
 
-        execSync('cd ./daemon-build/output/; rm -rf .state');
+        let swarm = getSwarmObj();
 
-        editFile({filename: 'bluzelle0.json', changes: {log_to_stdout: true}});
-
-        Object.keys(setupUtils.swarm.list).forEach((daemon, i) => {
-
-            setupUtils.swarm[daemon] = spawn('./run-daemon.sh', [`bluzelle${i}.json`], {cwd: './scripts'});
-
-            setupUtils.swarm[daemon].stdout.on('data', data => {
-                if (data.toString().includes('RAFT State: Leader')) {
-                    setupUtils.swarm.leader = daemon;
-                }
-            });
+        Object.keys(swarm).forEach((daemon) => {
+            swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`], {cwd: './scripts'});
         });
 
-        try {
-            await waitUntil(() => setupUtils.swarm.leader, 3000);
-        } catch (err) {
-            console.log(`Failed to declare leader`)
+        if (consensusAlgo === 'raft') {
+            Object.keys(swarm.list).forEach((daemon) => {
+
+                swarm[daemon].stream.stdout
+                    .pipe(split())
+                    .on('data', function (line) {
+                        if (line.toString().includes('RAFT State: Leader')) {
+                            swarm.leader = daemon;
+                        }
+                    });
+            });
+
+            const intervalId = setInterval(() => {
+                if (swarm.leader) {
+                    clearInterval(intervalId);
+                    done();
+                }
+            }, 500)
+        }
+
+        if (consensusAlgo === 'pbft') {
+            swarm.daemon0.stream.stdout
+                .pipe(split())
+                .on('data', function (line) {
+                    // daemon implementation starts with daemon1 as primary
+                    // `sorted_uuids_list[view_number % number_of_nodes]`
+                    if (line.toString().includes(`primary: "${swarm.daemon1.uuid}"`)) {
+                        done()
+                    }
+                });
         }
     },
 
     despawnSwarm: () => {
-
         execSync('pkill -2 swarm');
+    },
 
-        setupUtils.swarm.daemon0, setupUtils.swarm.daemon1, setupUtils.swarm.daemon2, setupUtils.swarm.leader = undefined;
+    clearConfigs: () => {
+        exec('cd ./daemon-build/output/; rm *.json', (error, stdout, stderr) => {
+            if (error) {
+                throw new Error(error);
+            }
+        });
     },
 
     clearState: () => {
@@ -162,7 +185,7 @@ const difference = (arr1, arr2) => {
 const chunk = (array, batchSize = 10) => {
     const chunked = [];
 
-    for(let i = 0; i < array.length; i += batchSize) {
+    for (let i = 0; i < array.length; i += batchSize) {
         chunked.push(array.slice(i, i + batchSize))
     }
 

@@ -7,6 +7,7 @@ const {spawnSwarm, despawnSwarm, swarm, createKeys} = require('../utils/daemon/s
 const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
+const uuids = require('../utils/daemon/uuids');
 
 
 describe.only('raft', () => {

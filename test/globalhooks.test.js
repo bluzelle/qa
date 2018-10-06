@@ -1,5 +1,11 @@
-const {execSync} = require('child_process');
+const {generateJsonsAndSetState, clearSwarmObj} = require('../utils/daemon/configs');
+const {clearConfigs} = require('../utils/daemon/setup');
 
-beforeEach('reset config files', () => {
-    execSync('cp -R ./configs/. ./daemon-build/output/')
+before('generate configs', async () => {
+    await generateJsonsAndSetState(4)
+});
+
+after('clear jsons and swarmObj', () => {
+    clearConfigs();
+    clearSwarmObj();
 });
