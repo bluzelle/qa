@@ -2,7 +2,7 @@ const assert = require('assert');
 const {expect} = require('chai');
 
 const {spawnSwarm, despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
-const {generateJsonsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
+const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
 
 
 const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};

@@ -139,17 +139,18 @@ const setupUtils = {
         } catch(err) {
 
             err.forEach((e) => {
-                console.log(`Daemon failed to startup in time:\n${e}`)
+                console.log(`Daemon failed to startup in time. \n ${e}`)
             })
-
         }
-
-        console.log('success: ', successNodes);
 
 
         if (consensusAlgo === 'raft') {
 
-            socket = new WebSocket(`ws://127.0.0.1:${swarm[successNodes[0]].port}`);
+            try {
+                socket = new WebSocket(`ws://127.0.0.1:${swarm[successNodes[0]].port}`);
+            } catch (err) {
+                console.log(`Failed to connect to leader. \n ${err.stack}`)
+            }
 
             socket.on('open', () => {
                 // timeout required until KEP-684 bug resolved

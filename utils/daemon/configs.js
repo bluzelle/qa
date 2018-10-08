@@ -39,7 +39,7 @@ const configUtils = {
         return fileContent
     },
 
-    generateJsonsAndSetState: async (numOfConfigs) => {
+    generateSwarmConfigsAndSetState: async (numOfConfigs) => {
 
         const configsWithIndex = await generateConfigs(numOfConfigs);
 

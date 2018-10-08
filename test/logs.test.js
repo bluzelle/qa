@@ -4,7 +4,7 @@ const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
 const {killSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
@@ -12,7 +12,7 @@ describe('daemon', () => {
     beforeEach('clear daemon state state', clearDaemonState);
 
     beforeEach('generate configs and set harness state', async () =>
-        await generateJsonsAndSetState(1));
+        await generateSwarmConfigsAndSetState(1));
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();

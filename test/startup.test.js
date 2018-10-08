@@ -1,7 +1,7 @@
 const {exec, spawn} = require('child_process');
 
 const {killSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
 describe('daemon startup', () => {
@@ -9,7 +9,7 @@ describe('daemon startup', () => {
     beforeEach('clear daemon state state', clearDaemonState);
 
     beforeEach('generate configs and set harness state', async () =>
-        await generateJsonsAndSetState(1));
+        await generateSwarmConfigsAndSetState(1));
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
