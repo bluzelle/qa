@@ -52,14 +52,14 @@ exports.createShouldTimeout = api => {
     });
 };
 
-exports.daemonShouldSync = (api, cfgName, numOfKeys) => {
+exports.daemonShouldSync = (api, cfgIndexObj, numOfKeys) => {
 
     let newPeer;
 
     beforeEach('disconnect api', api.disconnect);
 
     beforeEach('start daemon', () => new Promise((res) => {
-        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `${cfgName}.json`], {cwd: './scripts'})
+        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${cfgIndexObj.index}.json`], {cwd: './scripts'})
         newPeer.stdout.on('data', (data) => {
             if (data.toString().includes('Received WS message:')) {
                 res();

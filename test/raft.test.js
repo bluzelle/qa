@@ -1,14 +1,15 @@
 const waitUntil = require("async-wait-until");
-const expect = require('chai').expect;
 const {exec, execSync, spawn} = require('child_process');
-const fs = require('fs');
+const fsPromises = require('fs').promises;
 
-const {spawnSwarm, despawnSwarm, swarm, createKeys} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
-const uuids = require('../utils/daemon/uuids');
 
+const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
+
+
+let swarm;
 
 describe('raft', () => {
 
@@ -21,37 +22,24 @@ describe('raft', () => {
 
             context('reconnecting', () => {
 
-                beforeEach('add new node to peerlist', () => {
-                    let fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/peers.json`, 'utf8'));
+                beforeEach('clear daemon state state', clearDaemonState);
 
-                    fileContent[3] = {
-                        "name": "peer4",
-                        "host": "127.0.0.1",
-                        "port": 50003,
-                        "uuid": "3dd73906-3315-4991-b53d-81ffdf77360c",
-                        "http_port": 8083
-                    };
-
-                    fs.writeFileSync(`./daemon-build/output/peers.json`, JSON.stringify(fileContent), 'utf8');
+                beforeEach('generate configs and set harness state', async () => {
+                    await generateSwarmConfigsAndSetState(4);
+                    swarm = getSwarmObj();
                 });
 
-                beforeEach('spawn swarm and elect leader', spawnSwarm);
+                beforeEach('spawn swarm', async function () {
+                    this.timeout(20000);
+                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
+                });
 
                 beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                beforeEach('create new node config', () => {
-
-                    execSync('cp -R ./configs/bluzelle2.json ./daemon-build/output/bluzelle3.json');
-
-                    editFile({
-                        filename: 'bluzelle3.json',
-                        changes: {
-                            listener_port: 50003,
-                            uuid: "3dd73906-3315-4991-b53d-81ffdf77360c",
-                            http_port: 8083
-                        }
-                    });
+                afterEach('remove configs and peerslist and clear harness state', () => {
+                    deleteConfigs();
+                    resetHarnessState();
                 });
 
                 afterEach('disconnect api', api.disconnect);
@@ -62,7 +50,9 @@ describe('raft', () => {
 
                     it('should sync', done => {
 
-                        const node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
+                        const newestNode = getNewestNodes(1);
+
+                        const node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                         node.stdout.on('data', data => {
 
@@ -75,11 +65,16 @@ describe('raft', () => {
 
                 context('with consistent but outdated state', () => {
 
-                    let node;
+                    let node, newestNode;
+                    let cfgIndexObj = {index: 0};
 
                     beforeEach('start new node', () => new Promise((res) => {
 
-                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
+                        newestNode = getNewestNodes(1);
+
+                        cfgIndexObj.index = swarm[newestNode[0]].index
+
+                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                         node.stdout.on('data', data => {
                             if (data.toString().includes('Received WS message:')) {
@@ -93,24 +88,26 @@ describe('raft', () => {
                     });
 
                     beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`));
+                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`));
 
                     beforeEach('create keys after disconnect', async () => {
                         await api.create('key2', '123');
                         await api.create('key3', '123');
                     });
 
-                    shared.daemonShouldSync(api, 'bluzelle3', 3)
+                    shared.daemonShouldSync(api, cfgIndexObj, 3)
 
                 });
 
                 context('with inconsistent .dat file', () => {
 
-                    let node;
+                    let node, newestNode;
 
                     beforeEach('start new node', () => new Promise((res) => {
 
-                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
+                        newestNode = getNewestNodes(1);
+
+                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                         node.stdout.on('data', data => {
                             if (data.toString().includes('Received WS message:')) {
@@ -124,24 +121,23 @@ describe('raft', () => {
                     });
 
                     beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle3'| awk '{print $2}')`));
+                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`));
 
-                    beforeEach('change index to render .dat file inconsistent', () => {
+                    beforeEach('change index to render .dat file inconsistent', async () => {
 
-                        let fileContent = fs.readFileSync(`./daemon-build/output/.state/3dd73906-3315-4991-b53d-81ffdf77360c.dat`, 'utf8');
+                        let fileContent = await fsPromises.readFile(`./daemon-build/output/.state/${swarm[newestNode].uuid}.dat`, 'utf8');
 
                         fileContent = fileContent.replace('1 1', '1 10');
 
-                        fs.writeFileSync(`./daemon-build/output/.state/3dd73906-3315-4991-b53d-81ffdf77360c.dat`, fileContent, 'utf8');
+                        await fsPromises.writeFile(`./daemon-build/output/.state/${swarm[newestNode].uuid}.dat`, fileContent, 'utf8');
                     });
 
                     it('should reject AppendEntries', async () => {
 
-                        const node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle3.json'], {cwd: './scripts'});
+                        const node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
-
                                 if (data.toString().includes('Rejecting AppendEntries because I do not agree with the previous index')) {
                                     resolve()
                                 }
@@ -154,18 +150,28 @@ describe('raft', () => {
 
             context('with sufficient nodes for consensus', () => {
 
-                beforeEach('spawn swarm and elect leader', spawnSwarm);
+                beforeEach('clear daemon state state', clearDaemonState);
+
+                beforeEach('generate configs and set harness state', async () => {
+                    await generateSwarmConfigsAndSetState(3);
+                    swarm = getSwarmObj();
+                });
+
+                beforeEach('spawn swarm', async function () {
+                    this.timeout(20000);
+                    await spawnSwarm({consensusAlgo: 'raft'})
+                });
 
                 beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-                // beforeEach('populate db', done => {
-                //     createKeys(done, api, process.env.numOfKeys);
-                // });
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
+                });
 
                 beforeEach('kill one follower', () => {
 
-                    const daemons = Object.keys(swarm.list);
+                    const daemons = Object.keys(swarm).filter((key) => key.includes('daemon'));
 
                     daemons.splice(daemons.indexOf(swarm.leader), 1);
 
@@ -174,25 +180,43 @@ describe('raft', () => {
                     execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`)
                 });
 
+                afterEach('remove configs and peerslist and clear harness state', () => {
+                    deleteConfigs();
+                    resetHarnessState();
+                });
+
+                afterEach('disconnect api', api.disconnect);
+
                 afterEach('despawn swarm', despawnSwarm);
 
                 shared.swarmIsOperational(api);
+
             });
 
             context('with insufficient nodes for consensus', () => {
 
-                beforeEach('spawn swarm and elect leader', spawnSwarm);
+                beforeEach('clear daemon state state', clearDaemonState);
 
-                beforeEach('initialize client api', async () => console.log(`leader port: ${swarm.list[swarm.leader]}`) ||
-                    await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('generate configs and set harness state', async () => {
+                    await generateSwarmConfigsAndSetState(3);
+                    swarm = getSwarmObj();
+                });
 
-                // beforeEach('populate db', done => {
-                //     createKeys(done, api, process.env.numOfKeys);
-                // });
+                beforeEach('spawn swarm', async function () {
+                    this.timeout(20000);
+                    await spawnSwarm({consensusAlgo: 'raft'})
+                });
+
+                beforeEach('initialize client api', async () =>
+                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+                beforeEach('populate db', done => {
+                    createKeys(done, api, process.env.numOfKeys);
+                });
 
                 beforeEach('kill all followers', () => {
 
-                    const daemons = Object.keys(swarm.list);
+                    const daemons = Object.keys(swarm).filter((key) => key.includes('daemon'));
 
                     daemons.splice(daemons.indexOf(swarm.leader), 1);
 
@@ -204,6 +228,13 @@ describe('raft', () => {
                     })
                 });
 
+                afterEach('remove configs and peerslist and clear harness state', () => {
+                    deleteConfigs();
+                    resetHarnessState();
+                });
+
+                afterEach('disconnect api', api.disconnect);
+
                 afterEach('despawn swarm', despawnSwarm);
 
                 shared.createShouldTimeout(api);
@@ -212,18 +243,41 @@ describe('raft', () => {
 
         context('leader dies', () => {
 
-            beforeEach('spawn swarm and elect leader', spawnSwarm);
+            beforeEach('clear daemon state state', clearDaemonState);
+
+            beforeEach('generate configs and set harness state', async () => {
+                await generateSwarmConfigsAndSetState(3);
+                swarm = getSwarmObj();
+            });
+
+            beforeEach('spawn swarm', async function () {
+                this.timeout(20000);
+                await spawnSwarm({consensusAlgo: 'raft'})
+            });
 
             beforeEach('initialize client api', async () =>
-                await api.connect(`ws://${process.env.address}:${swarm.list[swarm.leader]}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-            // beforeEach('populate db', done => {
-            //     createKeys(done, api, process.env.numOfKeys);
-            // });
+            beforeEach('populate db', done => {
+                createKeys(done, api, process.env.numOfKeys);
+            });
+
+            afterEach('remove configs and peerslist and clear harness state', () => {
+                deleteConfigs();
+                resetHarnessState();
+            });
+
+            afterEach('disconnect api', api.disconnect);
 
             afterEach('despawn swarm', despawnSwarm);
 
             it('should elect a new leader', async () => {
+
+                swarm = getSwarmObj();
+
+                let guaranteedNodes = swarm.guaranteedNodes.slice();
+
+                guaranteedNodes.splice(guaranteedNodes.indexOf(swarm.leader),1);
 
                 const killedLeader = swarm.leader;
 
@@ -231,7 +285,12 @@ describe('raft', () => {
 
                 execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`);
 
-                await waitUntil(() => swarm.leader !== killedLeader, 2000);
+                await waitUntil(async () => {
+
+                    await getCurrentLeader(swarm, guaranteedNodes);
+
+                    return swarm.leader !== killedLeader
+                }, 1000);
             })
         })
     });
