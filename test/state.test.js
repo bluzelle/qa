@@ -1,36 +1,54 @@
 const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
 
-const {startSwarm, killSwarm, createState, createKeys} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
+
+const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const api = require('../bluzelle-js/lib/bluzelle-node');
 
 
-let numOfKeys = 5;
+let swarm;
 
 describe('storage', () => {
 
-    beforeEach('create state', async () => {
-        await createState(api, 'stateExists', '123');
+    beforeEach('generate configs and set harness state', async () => {
+        await generateSwarmConfigsAndSetState(4);
+        swarm = getSwarmObj();
     });
 
-    beforeEach(async () => {
-        await startSwarm({maintainState: true});
+    beforeEach('spawn swarm', async function () {
+        this.timeout(20000);
+        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
     });
 
     beforeEach('initialize client api', async () =>
-        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+        await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-    beforeEach('populate db', done => {
-        createKeys(done, api, numOfKeys);
+    beforeEach('create state', async () => {
+        await api.create('stateExists', '123');
+    });
+
+    beforeEach('disconnect api after state creation', api.disconnect);
+
+    beforeEach('despawn swarm after state creation', despawnSwarm);
+
+    beforeEach('respawn swarm', async function () {
+        this.timeout(20000);
+        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3, maintainState: true})
+    });
+
+    beforeEach('reinitialize client api', async () =>
+        await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+
+    afterEach('remove configs and peerslist and clear harness state', () => {
+        deleteConfigs();
+        resetHarnessState();
     });
 
     afterEach('disconnect api', api.disconnect);
 
-    afterEach(async () => {
-        await killSwarm();
-    });
+    afterEach('despawn swarm', despawnSwarm);
 
     context('values', () => {
 
@@ -42,7 +60,16 @@ describe('storage', () => {
 
     context('a new node, after connecting to peers', () => {
 
-        shared.daemonShouldSync(api, 'bluzelle2', numOfKeys + 1);
+        let cfgIndexObj = {index: 0};
+
+        beforeEach('start new node', () => {
+
+            newestNode = getNewestNodes(1);
+
+            cfgIndexObj.index = swarm[newestNode[0]].index
+        });
+
+        shared.daemonShouldSync(api, cfgIndexObj, 1);
 
     });
 
@@ -50,13 +77,16 @@ describe('storage', () => {
 
         context('when exceeded', () => {
 
-            let node;
+            let node, newestNode;
 
-            beforeEach('edit config', () =>
-                editFile({filename: 'bluzelle2.json', changes: {max_storage: '700B'}}));
+            beforeEach('edit config', () => {
+                newestNode = getNewestNodes(1);
+                editFile({filename: `bluzelle${swarm[newestNode].index}.json`, changes: {max_storage: '700B'}})
+            });
 
             beforeEach('spawn node', () => {
-                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+                newestNode = getNewestNodes(1);
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
             });
 
             beforeEach('create key, exceed limit', () => {
@@ -92,7 +122,7 @@ describe('storage', () => {
                 });
 
                 await new Promise(resolve => {
-                    exec('cd ./daemon-build/output/; ./swarm -c bluzelle2.json', (error, stdout, stderr) => {
+                    exec(`cd ./daemon-build/output/; ./swarm -c bluzelle${swarm[newestNode].index}.json`, (error, stdout, stderr) => {
                         if (stdout.toString().includes('Maximum storage has been exceeded')) {
                             resolve()
                         }
@@ -110,11 +140,14 @@ describe('storage', () => {
                     });
                 });
 
-                beforeEach('edit file', () =>
-                    editFile({filename: 'bluzelle2.json', changes: {max_storage: '1GB'}}));
+                beforeEach('edit file', () => {
+                    newestNode = getNewestNodes(1);
+                    editFile({filename: `bluzelle${swarm[newestNode].index}.json`, changes: {max_storage: '1GB'}});
+                });
+
 
                 beforeEach('start daemon with increased limit', async () => {
-                    node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+                    node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                     await new Promise(resolve => {
                         node.stdout.on('data', data => {
