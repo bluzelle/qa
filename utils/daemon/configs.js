@@ -39,87 +39,108 @@ const configUtils = {
         return fileContent
     },
 
+    generateConfigs: async (numOfConfigs) => {
+
+        const template = readTemplate('./configs/template.json');
+
+        let uuidsList = uuids.generate(numOfConfigs);
+
+        let configsWithIndex = [...Array(numOfConfigs).keys()].map((internalIndex) => {
+
+            let currentIndex = configCounter.increment();
+
+            return {
+                content: new Config(template,
+                    {
+                        listener_port: template.listener_port + currentIndex,
+                        http_port: template.http_port + currentIndex,
+                        uuid: uuidsList[internalIndex]
+                    }),
+                index: currentIndex
+            }
+        });
+
+        await Promise.all(configsWithIndex.map((obj) =>
+            fsPromises.writeFile(`./daemon-build/output/bluzelle${obj.index}.json`, JSON.stringify(obj.content))));
+
+        return Promise.resolve(configsWithIndex);
+    },
+
+    writePeersList: async (configsWithIndex, {add} = {}) => {
+
+        let peers = [];
+
+        if (add) {
+            try {
+                let output = await fsPromises.readFile('./daemon-build/output/peers.json');
+                peers = JSON.parse(output)
+            } catch (err) {
+                console.log('Error reading existing peers list. \n' , + err.stack)
+            }
+        }
+
+        configsWithIndex.forEach(data => {
+            peers.push(
+                {
+                    name: `daemon${data.index}`,
+                    host: '127.0.0.1',
+                    port: data.content.listener_port,
+                    uuid: data.content.uuid,
+                    http_port: data.content.http_port
+                }
+            )
+        });
+
+        await fsPromises.writeFile(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
+
+        return peers
+    },
+
     generateSwarmConfigsAndSetState: async (numOfConfigs) => {
 
-        const configsWithIndex = await generateConfigs(numOfConfigs);
+        const configsWithIndex = await configUtils.generateConfigs(numOfConfigs);
 
-        const peersList = await generatePeersList(configsWithIndex);
+        const peersList = await configUtils.writePeersList(configsWithIndex);
 
-        setHarnessState(configsWithIndex);
+        configUtils.setHarnessState(configsWithIndex);
 
-        return [swarm, peersList]
+        return [configsWithIndex, peersList]
     },
 
     getSwarmObj: () => swarm,
 
+    setHarnessState: (configsWithIndex) => {
+
+        configsWithIndex.forEach(data => {
+
+            swarm[`daemon${data.index}`] =
+                {
+                    uuid: data.content.uuid,
+                    port: data.content.listener_port,
+                    http_port: data.content.http_port,
+                    index: data.index
+                }
+        });
+
+        return swarm
+    },
+
     resetHarnessState: () => {
         configCounter.reset();
         swarm = {};
+    },
+
+    getNewestNodes: (numOfNodesToReturn) => {
+
+        const filteredDaemonList = Object.keys(swarm).filter(key => key.includes('daemon'));
+
+        const newestNodes = filteredDaemonList.slice(- numOfNodesToReturn);
+
+        return newestNodes
     }
 };
 
 module.exports = configUtils;
-
-
-const setHarnessState = (configsWithIndex) => {
-
-    configsWithIndex.forEach(data => {
-
-        swarm[`daemon${data.index}`] =
-            {
-                uuid: data.content.uuid,
-                port: data.content.listener_port,
-                http_port: data.content.http_port,
-                index: data.index
-            }
-    });
-};
-
-const generateConfigs = async (numOfConfigs) => {
-
-    const template = readTemplate('./configs/template.json');
-
-    let uuidsList = uuids.generate(numOfConfigs);
-
-    let configsWithIndex = [...Array(numOfConfigs).keys()].map(() => {
-
-        let currentIndex = configCounter.increment();
-
-        return {
-            content: new Config(template,
-                {
-                    listener_port: template.listener_port + currentIndex,
-                    http_port: template.http_port + currentIndex,
-                    uuid: uuidsList[currentIndex]
-                }),
-            index: currentIndex
-        }
-    });
-
-    await Promise.all(configsWithIndex.map((obj) =>
-        fsPromises.writeFile(`./daemon-build/output/bluzelle${obj.index}.json`, JSON.stringify(obj.content))));
-
-    return Promise.resolve(configsWithIndex);
-};
-
-const generatePeersList = async (configsWithIndex) => {
-
-    let peers = [];
-
-    configsWithIndex.forEach(data => {
-        peers.push({
-            name: `daemon${data.index}`,
-            host: '127.0.0.1',
-            port: data.content.listener_port,
-            uuid: data.content.uuid,
-            http_port: data.content.http_port
-        })
-    });
-
-    await fsPromises.writeFile(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
-
-    return peers
-};
 
 const configCounter = {
     counter: -1,

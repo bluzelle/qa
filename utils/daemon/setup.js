@@ -103,20 +103,24 @@ const setupUtils = {
             )
     },
 
-    spawnSwarm: async (done, consensusAlgo) => {
+    spawnSwarm: async ({consensusAlgo, partialSpawn} = {}) => {
 
         setupUtils.clearDaemonState();
 
         let swarm = getSwarmObj();
 
+        const nodesToSpawn = partialSpawn ? Object.keys(swarm).slice(0, partialSpawn) : Object.keys(swarm);
+
         const FAILURE_ALLOWED = 0.2;
 
         const MINIMUM_NODES = Math.floor(Object.keys(swarm).length * ( 1 - FAILURE_ALLOWED));
 
-        let successNodes;
+        let guaranteedNodes;
 
         try {
-            successNodes = await PromiseSome(Object.keys(swarm).map((daemon) => new Promise((res, rej) => {
+            console.log(`Spawning ${nodesToSpawn.length} nodes.`);
+
+            guaranteedNodes = await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
                 const rejTimer = setTimeout(() => {
                     rej(new Error(`${daemon} stdout: \n ${buffer}`))
@@ -135,7 +139,10 @@ const setupUtils = {
                     }
                 })
 
-            })), MINIMUM_NODES)
+            })), MINIMUM_NODES);
+
+            swarm.guaranteedNodes = guaranteedNodes;
+
         } catch(err) {
 
             err.forEach((e) => {
@@ -145,43 +152,50 @@ const setupUtils = {
 
 
         if (consensusAlgo === 'raft') {
-
-            try {
-                socket = new WebSocket(`ws://127.0.0.1:${swarm[successNodes[0]].port}`);
-            } catch (err) {
-                console.log(`Failed to connect to leader. \n ${err.stack}`)
-            }
-
-            socket.on('open', () => {
-                // timeout required until KEP-684 bug resolved
-                setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 1500)
-            });
-
-            socket.on('message', (message) => {
-
-                let msg = JSON.parse(message);
-
-                if (msg.error) {
-                    swarm.leader = msg.message.leader.name
-                } else {
-                    swarm.leader = successNodes[0];
-                }
-                done()
-            })
+            await setupUtils.getCurrentLeader(swarm, guaranteedNodes)
         }
 
         if (consensusAlgo === 'pbft') {
+            await new Promise((res) => {
+
             swarm.daemon0.stream.stdout
                 .pipe(split())
                 .on('data', function (line) {
                     // daemon implementation starts with daemon1 as primary
                     // `sorted_uuids_list[view_number % number_of_nodes]`
                     if (line.toString().includes(`primary: "${swarm.daemon1.uuid}"`)) {
-                        done()
+                        res(swarm.daemon1.uuid)
                     }
                 });
+            })
         }
     },
+
+    getCurrentLeader: (swarm, reliableNodes = swarm.guaranteedNodes) => new Promise((res) => {
+
+        try {
+            socket = new WebSocket(`ws://127.0.0.1:${swarm[reliableNodes[0]].port}`);
+        } catch (err) {
+            console.log(`Failed to connect to leader. \n ${err.stack}`)
+        }
+
+        socket.on('open', () => {
+            // timeout required until KEP-684 bug resolved
+            setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 1500)
+        });
+
+        socket.on('message', (message) => {
+
+            let msg = JSON.parse(message);
+
+            if (msg.error) {
+                swarm.leader = msg.message.leader.name
+            } else {
+                swarm.leader = swarm.guaranteedNodes[0];
+            }
+            res(swarm.leader)
+        })
+    }),
 
     despawnSwarm: () => {
         execSync('pkill -2 swarm');
