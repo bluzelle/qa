@@ -35,8 +35,8 @@ describe('pbft', () => {
         });
     });
 
-    beforeEach('spawn PBFT swarm', (done) => {
-        spawnSwarm(done, 'pbft')
+    beforeEach('spawn PBFT swarm', async () => {
+        await spawnSwarm('pbft')
     });
 
     afterEach('despawn swarm', despawnSwarm);

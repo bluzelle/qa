@@ -2,7 +2,7 @@ const assert = require('assert');
 const {expect} = require('chai');
 
 const {spawnSwarm, despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
-const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
+const {generateSwarmConfigsAndSetState, generateConfigs, writePeersList, setHarnessState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
 
 
 const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};
@@ -26,9 +26,9 @@ describe('multi-client', () => {
         swarm = getSwarmObj();
     });
 
-    beforeEach('spawn swarm', function (done) {
+    beforeEach('spawn swarm', async function () {
         this.timeout(20000);
-        spawnSwarm(done, 'raft')
+        await spawnSwarm({consensusAlgo: 'raft'})
     });
 
     afterEach('remove configs and peerslist and clear harness state', () => {
