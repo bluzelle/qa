@@ -22,8 +22,6 @@ describe('raft', () => {
 
             context('reconnecting', () => {
 
-                beforeEach('clear daemon state state', clearDaemonState);
-
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(4);
                     swarm = getSwarmObj();
@@ -150,8 +148,6 @@ describe('raft', () => {
 
             context('with sufficient nodes for consensus', () => {
 
-                beforeEach('clear daemon state state', clearDaemonState);
-
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(3);
                     swarm = getSwarmObj();
@@ -194,8 +190,6 @@ describe('raft', () => {
             });
 
             context('with insufficient nodes for consensus', () => {
-
-                beforeEach('clear daemon state state', clearDaemonState);
 
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(3);
@@ -242,8 +236,6 @@ describe('raft', () => {
         });
 
         context('leader dies', () => {
-
-            beforeEach('clear daemon state state', clearDaemonState);
 
             beforeEach('generate configs and set harness state', async () => {
                 await generateSwarmConfigsAndSetState(3);

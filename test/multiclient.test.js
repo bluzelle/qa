@@ -19,8 +19,6 @@ let swarm;
 
 describe('multi-client', () => {
 
-    beforeEach('clear daemon state state', clearDaemonState);
-
     beforeEach('generate configs and set harness state', async () => {
         await generateSwarmConfigsAndSetState(5);
         swarm = getSwarmObj();
