@@ -103,17 +103,26 @@ const setupUtils = {
             )
     },
 
-    spawnSwarm: async ({consensusAlgo, partialSpawn} = {}) => {
+    spawnSwarm: async ({consensusAlgo, partialSpawn, maintainState} = {}) => {
 
-        setupUtils.clearDaemonState();
+        if (!maintainState) {
+            // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+            setupUtils.clearDaemonState();
+        }
 
         let swarm = getSwarmObj();
 
-        const nodesToSpawn = partialSpawn ? Object.keys(swarm).slice(0, partialSpawn) : Object.keys(swarm);
+        let filteredSwarm = Object.keys(swarm).filter(key => key.includes('daemon'))
+            .reduce((obj, key) => {
+                obj[key] = swarm[key];
+                return obj
+            }, {});
+
+        const nodesToSpawn = partialSpawn ? Object.keys(filteredSwarm).slice(0, partialSpawn) : Object.keys(filteredSwarm);
 
         const FAILURE_ALLOWED = 0.2;
 
-        const MINIMUM_NODES = Math.floor(Object.keys(swarm).length * ( 1 - FAILURE_ALLOWED));
+        const MINIMUM_NODES = Math.floor(Object.keys(filteredSwarm).length * ( 1 - FAILURE_ALLOWED));
 
         let guaranteedNodes;
 
