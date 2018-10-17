@@ -1,46 +1,90 @@
 const {spawn, execSync} = require('child_process');
 
-const {startSwarm, killSwarm, createKeys} = require('../utils/daemon/setup');
 const shared = require('./shared');
 const api = require('../bluzelle-js/lib/bluzelle.node');
 
 
-describe('scenarios', () => {
+const {startSwarm, killSwarm, spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
+
+let swarm;
+
+describe.skip('scenarios', () => {
 
     // KEP-489
     context('recover from restart', () => {
 
-        beforeEach('start swarm', async () => {
-            await startSwarm();
+        beforeEach('generate configs and set harness state', async () => {
+            await generateSwarmConfigsAndSetState(3);
+            swarm = getSwarmObj();
+        });
 
-            await spawnNode('bluzelle2');
+        beforeEach('spawn swarm', async function () {
+            this.timeout(20000);
+            await spawnSwarm({consensusAlgo: 'raft'})
         });
 
         beforeEach('initialize client api', async () =>
-            await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+            await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
-        beforeEach('populate db', done =>
-            createKeys(done, api, process.env.numOfKeys));
 
+        beforeEach('populate db', async function() {
+            this.timeout(20000);
+
+            await createKeys(api, 5, 500);
+
+            console.log(await api.keys());
+            console.log((await api.keys()).length);
+
+        });
+
+        // beforeEach('restart 3rd node', async () => {
+        //
+        // });
+
+        // beforeEach('populate db', done =>
+        //     createKeys(done, api, process.env.numOfKeys));
+        //
         beforeEach('restarting 3rd node', async () => {
 
-            execSync(`kill $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
+            execSync('ps aux | grep swarm', (err, stdout, stderr) => {
+                console.log(err.toString())
+                console.log(stdout.toString())
+                console.log(stderr.toString())
+            })
+
+            // await new Promise((resolve) => {
+                execSync(`pkill -9 $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
+                // setTimeout(resolve, 1000)
+            // });
 
             await spawnNode('bluzelle2');
 
         });
 
-        beforeEach('delete 3rd node state file, kill 3rd node', () => {
-
-            execSync('rm ./daemon-build/output/.state/3726ec5f-72b4-4ce6-9e60-f5c47f619a41.dat');
+        beforeEach('delete 3rd node state file, kill 3rd node', async () => {
 
             execSync(`kill $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
+
+            execSync(`rm ./daemon-build/output/.state/${swarm.daemon2.uuid}.dat`);
+
+            await new Promise((resolve) => {
+                execSync(`pkill -9 $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
+                setTimeout(resolve, 1000)
+            });
         });
 
         beforeEach('start 3rd node', async () =>
             await spawnNode('bluzelle2'));
 
-        afterEach('kill swarm', killSwarm);
+        afterEach('remove configs and peerslist and clear harness state', () => {
+            deleteConfigs();
+            resetHarnessState();
+        });
+
+        afterEach('disconnect api', api.disconnect);
+
+        afterEach('despawn swarm', despawnSwarm);
 
         shared.swarmIsOperational(api);
     });
