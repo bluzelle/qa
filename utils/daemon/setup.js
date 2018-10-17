@@ -84,26 +84,22 @@ const setupUtils = {
         await setupUtils.killSwarm();
     },
 
-    createKeys: (done, api, numOfKeys) => {
+    createKeys: async (api, numOfKeys, ms) => {
 
-        const chunkedArr = chunk([...Array(parseInt(numOfKeys)).keys()]);
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-        chunkedArr.reduce((acc, batch) =>
-            acc.then(() => Promise.all(
-                batch.map((v) => api.create(`batch-key${v}`, 'value'))
-            )), Promise.resolve())
-            .then(() => api.keys()
-                .then(keys => {
-                    if (keys.length >= numOfKeys) {
-                        done()
-                    } else {
-                        throw new Error(`Failed to create ${numOfKeys} keys`);
-                    }
-                })
-            )
+        const batched = chunk([...Array(parseInt(numOfKeys)).keys()]);
+
+        let batchedWithDelay = batched.reduce((acc, cur) => {
+            acc.push(cur);
+            acc.push(delay);
+            return acc
+        }, []);
+
+        await processAssortedArray(batchedWithDelay, api, ms);
     },
 
-    spawnSwarm: async ({consensusAlgo, partialSpawn, maintainState} = {}) => {
+    spawnSwarm: async ({consensusAlgo, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
 
         if (!maintainState) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
@@ -120,9 +116,7 @@ const setupUtils = {
 
         const nodesToSpawn = partialSpawn ? Object.keys(filteredSwarm).slice(0, partialSpawn) : Object.keys(filteredSwarm);
 
-        const FAILURE_ALLOWED = 0.2;
-
-        const MINIMUM_NODES = Math.floor(Object.keys(filteredSwarm).length * ( 1 - FAILURE_ALLOWED));
+        const MINIMUM_NODES = Math.floor(Object.keys(filteredSwarm).length * ( 1 - failureAllowed));
 
         let guaranteedNodes;
 
@@ -242,7 +236,7 @@ const difference = (arr1, arr2) => {
         .concat(arr2.filter(item => !arr1.includes(item)));
 };
 
-const chunk = (array, batchSize = 10) => {
+const chunk = (array, batchSize = 5) => {
     const chunked = [];
 
     for (let i = 0; i < array.length; i += batchSize) {
@@ -250,6 +244,16 @@ const chunk = (array, batchSize = 10) => {
     }
 
     return chunked;
+};
+
+const processAssortedArray = async (array, api, delay) => {
+    for (ele of array) {
+        if (typeof(ele) === 'function') {
+            await ele(delay)
+        } else {
+            await Promise.all(ele.map((v) => api.create('batch-key' + v, 'value')))
+        }
+    }
 };
 
 module.exports = setupUtils;
