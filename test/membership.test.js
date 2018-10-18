@@ -2,12 +2,14 @@ const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 
-const api = require('../bluzelle-js/lib/bluzelle-node');
-const {startSwarm, killSwarm, spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
 let swarm;
+
+let clientsObj = {};
 
 describe('swarm membership', () => {
 
@@ -36,7 +38,7 @@ describe('swarm membership', () => {
                         swarm = getSwarmObj();
                     });
 
-                    beforeEach(() => {
+                    beforeEach('edit manually started node cfg', () => {
 
                         editFile(
                             {
@@ -55,8 +57,22 @@ describe('swarm membership', () => {
                         await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 2})
                     });
 
-                    beforeEach('initialize client api', async () =>
-                        await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                    beforeEach('initialize client', () => {
+
+                        clientsObj.api = new BluzelleClient(
+                            `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+                            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+                            false
+                        );
+
+                    });
+
+                    beforeEach('connect client', async () => {
+                        await clientsObj.api.connect()
+                    });
+
+                    beforeEach('populate db', async () =>
+                        await createKeys(clientsObj, 5, 500));
 
                     beforeEach('open ws connection to leader and send msg', done =>
                         openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
@@ -72,13 +88,13 @@ describe('swarm membership', () => {
                         resetHarnessState();
                     });
 
-                    afterEach('disconnect api', api.disconnect);
+                    afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                     afterEach('despawn swarm', despawnSwarm);
 
                     context('is operational', () => {
 
-                        shared.swarmIsOperational(api);
+                        shared.swarmIsOperational(clientsObj);
 
                     });
 
@@ -154,7 +170,7 @@ describe('swarm membership', () => {
                     swarm = getSwarmObj();
                 });
 
-                beforeEach('edit daemon config', () => {
+                beforeEach('edit manually started node config', () => {
 
                     editFile(
                         {
@@ -173,6 +189,20 @@ describe('swarm membership', () => {
                     await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 2})
                 });
 
+                beforeEach('initialize client', () => {
+
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+                        '71e2cd35-b606-41e6-bb08-f20de30df76c',
+                        false
+                    );
+
+                });
+
+                beforeEach('connect client', async () => {
+                    await clientsObj.api.connect()
+                });
+
                 beforeEach('open ws connection to leader and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
 
@@ -182,15 +212,15 @@ describe('swarm membership', () => {
                     newPeer.stdout.on('data', () => {});
                 });
 
-                // beforeEach('populate db', done =>
-                //     createKeys(done, api, process.env.numOfKeys));
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
                     deleteConfigs();
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -240,8 +270,19 @@ describe('swarm membership', () => {
                     });
                 });
 
-                beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('initialize client and connect', async () => {
+
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}:${process.env.address}:${swarm[swarm.leader].port}`,
+                        '71e2cd35-b606-41e6-bb08-f20de30df76c',
+                        false
+                    );
+
+                    await clientsObj.api.connect()
+                });
+
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
 
                 beforeEach('open ws connection to leader and send msg', done => {
                     const unstartedNode = getNewestNodes(1)[0];
@@ -249,15 +290,12 @@ describe('swarm membership', () => {
 
                 });
 
-                // beforeEach('populate db', done =>
-                //     createKeys(done, api, process.env.numOfKeys));
-
                 afterEach('remove configs and peerslist and clear harness state', () => {
                     deleteConfigs();
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -274,7 +312,7 @@ describe('swarm membership', () => {
 
                     context('still online', () => {
 
-                        shared.swarmIsOperational(api);
+                        shared.swarmIsOperational(clientsObj);
 
                     });
 
@@ -283,7 +321,7 @@ describe('swarm membership', () => {
                         beforeEach('kill removed peer', () =>
                             exec(`kill $(ps aux | grep 'bluzelle2' | awk '{print $2}')`));
 
-                        shared.swarmIsOperational(api);
+                        shared.swarmIsOperational(clientsObj);
 
                     });
                 });
@@ -301,8 +339,19 @@ describe('swarm membership', () => {
                     await spawnSwarm({consensusAlgo: 'raft', failureAllowed: 0})
                 });
 
-                beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('initialize client and connect', async () => {
+
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}:${process.env.address}:${swarm[swarm.leader].port}`,
+                        '71e2cd35-b606-41e6-bb08-f20de30df76c',
+                        false
+                    );
+
+                    await clientsObj.api.connect()
+                });
+
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
 
                 beforeEach('open ws connection to leader and send msg', done => {
                     const nodeAliveInSwarm = swarm.guaranteedNodes[0];
@@ -314,13 +363,13 @@ describe('swarm membership', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
                 context('is NOT operational', () => {
 
-                    shared.createShouldTimeout(api);
+                    shared.createShouldTimeout(clientsObj);
                 });
             });
         });

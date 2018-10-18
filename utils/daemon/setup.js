@@ -84,7 +84,7 @@ const setupUtils = {
         await setupUtils.killSwarm();
     },
 
-    createKeys: async (api, numOfKeys, ms) => {
+    createKeys: async (clientsObj, numOfKeys, ms) => {
 
         const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -96,7 +96,7 @@ const setupUtils = {
             return acc
         }, []);
 
-        await processAssortedArray(batchedWithDelay, api, ms);
+        await processAssortedArray(batchedWithDelay, clientsObj, ms);
     },
 
     spawnSwarm: async ({consensusAlgo, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
@@ -201,7 +201,7 @@ const setupUtils = {
     }),
 
     despawnSwarm: () => {
-        execSync('pkill -2 swarm');
+        execSync('pkill -9 swarm');
     },
 
     deleteConfigs: () => {
@@ -246,12 +246,12 @@ const chunk = (array, batchSize = 5) => {
     return chunked;
 };
 
-const processAssortedArray = async (array, api, delay) => {
+const processAssortedArray = async (array, clientsObj, delay) => {
     for (ele of array) {
         if (typeof(ele) === 'function') {
             await ele(delay)
         } else {
-            await Promise.all(ele.map((v) => api.create('batch-key' + v, 'value')))
+            await Promise.all(ele.map((v) => clientsObj.api.create('batch-key' + v, 'value')))
         }
     }
 };

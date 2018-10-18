@@ -1,6 +1,6 @@
 const {spawnSwarm, despawnSwarm, createKeys} = require('../utils/daemon/setup');
 const {editFile, getSwarmObj} = require('../utils/daemon/configs');
-const api = require('../bluzelle-js/lib/bluzelle.node');
+const api = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {execSync} = require('child_process');

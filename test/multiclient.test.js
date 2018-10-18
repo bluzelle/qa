@@ -1,20 +1,12 @@
 const assert = require('assert');
 const {expect} = require('chai');
 
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
 
 
-const clients = {'api1': null, 'api2': null, 'api3': null, 'api4': null};
-
-clients.api1 = require('../bluzelle-js/lib/bluzelle-node');
-
-// This enables us to have two copies of the library with separate state
-delete require.cache[require.resolve('../bluzelle-js/lib/bluzelle-node')];
-
-clients.api2 = require('../bluzelle-js/lib/bluzelle-node');
-
-
+let clients = {};
 let swarm;
 
 describe('multi-client', () => {
@@ -29,6 +21,22 @@ describe('multi-client', () => {
         await spawnSwarm({consensusAlgo: 'raft'})
     });
 
+    beforeEach('initialize clients', () => {
+
+        clients.api1 = new BluzelleClient(
+            `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+            '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+            false
+        );
+
+        clients.api2 = new BluzelleClient(
+            `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            false
+        );
+
+    });
+
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
         resetHarnessState();
@@ -38,10 +46,9 @@ describe('multi-client', () => {
 
     context('distinct uuids', () => {
 
-        beforeEach('initialize clients', async () => {
-            await clients.api1.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
-
-            await clients.api2.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        beforeEach('connect clients', async () => {
+            await clients.api1.connect();
+            await clients.api2.connect();
         });
 
         afterEach('disconnect clients', () => {
@@ -127,15 +134,23 @@ describe('multi-client', () => {
 
     describe('colliding uuid', () => {
 
-        beforeEach('initializing clients', async () => {
-            await clients.api1.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+        beforeEach('initialize new client with colliding uuid', () => {
 
-            await clients.api2.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814');
+            clients.api3 = new BluzelleClient(
+                `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                false
+            );
+        });
+
+        beforeEach('connect clients', async () => {
+            await clients.api1.connect();
+            await clients.api3.connect();
         });
 
         afterEach('disconnect clients', () => {
             clients.api1.disconnect();
-            clients.api2.disconnect();
+            clients.api3.disconnect();
         });
 
         it('client1 should be able to write to database', async () => {
@@ -144,29 +159,27 @@ describe('multi-client', () => {
         });
 
         it('client2 should be able to write to database', async () => {
-            await clients.api2.create('myKey', '345');
-            assert(await clients.api2.read('myKey') === '345');
+            await clients.api3.create('myKey', '345');
+            assert(await clients.api3.read('myKey') === '345');
         });
 
         it('should throw an error when creating the same key twice', done => {
 
             clients.api1.create('mykey', '123').then(() => {
 
-                clients.api2.create('mykey', '321')
+                clients.api3.create('mykey', '321')
                     .catch(error => {
                         expect(error.toString()).to.include('RECORD_EXISTS');
                         done()
                     });
-
             });
-
         });
 
         context('creating, updating, and then reading', () => {
 
             beforeEach('creating state', async () => {
                 await clients.api1.create('myTextKey', 'hello world');
-                await clients.api2.update('myTextKey', 'goodbye world');
+                await clients.api3.update('myTextKey', 'goodbye world');
             });
 
             it('value should be updated by last call', async () => {
@@ -180,7 +193,7 @@ describe('multi-client', () => {
 
             beforeEach('creating state', async () => {
                 await clients.api1.create('myTextKey', 'hello world');
-                await clients.api2.remove('myTextKey');
+                await clients.api3.remove('myTextKey');
             });
 
             it('should throw error when attempting to read', done => {

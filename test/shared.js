@@ -1,46 +1,48 @@
 const {expect} = require('chai');
 const {spawn} = require('child_process');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 
-exports.swarmIsOperational = api => {
+exports.swarmIsOperational = clientsObj => {
 
     it('should be able to create', async () => {
+        debugger
 
-        await api.create('key', '123');
+        await clientsObj.api.create('key', '123');
     });
 
     it('should be able to read', async () => {
 
-        await api.create('key', 'abc');
+        await clientsObj.api.create('key', 'abc');
 
-        expect(await api.read('key')).to.be.equal('abc');
+        expect(await clientsObj.api.read('key')).to.be.equal('abc');
     });
 
     it('should be able to update', async () => {
 
-        await api.create('key', '123');
+        await clientsObj.api.create('key', '123');
 
-        await api.update('key', 'abc');
+        await clientsObj.api.update('key', 'abc');
 
-        expect(await api.read('key')).to.equal('abc');
+        expect(await clientsObj.api.read('key')).to.equal('abc');
 
     });
 
     it('should be able to delete', async () => {
 
-        await api.create('key', '123');
+        await clientsObj.api.create('key', '123');
 
-        await api.remove('key');
+        await clientsObj.api.remove('key');
 
-        expect(await api.has('key')).to.be.false;
+        expect(await clientsObj.api.has('key')).to.be.false;
     })
 };
 
-exports.createShouldTimeout = api => {
+exports.createShouldTimeout = clientsObj => {
 
     it('create should timeout at api level', done => {
 
-        api.create('key', '123')
+        clientsObj.api.create('key', '123')
             .then(() => {
                 throw new Error('Create was successful, expected to fail.')
             })
@@ -56,7 +58,7 @@ exports.daemonShouldSync = (api, cfgIndexObj, numOfKeys) => {
 
     let newPeer;
 
-    beforeEach('disconnect api', api.disconnect);
+    // beforeEach('disconnect api', () => api.disconnect());
 
     beforeEach('start daemon', () => new Promise((res) => {
         newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${cfgIndexObj.index}.json`], {cwd: './scripts'})
@@ -67,8 +69,20 @@ exports.daemonShouldSync = (api, cfgIndexObj, numOfKeys) => {
         });
     }));
 
-    beforeEach('connect to specific daemon', async () =>
-        await api.connect(`ws://${process.env.address}:50002`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+    beforeEach('initialize client', () => {
+
+        api = new BluzelleClient(
+            `ws://${process.env.address}:50002`,
+            '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+            false
+        );
+    });
+
+    beforeEach('connect client', async () =>
+        await api.connect());
+
+    // beforeEach('connect to specific daemon', async () =>
+    //     await api.connect(`ws://${process.env.address}:50002`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
     it('should sync and return full keylist', async () => new Promise((res, rej) => {
 

@@ -2,14 +2,16 @@ const waitUntil = require("async-wait-until");
 const {exec, execSync, spawn} = require('child_process');
 const fsPromises = require('fs').promises;
 
-const api = require('../bluzelle-js/lib/bluzelle-node');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 
 
-let swarm;
+let swarm, api;
+
+let clientsObj = {};
 
 describe('raft', () => {
 
@@ -32,15 +34,24 @@ describe('raft', () => {
                     await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
                 });
 
-                beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('initialize client', () => {
+
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                        false
+                    );
+                });
+
+                beforeEach('connect client', async () =>
+                    await clientsObj.api.connect());
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
                     deleteConfigs();
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -82,18 +93,18 @@ describe('raft', () => {
                     }));
 
                     beforeEach('create key', async () => {
-                        await api.create('key1', '123')
+                        await clientsObj.api.create('key1', '123')
                     });
 
                     beforeEach('kill node', () =>
                         execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`));
 
                     beforeEach('create keys after disconnect', async () => {
-                        await api.create('key2', '123');
-                        await api.create('key3', '123');
+                        await clientsObj.api.create('key2', '123');
+                        await clientsObj.api.create('key3', '123');
                     });
 
-                    shared.daemonShouldSync(api, cfgIndexObj, 3)
+                    shared.daemonShouldSync(clientsObj, cfgIndexObj, 3)
 
                 });
 
@@ -115,7 +126,7 @@ describe('raft', () => {
                     }));
 
                     beforeEach('create key', async () => {
-                        await api.create('key1', '123')
+                        await clientsObj.api.create('key1', '123')
                     });
 
                     beforeEach('kill node', () =>
@@ -158,12 +169,21 @@ describe('raft', () => {
                     await spawnSwarm({consensusAlgo: 'raft'})
                 });
 
-                beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('initialize client', () => {
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                        false
+                    );
                 });
+
+                beforeEach('connect client', async () =>
+                    await clientsObj.api.connect());
+
+                // beforeEach('populate db', done => {
+                //     createKeys(done, api, process.env.numOfKeys);
+                // });
 
                 beforeEach('kill one follower', () => {
 
@@ -181,11 +201,11 @@ describe('raft', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
-                shared.swarmIsOperational(api);
+                shared.swarmIsOperational(clientsObj);
 
             });
 
@@ -201,12 +221,21 @@ describe('raft', () => {
                     await spawnSwarm({consensusAlgo: 'raft'})
                 });
 
-                beforeEach('initialize client api', async () =>
-                    await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+                beforeEach('initialize client', () => {
 
-                beforeEach('populate db', done => {
-                    createKeys(done, api, process.env.numOfKeys);
+                    clientsObj.api = new BluzelleClient(
+                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                        false
+                    );
                 });
+
+                beforeEach('connect client', async () =>
+                    await clientsObj.api.connect());
+
+                // beforeEach('populate db', done => {
+                //     createKeys(done, api, process.env.numOfKeys);
+                // });
 
                 beforeEach('kill all followers', () => {
 
@@ -227,11 +256,11 @@ describe('raft', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', api.disconnect);
+                afterEach('disconnect api', () => clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
-                shared.createShouldTimeout(api);
+                shared.createShouldTimeout(clientsObj);
             })
         });
 
@@ -247,19 +276,28 @@ describe('raft', () => {
                 await spawnSwarm({consensusAlgo: 'raft'})
             });
 
-            beforeEach('initialize client api', async () =>
-                await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+            beforeEach('initialize client', () => {
 
-            beforeEach('populate db', done => {
-                createKeys(done, api, process.env.numOfKeys);
+                clientsObj.api = new BluzelleClient(
+                    `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                    '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                    false
+                );
             });
+
+            beforeEach('connect client', async () =>
+                await clientsObj.api.connect());
+
+            // beforeEach('populate db', done => {
+            //     createKeys(done, api, process.env.numOfKeys);
+            // });
 
             afterEach('remove configs and peerslist and clear harness state', () => {
                 deleteConfigs();
                 resetHarnessState();
             });
 
-            afterEach('disconnect api', api.disconnect);
+            afterEach('disconnect api', () => clientsObj.api.disconnect());
 
             afterEach('despawn swarm', despawnSwarm);
 
