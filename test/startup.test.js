@@ -20,23 +20,23 @@ describe('daemon startup', () => {
 
         context('accepts flags', () => {
 
-            it('accepts -h', (done) => {
+            it('accepts -h', async () => new Promise((resolve) => {
 
                 exec('cd ./daemon-build/output/; ./swarm -h', (error, stdout, stderr) => {
                     if (stdout.includes('bluzelle [OPTION]')) {
-                        done()
+                        resolve()
                     }
                 })
-            });
+            }));
 
-            it('accepts -c', (done) => {
+            it('accepts -c', async () => new Promise((resolve) => {
 
                 exec('cd ./daemon-build/output/; ./swarm -c', (error, stdout, stderr) => {
                     if (stderr.includes("ERROR: the required argument for option '--config' is missing")) {
-                        done()
+                        resolve()
                     }
                 })
-            })
+            }))
 
         });
 
@@ -46,45 +46,45 @@ describe('daemon startup', () => {
 
             context('with valid value', () => {
 
-                it('successfully changes time scale', (done) => {
+                it('successfully changes time scale', async () => new Promise((resolve) => {
 
                     node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json', 'env RAFT_TIMEOUT_SCALE=2'], {cwd: './scripts'});
 
                     node.stdout.on('data', (data) => {
                         if (data.toString().includes('RAFT_TIMEOUT_SCALE: 2')) {
-                            done()
+                            resolve()
                         }
                     })
-                });
+                }));
             });
 
             context('without env variable', () => {
 
-                it('time scale is unchanged at 1', (done) => {
+                it('time scale is unchanged at 1', async () => new Promise((resolve) => {
 
                     node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
 
                     node.stdout.on('data', (data) => {
                         if (data.toString().includes('RAFT_TIMEOUT_SCALE: 1')) {
-                            done()
+                            resolve()
                         }
                     })
-                });
+                }));
             });
 
             context('with invalid value', () => {
 
-                it('time scale is unchanged at 1', (done) => {
+                it('time scale is unchanged at 1', async () => new Promise((resolve) => {
 
                     node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json', 'env RAFT_TIMEOUT_SCALE=abcdef'], {cwd: './scripts'});
 
                     node.stdout.on('data', (data) => {
                         if (data.toString().includes('RAFT_TIMEOUT_SCALE: 1')) {
-                            done()
+                            resolve()
                         }
                     });
 
-                });
+                }));
             });
         });
     });
@@ -96,9 +96,9 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle0.json', deleteKey: ['listener_address']}));
 
-            it('throws error if not present', (done) => {
+            it('throws error if not present', async () => {
 
-                spawnAndRead(done, "the option 'listener_address' is required but missing");
+                await spawnAndRead("the option 'listener_address' is required but missing");
 
             });
 
@@ -109,8 +109,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle0.json', deleteKey: ['listener_port']}));
 
-            it('throws error if not present', (done) => {
-                spawnAndRead(done, "the option 'listener_port' is required but missing");
+            it('throws error if not present', async () => {
+                await spawnAndRead("the option 'listener_port' is required but missing");
             });
 
         });
@@ -120,8 +120,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle0.json', deleteKey: ['ethereum_io_api_token']}));
 
-            it('throws error if not present', (done) => {
-                spawnAndRead(done, "the option 'ethereum_io_api_token' is required but missing");
+            it('throws error if not present', async () => {
+                await spawnAndRead("the option 'ethereum_io_api_token' is required but missing");
             });
 
         });
@@ -133,8 +133,8 @@ describe('daemon startup', () => {
                 beforeEach(() =>
                     editFile({filename: 'bluzelle0.json', deleteKey: ['ethereum']}));
 
-                it('throws error', (done) => {
-                    spawnAndRead(done, "the option 'ethereum' is required but missing");
+                it('throws error', async () => {
+                    await spawnAndRead("the option 'ethereum' is required but missing");
                 });
 
             });
@@ -145,9 +145,9 @@ describe('daemon startup', () => {
 
                 context('with balance > 0', () => {
 
-                    it('successfully starts up', (done) => {
+                    it('successfully starts up', async () => {
 
-                        spawnAndRead(done, 'Running node with ID:');
+                        await spawnAndRead('Running node with ID:');
 
                     });
                 });
@@ -160,9 +160,9 @@ describe('daemon startup', () => {
                             changes: {ethereum: '0x20B289a92d504d82B1502996b3E439072FC66489'}
                         }));
 
-                    it('fails to start up', (done) => {
+                    it('fails to start up', async () => {
 
-                        spawnAndRead(done, 'No ETH balance found');
+                        await spawnAndRead('No ETH balance found');
 
                     });
                 })
@@ -173,9 +173,9 @@ describe('daemon startup', () => {
                 beforeEach(() =>
                     editFile({filename: 'bluzelle0.json', changes: {ethereum: 'asdf'}}));
 
-                it('fails to start up', (done) => {
+                it('fails to start up', async () => {
 
-                    spawnAndRead(done, 'Invalid Ethereum address asdf');
+                    await spawnAndRead('Invalid Ethereum address asdf');
 
                 });
             });
@@ -187,8 +187,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle0.json', deleteKey: ['bootstrap_file']}));
 
-            it('throws error if not present', (done) => {
-                spawnAndRead(done, 'Bootstrap peers source not specified');
+            it('throws error if not present', async () => {
+                await spawnAndRead('Bootstrap peers source not specified');
             });
         });
 
@@ -197,8 +197,8 @@ describe('daemon startup', () => {
             beforeEach(() =>
                 editFile({filename: 'bluzelle0.json', deleteKey: ['uuid']}));
 
-            it('throws error if not present', (done) => {
-                spawnAndRead(done, 'Failed to read pem file: .state/public-key.pem');
+            it('throws error if not present', async () => {
+                await spawnAndRead('Failed to read pem file: .state/public-key.pem');
 
             });
 
@@ -214,26 +214,26 @@ describe('daemon startup', () => {
                 beforeEach('remove http_port setting', () =>
                     editFile({filename: 'bluzelle0.json', deleteKey: ['http_port']}));
 
-                beforeEach('start daemon', (done) => {
+                beforeEach('start daemon', async () => new Promise((resolve) => {
                     let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
 
                     node.stdout.on('data', (data) => {
                         if (data.toString().includes('Running node with ID:')) {
-                            done()
+                            resolve()
                         }
                     })
-                });
+                }));
 
                 afterEach('kill daemon', killSwarm);
 
-                it('should default to 8080', (done) => {
+                it('should default to 8080', async () => new Promise((resolve) => {
                     exec('lsof -i:8080', (error, stdout, stderr) => {
                         if (stdout.includes('swarm')) {
-                            done()
+                            resolve()
                         }
                     });
 
-                });
+                }));
             });
 
             context('exists', () => {
@@ -241,26 +241,26 @@ describe('daemon startup', () => {
                 beforeEach('remove http_port setting', () =>
                     editFile({filename: 'bluzelle0.json', changes: {http_port: 8081}}));
 
-                beforeEach('start daemon', (done) => {
+                beforeEach('start daemon', async () => new Promise((resolve) => {
                     let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
 
                     node.stdout.on('data', (data) => {
                         if (data.toString().includes('Running node with ID:')) {
-                            done()
+                            resolve()
                         }
                     })
-                });
+                }));
 
                 afterEach('kill daemon', killSwarm);
 
-                it('should override default port', (done) => {
+                it('should override default port', async () => new Promise((resolve) => {
 
                     exec('lsof -i:8081', (error, stdout, stderr) => {
                         if (stdout.includes('swarm')) {
-                            done()
+                            resolve()
                         }
                     });
-                });
+                }));
             });
         });
 
@@ -274,9 +274,9 @@ describe('daemon startup', () => {
                 beforeEach(() =>
                     editFile({filename: 'bluzelle0.json', deleteKey: ['max_storage']}));
 
-                it('should default to 2GB', (done) => {
+                it('should default to 2GB', async () => {
 
-                    spawnAndRead(done, 'Maximum Storage: 2147483648 Bytes');
+                    await spawnAndRead('Maximum Storage: 2147483648 Bytes');
                 });
             });
 
@@ -285,9 +285,9 @@ describe('daemon startup', () => {
                 beforeEach(() =>
                     editFile({filename: 'bluzelle0.json', changes: {max_storage: '5000B'}}));
 
-                it('should override default limit', (done) => {
+                it('should override default limit', async () => {
 
-                    spawnAndRead(done, 'Maximum Storage: 5000 Bytes');
+                    await spawnAndRead('Maximum Storage: 5000 Bytes');
 
                 });
             });
@@ -295,14 +295,14 @@ describe('daemon startup', () => {
     });
 });
 
-const spawnAndRead = (done, matchStr) => {
+const spawnAndRead = (matchStr) => new Promise((resolve) => {
 
     let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
 
     node.stdout.on('data', (data) => {
 
         if (data.toString().includes(matchStr)) {
-            done()
+            resolve()
         }
     })
-};
+});
