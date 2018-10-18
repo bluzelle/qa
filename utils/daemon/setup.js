@@ -121,8 +121,6 @@ const setupUtils = {
         let guaranteedNodes;
 
         try {
-            console.log(`Spawning ${nodesToSpawn.length} nodes.`);
-
             guaranteedNodes = await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
                 const rejTimer = setTimeout(() => {
