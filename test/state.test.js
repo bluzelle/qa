@@ -1,14 +1,15 @@
 const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
 
-
 const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 const shared = require('./shared');
-const api = require('../bluzelle-js/lib/bluzelle-node');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 
 let swarm;
+
+let clientsObj = {};
 
 describe('storage', () => {
 
@@ -22,38 +23,61 @@ describe('storage', () => {
         await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
     });
 
-    beforeEach('initialize client api', async () =>
-        await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+    beforeEach('initialize client', () => {
 
-    beforeEach('create state', async () => {
-        await api.create('stateExists', '123');
+        clientsObj.api = new BluzelleClient(
+            `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            false
+        );
     });
 
-    beforeEach('disconnect api after state creation', api.disconnect);
+    beforeEach('connect client', async () => {
+        await clientsObj.api.connect()
+    });
 
-    beforeEach('despawn swarm after state creation', despawnSwarm);
+    beforeEach('create state', async () => {
+        await clientsObj.api.create('stateExists', '123');
+    });
+
+    beforeEach('disconnect api after state creation', () => clientsObj.api.disconnect());
+
+    beforeEach('despawn swarm after state creation', () => {
+        despawnSwarm();
+        clientsObj = {};
+    });
 
     beforeEach('respawn swarm', async function () {
         this.timeout(20000);
         await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3, maintainState: true})
     });
 
-    beforeEach('reinitialize client api', async () =>
-        await api.connect(`ws://${process.env.address}:${swarm[swarm.leader].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+    beforeEach('initialize client', () => {
+
+        clientsObj.api = new BluzelleClient(
+            `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            false
+        );
+    });
+
+    beforeEach('connect client', async () => {
+        await clientsObj.api.connect()
+    });
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
         resetHarnessState();
     });
 
-    afterEach('disconnect api', api.disconnect);
+    afterEach('disconnect api', () => clientsObj.api.disconnect());
 
     afterEach('despawn swarm', despawnSwarm);
 
     context('values', () => {
 
         it('should persist through shut down', async () => {
-            expect(await api.read('stateExists')).to.equal('123');
+            expect(await clientsObj.api.read('stateExists')).to.equal('123');
         });
 
     });
@@ -69,7 +93,7 @@ describe('storage', () => {
             cfgIndexObj.index = swarm[newestNode[0]].index
         });
 
-        shared.daemonShouldSync(api, cfgIndexObj, 1);
+        shared.daemonShouldSync(cfgIndexObj, 1);
 
     });
 
@@ -90,7 +114,7 @@ describe('storage', () => {
             });
 
             beforeEach('create key, exceed limit', () => {
-                api.create('key01', '123');
+                clientsObj.api.create('key01', '123');
             });
 
             it('should log exceeded storage msg', async () => {
@@ -155,18 +179,46 @@ describe('storage', () => {
                             if (data.toString().includes('Received WS message:')) {
                                 resolve()
                             }
-                        })
+                        });
                     })
                 });
 
                 context('daemon is operational', () => {
 
-                    shared.swarmIsOperational(api);
+                    // shared.swarmIsOperational(clientsObj);
+
+                    it('should be able to create', async () => {
+
+                        await clientsObj.api.create('key', '123');
+                    });
+
+                    it('should be able to read', async () => {
+
+                        await clientsObj.api.create('key', 'abc');
+
+                        expect(await clientsObj.api.read('key')).to.be.equal('abc');
+                    });
+
+                    it('should be able to update', async () => {
+
+                        await clientsObj.api.create('key', '123');
+
+                        await clientsObj.api.update('key', 'abc');
+
+                        expect(await clientsObj.api.read('key')).to.equal('abc');
+
+                    });
+
+                    it('should be able to delete', async () => {
+
+                        await clientsObj.api.create('key', '123');
+
+                        await clientsObj.api.remove('key');
+
+                        expect(await clientsObj.api.has('key')).to.be.false;
+                    })
                 });
             });
         });
     });
 });
-
-
-
