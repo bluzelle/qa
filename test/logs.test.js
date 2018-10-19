@@ -3,7 +3,7 @@ const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {killSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
+const {despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
@@ -42,7 +42,7 @@ describe('daemon', () => {
                 node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
             });
 
-            afterEach('kill daemons', killSwarm);
+            afterEach('kill daemons', despawnSwarm);
 
             it('should create a log', async () => {
 
@@ -90,7 +90,7 @@ describe('daemon', () => {
                 node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
             });
 
-            afterEach('kill daemons', killSwarm);
+            afterEach('kill daemons', despawnSwarm);
 
             it('should create a log', async () => {
 

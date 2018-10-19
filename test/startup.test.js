@@ -1,6 +1,6 @@
 const {exec, spawn} = require('child_process');
 
-const {killSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
+const {despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
@@ -42,7 +42,7 @@ describe('daemon startup', () => {
 
         context('accepts time scaling env variable', () => {
 
-            afterEach(killSwarm);
+            afterEach(despawnSwarm);
 
             context('with valid value', () => {
 
@@ -139,7 +139,7 @@ describe('daemon startup', () => {
 
             });
 
-            afterEach(killSwarm);
+            afterEach(despawnSwarm);
 
             context('with valid address', () => {
 
@@ -224,7 +224,7 @@ describe('daemon startup', () => {
                     })
                 }));
 
-                afterEach('kill daemon', killSwarm);
+                afterEach('kill daemon', despawnSwarm);
 
                 it('should default to 8080', async () => new Promise((resolve) => {
                     exec('lsof -i:8080', (error, stdout, stderr) => {
@@ -251,7 +251,7 @@ describe('daemon startup', () => {
                     })
                 }));
 
-                afterEach('kill daemon', killSwarm);
+                afterEach('kill daemon', despawnSwarm);
 
                 it('should override default port', async () => new Promise((resolve) => {
 
@@ -266,7 +266,7 @@ describe('daemon startup', () => {
 
         context('max storage', () => {
 
-            afterEach('kill swarm', killSwarm);
+            afterEach('kill swarm', despawnSwarm);
 
 
             context('does not exist', () => {
