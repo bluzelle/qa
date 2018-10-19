@@ -53,12 +53,13 @@ exports.createShouldTimeout = clientsObj => {
     });
 };
 
-exports.daemonShouldSync = (cfgIndexObj, numOfKeys) => {
+exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
 
     let newPeer, api;
 
-    beforeEach('start daemon', () => new Promise((res) => {
+    beforeEach('spawn daemon to sync', () => new Promise((res) => {
         newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${cfgIndexObj.index}.json`], {cwd: './scripts'})
+
         newPeer.stdout.on('data', (data) => {
             if (data.toString().includes('Received WS message:')) {
                 res();
@@ -70,7 +71,7 @@ exports.daemonShouldSync = (cfgIndexObj, numOfKeys) => {
 
         api = new BluzelleClient(
             `ws://${process.env.address}:${50000 + parseInt(cfgIndexObj.index)}`,
-            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            uuid,
             false
         );
     });
@@ -91,6 +92,7 @@ exports.daemonShouldSync = (cfgIndexObj, numOfKeys) => {
                     clearInterval(timeId);
                     res();
                 } else if (timeElapsed() >= 6000){
+                    clearInterval(timeId);
                     rej(new Error(`Daemon returned ${keys.length}, expected ${numOfKeys} keys`))
                 }
             })

@@ -93,7 +93,7 @@ describe('storage', () => {
             cfgIndexObj.index = swarm[newestNode[0]].index
         });
 
-        shared.daemonShouldSync(cfgIndexObj, 1);
+        shared.daemonShouldSync(cfgIndexObj, 1, '71e2cd35-b606-41e6-bb08-f20de30df76c');
 
     });
 

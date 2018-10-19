@@ -9,7 +9,7 @@ const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, ge
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 
 
-let swarm, api;
+let swarm;
 
 let clientsObj = {};
 
@@ -23,6 +23,10 @@ describe('raft', () => {
         context('followers die', () => {
 
             context('reconnecting', () => {
+
+                let cfgIndexObj = {index: 0};
+
+                let newestNode;
 
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(4);
@@ -46,6 +50,9 @@ describe('raft', () => {
                 beforeEach('connect client', async () =>
                     await clientsObj.api.connect());
 
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
+
                 afterEach('remove configs and peerslist and clear harness state', () => {
                     deleteConfigs();
                     resetHarnessState();
@@ -57,25 +64,19 @@ describe('raft', () => {
 
                 context('with clear local state', () => {
 
-                    it('should sync', done => {
+                    beforeEach(() => {
+                        newestNode = getNewestNodes(1);
 
-                        const newestNode = getNewestNodes(1);
-
-                        const node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
-
-                        node.stdout.on('data', data => {
-
-                            if (data.toString().includes('current term out of sync:')) {
-                                done();
-                            }
-                        });
+                        cfgIndexObj.index = swarm[newestNode[0]].index
                     });
+
+                    shared.daemonShouldSync(cfgIndexObj, 5, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
                 });
 
                 context('with consistent but outdated state', () => {
 
                     let node, newestNode;
-                    let cfgIndexObj = {index: 0};
+
 
                     beforeEach('start new node', () => new Promise((res) => {
 
@@ -96,15 +97,16 @@ describe('raft', () => {
                         await clientsObj.api.create('key1', '123')
                     });
 
-                    beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`));
+                    beforeEach('kill node', () => {
+                        execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`)
+                    });
 
                     beforeEach('create keys after disconnect', async () => {
                         await clientsObj.api.create('key2', '123');
                         await clientsObj.api.create('key3', '123');
                     });
 
-                    shared.daemonShouldSync(clientsObj, cfgIndexObj, 3)
+                    shared.daemonShouldSync(cfgIndexObj, 8, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
 
                 });
 
@@ -181,9 +183,8 @@ describe('raft', () => {
                 beforeEach('connect client', async () =>
                     await clientsObj.api.connect());
 
-                // beforeEach('populate db', done => {
-                //     createKeys(done, api, process.env.numOfKeys);
-                // });
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
 
                 beforeEach('kill one follower', () => {
 
@@ -233,9 +234,8 @@ describe('raft', () => {
                 beforeEach('connect client', async () =>
                     await clientsObj.api.connect());
 
-                // beforeEach('populate db', done => {
-                //     createKeys(done, api, process.env.numOfKeys);
-                // });
+                beforeEach('populate db', async () =>
+                    await createKeys(clientsObj, 5, 500));
 
                 beforeEach('kill all followers', () => {
 
@@ -288,9 +288,8 @@ describe('raft', () => {
             beforeEach('connect client', async () =>
                 await clientsObj.api.connect());
 
-            // beforeEach('populate db', done => {
-            //     createKeys(done, api, process.env.numOfKeys);
-            // });
+            beforeEach('populate db', async () =>
+                await createKeys(clientsObj, 5, 500));
 
             afterEach('remove configs and peerslist and clear harness state', () => {
                 deleteConfigs();
