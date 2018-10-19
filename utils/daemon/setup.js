@@ -10,94 +10,7 @@ const {readDir} = require('./logs');
 const {editFile, getSwarmObj} = require('./configs');
 
 
-let leaderLogName;
-
 const setupUtils = {
-    startSwarm: async function ({maintainState} = {}) {
-
-        if (!maintainState) {
-            // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-            setupUtils.clearDaemonState();
-        }
-
-        let beforeContents = readDir('output/logs');
-
-        setupUtils.execDaemon('bluzelle0');
-
-        // Waiting briefly before starting second Daemon ensures the first starts as leader
-        setTimeout(() =>
-            setupUtils.execDaemon('bluzelle1'), 500);
-
-        let afterContents;
-
-        try {
-            await waitUntil(() => {
-                afterContents = readDir('output/logs');
-
-                if (afterContents.length === beforeContents.length + 2) {
-                    return afterContents
-                }
-            })
-        } catch (error) {
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Failed to find new logs')
-        }
-
-        let logNames = difference(beforeContents, afterContents);
-
-        leaderLogName = logNames[0];
-
-        process.env.quiet ||
-            console.log('\x1b[36m%s\x1b[0m', `******** leaderLogName: ${leaderLogName} *******`);
-
-        try {
-            await waitUntil(() => {
-
-                let contents = fs.readFileSync('./daemon-build/output/logs/' + leaderLogName, 'utf8');
-
-                return includes(contents, 'RAFT State: Leader');
-            }, 8000);
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'I am leader logged')
-        } catch (error) {
-            process.env.quiet ||
-                console.log('\x1b[36m%s\x1b[0m', 'Failed to read leader log');
-        }
-
-        logNames.forEach(logName => swarm.logs.push(logName));
-    },
-
-    killSwarm: async () => {
-        exec('pkill -2 swarm');
-
-        await new Promise(resolve => {
-            setTimeout(() => {
-                resolve()
-            }, 200)
-        })
-    },
-
-    createState: async (api, key, value) => {
-        await setupUtils.startSwarm();
-        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-        await api.create(key, value);
-        await setupUtils.killSwarm();
-    },
-
-    createKeys: async (clientsObj, numOfKeys, ms) => {
-
-        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-        const batched = chunk([...Array(parseInt(numOfKeys)).keys()]);
-
-        let batchedWithDelay = batched.reduce((acc, cur) => {
-            acc.push(cur);
-            acc.push(delay);
-            return acc
-        }, []);
-
-        await processAssortedArray(batchedWithDelay, clientsObj, ms);
-    },
 
     spawnSwarm: async ({consensusAlgo, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
 
@@ -116,7 +29,7 @@ const setupUtils = {
 
         const nodesToSpawn = partialSpawn ? Object.keys(filteredSwarm).slice(0, partialSpawn) : Object.keys(filteredSwarm);
 
-        const MINIMUM_NODES = Math.floor(Object.keys(filteredSwarm).length * ( 1 - failureAllowed));
+        const MINIMUM_NODES = Math.floor(Object.keys(nodesToSpawn).length * ( 1 - failureAllowed));
 
         let guaranteedNodes;
 
@@ -146,9 +59,13 @@ const setupUtils = {
 
         } catch(err) {
 
-            err.forEach((e) => {
-                console.log(`Daemon failed to startup in time. \n ${e}`)
-            })
+            if (err instanceof Array) {
+                err.forEach((e) => {
+                    console.log(`Daemon failed to startup in time. \n ${e}`)
+                })
+            } else {
+                console.log(`Error spawning node: ${err}`)
+            }
         }
 
 
@@ -170,6 +87,21 @@ const setupUtils = {
                 });
             })
         }
+    },
+
+    createKeys: async (clientsObj, numOfKeys, ms) => {
+
+        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        const batched = chunk([...Array(parseInt(numOfKeys)).keys()]);
+
+        let batchedWithDelay = batched.reduce((acc, cur) => {
+            acc.push(cur);
+            acc.push(delay);
+            return acc
+        }, []);
+
+        await processAssortedArray(batchedWithDelay, clientsObj, ms);
     },
 
     getCurrentLeader: (swarm, reliableNodes = swarm.guaranteedNodes) => new Promise((res) => {
