@@ -11,16 +11,18 @@ let swarm;
 
 let clientsObj = {};
 
+let numOfNodes = 6;
+
 describe('storage', () => {
 
     beforeEach('generate configs and set harness state', async () => {
-        await generateSwarmConfigsAndSetState(4);
+        await generateSwarmConfigsAndSetState(numOfNodes);
         swarm = getSwarmObj();
     });
 
     beforeEach('spawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
+        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1})
     });
 
     beforeEach('initialize client', () => {
@@ -49,7 +51,7 @@ describe('storage', () => {
 
     beforeEach('respawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3, maintainState: true})
+        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1, maintainState: true})
     });
 
     beforeEach('initialize client', () => {
