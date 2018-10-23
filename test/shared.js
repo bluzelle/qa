@@ -45,11 +45,11 @@ exports.createShouldTimeout = clientsObj => {
             .then(() => {
                 throw new Error('Create was successful, expected to fail.')
             })
-            .catch(e => {
-                if (e.message.toString().includes('Timed out after waiting for 5000ms')) {
+            .catch(err => {
+                if (err.message.toString().includes('Timed out after waiting for 5000ms')) {
                     done();
                 } else {
-                    console.log(e)
+                    throw Error(err)
                 }
             })
     });

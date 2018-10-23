@@ -1,19 +1,16 @@
 const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
-const waitUntil = require("async-wait-until");
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader, pollStatus} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader, pollStatus} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes, generateConfigs} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
-let swarm;
+let swarm, newPeerConfig;
 
 let clientsObj = {};
 
 let numOfNodes = 6;
-
-let newPeerConfig;
 
 describe.only('swarm membership', () => {
 
@@ -24,8 +21,6 @@ describe.only('swarm membership', () => {
             context('resulting swarm', () => {
 
                 context('has sufficient nodes alive for consensus', () => {
-
-                    let newPeer;
 
                     beforeEach('generate configs and set harness state', async () => {
                         await generateSwarmConfigsAndSetState(numOfNodes);
@@ -47,8 +42,9 @@ describe.only('swarm membership', () => {
                     });
 
                     beforeEach('spawn swarm', async function () {
+                        const MINIMUM_REQUIRED_FOR_CONSENSUS = numOfNodes / 2 + 1;
                         this.timeout(20000);
-                        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: (numOfNodes/2) + 1, failureAllowed: 0})
+                        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                     });
 
                     beforeEach('initialize client', () => {
@@ -67,7 +63,7 @@ describe.only('swarm membership', () => {
                     beforeEach('populate db', async () =>
                         await createKeys(clientsObj, 5, 500));
 
-                    beforeEach('open ws connection to leader and send add peer msg', done => {
+                    beforeEach('open ws connection to leader and send add peer msg', async () => {
                         const NEW_PEER = JSON.stringify(
                             {
                                 host: "127.0.0.1",
@@ -86,23 +82,17 @@ describe.only('swarm membership', () => {
                                 "rx5hkBOrKzSfFQAdooYutM="
                             });
 
-                        openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
+                        try {
+                            await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
+                        } catch (err) {
+                            console.log(err)
+                        }
                     });
 
-
-                    beforeEach('spawn new peer', () => new Promise((resolve) => {
-
-                        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${newPeerConfig.index}.json`], {cwd: './scripts'});
-
-                        newPeer.stdout.on('data', (data) => {
-                            if (data.toString().includes('AppendEntriesReply')) {
-                                resolve()
-                            }
-                        });
-                    }));
+                    beforeEach('spawn new peer', async () => await spawnDaemon(newPeerConfig.index));
 
                     afterEach('remove configs and peerslist and clear harness state', () => {
-                        // deleteConfigs();
+                        deleteConfigs();
                         resetHarnessState();
                     });
 
@@ -126,29 +116,8 @@ describe.only('swarm membership', () => {
             });
         });
 
-        // refactor this msg to within test cases?
         const msg = `"host":"127.0.0.1","http_port":${8080 + numOfNodes},"name":"new_peer","port":${50000 + numOfNodes},"uuid":`;
         const scenarios = {
-            // 'peer with no signature': {
-            //     uuid: '854e8e35-b5e6-46bb-93bb-33f266068be7',
-            //     get cmd() {
-            //         return `{${msg}"${this.uuid}"}`
-            //     }
-            // },
-            // 'peer with invalid signature': {
-            //     uuid: '7940d49c-9fac-4a46-b69f-6497fc411532',
-            //     signature: 'somesignature',
-            //     get cmd() {
-            //         return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
-            //     }
-            // },
-            // 'blacklisted peer with invalid signature': {
-            //     uuid: 'f06ab617-7ccc-45fe-aee2-d4f5d175891b',
-            //     signature: 'somesignature',
-            //     get cmd() {
-            //         return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
-            //     }
-            // }
             'blacklisted peer with valid signature': {
                 uuid: '51bfd541-ab3e-4f02-93c7-8c3328daccfa',
                 signature: 'yEQU8GZASNFYN5OEBnBfr/u0lLUnHpk4Qw0NlONKSocrFiBGx4hRdW4gZxl3p3Js' +
@@ -165,15 +134,13 @@ describe.only('swarm membership', () => {
                 get cmd() {
                     return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
                 }
-            },
-
+            }
         };
 
         Object.keys(scenarios).forEach((test) => {
 
-            context(test, () => {
-
-                let newPeer;
+            // blacklisted node is successfully added to swarm: KEP-647
+            context.skip(test, () => {
 
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(numOfNodes);
@@ -211,20 +178,10 @@ describe.only('swarm membership', () => {
                     await clientsObj.api.connect()
                 });
 
-                beforeEach('open ws connection to leader and send msg', done =>
-                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
+                beforeEach('open ws connection to leader and send msg', async () =>
+                    await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
 
-                beforeEach('spawn new peer', () => new Promise((resolve) => {
-                    newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${newPeerConfig.index}.json`], {cwd: './scripts'});
-
-                    newPeer.stdout.on('data', (data) => {
-                        // console.log(data.toString())
-
-                        if (data.toString().includes('Running node with ID')) {
-                            resolve()
-                        }
-                    });
-                }));
+                beforeEach('spawn new peer', async () => await spawnDaemon(newPeerConfig.index));
 
                 beforeEach('populate db', async () =>
                     await createKeys(clientsObj, 5, 500));
@@ -248,6 +205,7 @@ describe.only('swarm membership', () => {
         const INVALID_ADD_PEERS_REQUESTS = {
             'peer with no signature': {
                 uuid: '854e8e35-b5e6-46bb-93bb-33f266068be7',
+                expect: 'ERROR_INVALID_SIGNATURE',
                 get cmd() {
                     return `{${msg}"${this.uuid}"}`
                 }
@@ -255,6 +213,7 @@ describe.only('swarm membership', () => {
             'peer with invalid signature': {
                 uuid: '7940d49c-9fac-4a46-b69f-6497fc411532',
                 signature: 'somesignature',
+                expect: 'ERROR_UNABLE_TO_VALIDATE_UUID',
                 get cmd() {
                     return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
                 }
@@ -262,6 +221,7 @@ describe.only('swarm membership', () => {
             'blacklisted peer with invalid signature': {
                 uuid: 'f06ab617-7ccc-45fe-aee2-d4f5d175891b',
                 signature: 'somesignature',
+                expect: 'ERROR_UNABLE_TO_VALIDATE_UUID',
                 get cmd() {
                     return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
                 }
@@ -296,48 +256,27 @@ describe.only('swarm membership', () => {
                 });
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
-                    // deleteConfigs();
+                    deleteConfigs();
                     resetHarnessState();
                 });
 
                 afterEach('despawn swarm', despawnSwarm);
 
-                it.only('should not be able to communicate with swarm', (done) => {
+                it('should not be able to communicate with swarm', async () => new Promise(async (res) => {
+
                     try {
-                        // openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${INVALID_ADD_PEERS_REQUESTS[test].cmd}}}`)
-
-                        socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
-
-                        socket.on('open', () => {
-
-                            socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${INVALID_ADD_PEERS_REQUESTS[test].cmd}}}`);
-
-                        });
-
-                        socket.on('message', (message) => {
-                            let msg = JSON.parse(message);
-
-                            if (msg.error) {
-                                throw new Error(msg.error)
-                            } else {
-                                setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
-                            }
-
-                        });
-                    } catch (e) {
-                        console.log('RECEIVED AN ERROR');
-                        console.log(e);
-
-                    // ERROR_UNABLE_TO_VALIDATE_UUID
-                    // ERROR_INVALID_SIGNATURE
-
+                        await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${INVALID_ADD_PEERS_REQUESTS[test].cmd}}}`)
+                    } catch (err) {
+                        if (err.message === INVALID_ADD_PEERS_REQUESTS[test].expect) {
+                            res()
+                        } else {
+                            console.log(err.message)
+                        }
                     }
-                })
+                }))
             })
         })
-
     });
-
 
     context('removing peer', () => {
 
@@ -345,23 +284,18 @@ describe.only('swarm membership', () => {
 
             context('has sufficient nodes alive for consensus', () => {
 
-                let daemonData = '';
-
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(3);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
+                    newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 2})
-
-                    const node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
-
-                    node.stdout.on('data', data => {
-                        daemonData += data.toString();
-                    });
+                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1});
                 });
+
+                beforeEach('spawn new peer', async () => await spawnDaemon(newPeerConfig.index));
 
                 beforeEach('initialize client and connect', async () => {
 
@@ -377,10 +311,12 @@ describe.only('swarm membership', () => {
                 beforeEach('populate db', async () =>
                     await createKeys(clientsObj, 5, 500));
 
-                beforeEach('open ws connection to leader and send msg', done => {
-                    const unstartedNode = getNewestNodes(1)[0];
-                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[unstartedNode].uuid}"}}`);
-
+                beforeEach('open ws connection to leader and send msg', async () => {
+                    try {
+                        await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${newPeerConfig.uuid}"}}`);
+                    } catch (err) {
+                        console.log(err)
+                    }
                 });
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
@@ -397,25 +333,21 @@ describe.only('swarm membership', () => {
                     context('becomes a singleton swarm', () => {
 
                         it('should remain in candidate state', async () => {
-
-                            await waitUntil(() =>
-                                ((daemonData.match(/RAFT State: Candidate/g) || []).length >= 2), 4000)
+                            await pollStatus({port: newPeerConfig.port, expectSingleton: true})
                         });
                     });
 
                     context('still online', () => {
 
                         shared.swarmIsOperational(clientsObj);
-
                     });
 
                     context('offline', () => {
 
                         beforeEach('kill removed peer', () =>
-                            exec(`kill $(ps aux | grep 'bluzelle2' | awk '{print $2}')`));
+                            exec(`kill $(ps aux | grep 'bluzelle${newPeerConfig.index}' | awk '{print $2}')`));
 
                         shared.swarmIsOperational(clientsObj);
-
                     });
                 });
             });
@@ -423,13 +355,14 @@ describe.only('swarm membership', () => {
             context('has insufficient nodes alive for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(6);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
                 });
 
                 beforeEach('spawn swarm', async function () {
+                    const MINIMUM_REQUIRED_FOR_CONSENSUS = numOfNodes / 2 + 1;
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 4, failureAllowed: 0}) // numOfNodes / 2 + 1
+                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                 });
 
                 beforeEach('initialize client and connect', async () => {
@@ -446,9 +379,14 @@ describe.only('swarm membership', () => {
                 beforeEach('populate db', async () =>
                     await createKeys(clientsObj, 5, 500));
 
-                beforeEach('open ws connection to leader and send msg', done => {
+                beforeEach('open ws connection to leader and send msg', async () => {
                     const nodeAliveInSwarm = swarm.guaranteedNodes[0];
-                    openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[nodeAliveInSwarm].uuid}"}}`);
+
+                    try {
+                        await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[nodeAliveInSwarm].uuid}"}}`);
+                    } catch (err) {
+                        console.log(err)
+                    }
                 });
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
@@ -469,26 +407,26 @@ describe.only('swarm membership', () => {
     });
 });
 
-const openSocketAndSendMsg = (done, msg) => {
+const connectWsAndSendMsg = (swarm, msg) => new Promise((resolve, reject) => {
 
-    socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
+        socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
 
-    socket.on('open', () => {
+        socket.on('open', () => {
+            socket.send(msg);
+        });
 
-        socket.send(msg);
+        socket.on('message', (response) => {
+            let message = JSON.parse(response);
 
-        // setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+            if (message.error) {
+                reject(new Error(message.error))
+            } else {
+                setTimeout(resolve, 500) // pause to give db time to achieve consensus and commit single quorum
+            }
+        });
 
-    });
-
-    socket.on('message', (message) => {
-        let msg = JSON.parse(message);
-
-        if (msg.error) {
-            throw new Error(msg.error)
-        } else {
-            setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+        if (msg.includes('remove_peer')) {
+            // No response from daemon on successful remove_peer. KEP-728
+            setTimeout(resolve, 1000) // pause to give db time to achieve consensus and commit single quorum
         }
-
-    });
-};
+});

@@ -184,8 +184,6 @@ const setupUtils = {
 
             state = msg.module[0].status.state;
 
-            console.log(state)
-
             if (matchState && state === matchState) {
                 clearInterval(intervalId);
                 resolve(`Daemon reached ${matchState}`);
@@ -240,14 +238,16 @@ const setupUtils = {
         });
     },
 
-    execDaemon: (cfgName) => {
-        exec(`cd ./scripts; ./run-daemon.sh ${cfgName}.json`, {maxBuffer: 1024 * 1024 * 10}, (error, stdout, stderr) => {
-            // code 130 is thrown when process is ended with SIGINT
-            if (error && error.code !== 130) {
-                throw new Error(error);
+    spawnDaemon: (index) => new Promise((resolve) => {
+
+        daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`], {cwd: './scripts'});
+
+        daemon.stdout.on('data', (data) => {
+            if (data.toString().includes('AppendEntriesReply')) {
+                resolve(daemon)
             }
         });
-    }
+    })
 };
 
 
