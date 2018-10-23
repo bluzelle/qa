@@ -1,6 +1,8 @@
 const {expect} = require('chai');
 const {spawn} = require('child_process');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const {spawnDaemon} = require('../utils/daemon/setup');
+
 
 
 exports.swarmIsOperational = clientsObj => {
@@ -57,17 +59,11 @@ exports.createShouldTimeout = clientsObj => {
 
 exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
 
-    let newPeer, api;
+    let api;
 
-    beforeEach('spawn daemon to sync', () => new Promise((res) => {
-        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${cfgIndexObj.index}.json`], {cwd: './scripts'})
-
-        newPeer.stdout.on('data', (data) => {
-            if (data.toString().includes('Received WS message:')) {
-                res();
-            }
-        });
-    }));
+    beforeEach('spawn new daemon', async () => {
+       await spawnDaemon(cfgIndexObj.index);
+    });
 
     beforeEach('initialize client', () => {
 

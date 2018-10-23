@@ -13,13 +13,14 @@ const ENCODED_CMDS = {
 };
 
 let swarm;
+let numOFNodes = 6;
 
 describe('web sockets interface', () => {
 
     describe('connected', () => {
 
         beforeEach('generate configs and set harness state', async () => {
-            await generateSwarmConfigsAndSetState(3);
+            await generateSwarmConfigsAndSetState(numOFNodes);
             swarm = getSwarmObj();
         });
 

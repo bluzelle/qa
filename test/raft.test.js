@@ -5,7 +5,7 @@ const fsPromises = require('fs').promises;
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
-const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 
 
@@ -25,8 +25,6 @@ describe('raft', () => {
             context('reconnecting', () => {
 
                 let cfgIndexObj = {index: 0};
-
-                let newestNode;
 
                 beforeEach('generate configs and set harness state', async () => {
                     await generateSwarmConfigsAndSetState(numOfNodes);
@@ -65,10 +63,7 @@ describe('raft', () => {
 
                 context('with clear local state', () => {
 
-                    beforeEach(() => {
-                        // newestNode = getNewestNodes(1);
-
-                        // cfgIndexObj.index = swarm[newestNode[0]].index
+                    beforeEach('set cfgIndexObj', () => {
                         cfgIndexObj.index = newPeerConfig.index
                     });
 
@@ -77,23 +72,16 @@ describe('raft', () => {
 
                 context('with consistent but outdated state', () => {
 
-                    let node, newestNode;
+                    let newestNode;
 
-
-                    beforeEach('start new node', () => new Promise((res) => {
+                    beforeEach('start new node', async () => {
 
                         newestNode = getNewestNodes(1);
 
-                        cfgIndexObj.index = swarm[newestNode[0]].index
+                        cfgIndexObj.index = swarm[newestNode[0]].index;
 
-                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
-
-                        node.stdout.on('data', data => {
-                            if (data.toString().includes('Received WS message:')) {
-                                res()
-                            }
-                        });
-                    }));
+                        await spawnDaemon(swarm[newestNode].index)
+                    });
 
                     beforeEach('create key', async () => {
                         await clientsObj.api.create('key1', '123')
@@ -116,18 +104,14 @@ describe('raft', () => {
 
                     let node, newestNode;
 
-                    beforeEach('start new node', () => new Promise((res) => {
+                    beforeEach('start new node', async () => {
 
                         newestNode = getNewestNodes(1);
 
-                        node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
+                        cfgIndexObj.index = swarm[newestNode[0]].index;
 
-                        node.stdout.on('data', data => {
-                            if (data.toString().includes('Received WS message:')) {
-                                res()
-                            }
-                        });
-                    }));
+                        await spawnDaemon(swarm[newestNode].index)
+                    });
 
                     beforeEach('create key', async () => {
                         await clientsObj.api.create('key1', '123')
@@ -147,7 +131,7 @@ describe('raft', () => {
 
                     it('should reject AppendEntries', async () => {
 
-                        const node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
+                        node = await spawnDaemon(swarm[newestNode].index);
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
@@ -156,7 +140,6 @@ describe('raft', () => {
                                 }
                             });
                         })
-
                     });
                 });
             });

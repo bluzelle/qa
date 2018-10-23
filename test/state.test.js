@@ -1,7 +1,7 @@
 const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
 
-const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
@@ -171,16 +171,7 @@ describe('storage', () => {
 
 
                 beforeEach('start daemon with increased limit', async () => {
-                    node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
-
-                    await new Promise(resolve => {
-                        node.stdout.on('data', data => {
-                            // connected to peer log msg: [debug] (node.cpp:84) - connection from: 127.0.0.1:62506
-                            if (data.toString().includes('Received WS message:')) {
-                                resolve()
-                            }
-                        });
-                    })
+                    await spawnDaemon(swarm[newestNode].index);
                 });
 
                 context('daemon is operational', () => {

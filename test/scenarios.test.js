@@ -1,6 +1,6 @@
 const {spawn, execSync, exec} = require('child_process');
 
-const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
@@ -35,7 +35,6 @@ describe('scenarios', () => {
                 '71e2cd35-b606-41e6-bb08-f20de30df76c',
                 false
             );
-
         });
 
         beforeEach('connect client', async () => {
@@ -52,8 +51,7 @@ describe('scenarios', () => {
 
             execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`);
 
-            await spawnNode(`bluzelle${swarm[newestNode].index}`);
-
+            await spawnDaemon(swarm[newestNode].index);
         });
 
         beforeEach('delete 3rd node state file, kill 3rd node', () => {
@@ -64,7 +62,7 @@ describe('scenarios', () => {
         });
 
         beforeEach('start 3rd node', async () =>
-            await spawnNode(`bluzelle${swarm[newestNode].index}`));
+            await spawnDaemon(swarm[newestNode].index));
 
         afterEach('remove configs and peerslist and clear harness state', () => {
             deleteConfigs();
@@ -78,15 +76,3 @@ describe('scenarios', () => {
         shared.swarmIsOperational(clientsObj);
     });
 });
-
-const spawnNode = cfgName =>
-    new Promise(resolve => {
-        let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `${cfgName}.json`], {cwd: './scripts'});
-
-        node.stdout.on('data', data => {
-
-            if (data.toString().includes('Running node with ID')) {
-                resolve()
-            }
-        });
-    });
