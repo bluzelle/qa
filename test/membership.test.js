@@ -3,29 +3,23 @@ const WebSocket = require('ws');
 const waitUntil = require("async-wait-until");
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
+const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader, pollStatus} = require('../utils/daemon/setup');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes, generateConfigs} = require('../utils/daemon/configs');
 const shared = require('./shared');
 
 let swarm;
 
 let clientsObj = {};
 
-describe('swarm membership', () => {
+let numOfNodes = 6;
+
+let newPeerConfig;
+
+describe.only('swarm membership', () => {
 
     context('adding', () => {
 
         context('peer with valid signature', () => {
-
-            const NEW_PEER = '{"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":' +
-                '"81ca538-a222-4add-8cb8-065c8b65a391","signature":"Oo8ZlDQcMlZF4hqnhN/2Dz3FYarZHrGf+87i+JUSxBu2GK' +
-                'Fk8SYcDrwjc0DuhUCxpRVQppMk5fjZtJ3r6I9066jcEpJPljU1SC1Thpy+AUEYx0r640SKRwKwmJMe6mRdSJ75rcYHu5+etajOW' +
-                'WjMs4vYQtcwfVF3oEd9/pZjea8x6PuhnM50+FPpnvgu57L8vHdeWjCqAiPyomQSLgIJPjvMJw4aHUUE3tHX1WOB8XDHdvuhi9gZ' +
-                'ODzZWbdI92JNhoLbwvjmhKTeTN+FbBtdJIjC0+V0sMFmGNJQ8WIkJscN0hzRkmdlU965lHe4hqlcMyEdTSnYSnC7NIHFfvJFBBYi' +
-                '9kcAVBwkYyALQDv6iTGMSI11/ncwdTz4/GGPodaUPFxf/WVHUz6rBAtTKvn8Kg61F6cVhcFSCjiw2bWGpeWcWTL+CGbfYCvZNiA' +
-                'VyO7Qdmfj5hoLu7KG+nxBLF8uoUl6t3BdKz9Dqg9Vf+QVtaVj/COD1nUykXXRVxfLo4dNBS+aVsmOFjppKaEvmeT5SwWOSVrKZw' +
-                'PuTilV9jCehFbFZF6MPyiW5mcp9t4D27hMoz/SiKjCqdN93YdBO4FBF/cWD5WHmD7KaaJYmnztz3W+xS7b/qk2PcN+qpZEXsfrW' +
-                'ie4prB1umESavYLC1pLhoEgc0jRUl1b9mHSY7E4puk="}';
 
             context('resulting swarm', () => {
 
@@ -34,27 +28,27 @@ describe('swarm membership', () => {
                     let newPeer;
 
                     beforeEach('generate configs and set harness state', async () => {
-                        await generateSwarmConfigsAndSetState(3);
+                        await generateSwarmConfigsAndSetState(numOfNodes);
                         swarm = getSwarmObj();
+
+                        newPeerConfig = (await generateConfigs(1))[0];
                     });
 
-                    beforeEach('edit manually started node cfg', () => {
+                    beforeEach('edit new peer cfg', () => {
 
                         editFile(
                             {
-                                filename: 'bluzelle2.json',
+                                filename: `bluzelle${newPeerConfig.index}.json`,
                                 changes: {
-                                    listener_port: 50003,
-                                    uuid: '81ca538-a222-4add-8cb8-065c8b65a391',
+                                    uuid: 'e81ca538-a222-4add-8cb8-065c8b65a391',
                                     bootstrap_file: './peers.json'
                                 }
                             });
-
                     });
 
                     beforeEach('spawn swarm', async function () {
                         this.timeout(20000);
-                        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 2})
+                        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: (numOfNodes/2) + 1, failureAllowed: 0})
                     });
 
                     beforeEach('initialize client', () => {
@@ -64,7 +58,6 @@ describe('swarm membership', () => {
                             '71e2cd35-b606-41e6-bb08-f20de30df76c',
                             false
                         );
-
                     });
 
                     beforeEach('connect client', async () => {
@@ -74,17 +67,42 @@ describe('swarm membership', () => {
                     beforeEach('populate db', async () =>
                         await createKeys(clientsObj, 5, 500));
 
-                    beforeEach('open ws connection to leader and send msg', done =>
-                        openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`));
+                    beforeEach('open ws connection to leader and send add peer msg', done => {
+                        const NEW_PEER = JSON.stringify(
+                            {
+                                host: "127.0.0.1",
+                                http_port: newPeerConfig.content.http_port,
+                                name: "new_peer",
+                                port: newPeerConfig.content.listener_port,
+                                uuid: "e81ca538-a222-4add-8cb8-065c8b65a391",
+                                signature: "eVrqlFy0MacQuvCFkMJvynfp+hMUvfwJ4rY21bvZ+pyX9F04oo3ayknZAc1O1zlviWuFCZ9/J" +
+                                "mA2z0sDHtJ84PZBuaSYvXwJXQsXq4Tvb7thcgnCdc6Pkg5VFq7rvRMV3kHo5TKoAIfVXAOc1SzFfnrVlimVx" +
+                                "dpqJxMZeSQiEv+GqfZPNT3f+YgDx5GJ0yBOe8XDAA1Rg3CgYdWFEvLz3rH6KcDv/+5Ni7UayuV5BWoIASHI6" +
+                                "0OhMOBpOffyvCvrFlHN1FA1a0N7IZfpbH6fHaVFs7/roC+NkV+6Rhx/kv6J/TnEWeOtUREcnInmW4WzI5Pu8" +
+                                "dSaFLvuZj/DPOaEuKFNjGujJ7J0mbifUfvIZg66GqWCtKWfbSygqnP1f1ZqH+y43Etde6nPTl6y2gTiusbiG" +
+                                "4s97nzfBhScujsHde294KraPdilEKgjTRXU+dxAaV8C0Fj64ZbhoYDoZ38aCG9xV5YsHElNLsqgWr7lRj/ru" +
+                                "Fqi1T0UuQ7/ggCOhzAMSuKNfTUSqXYwUTwzu+mOWVb9UdsRrN4AZ7UgnTbyuI/tvyqk+kuooohh02QAGcOrM" +
+                                "hjjKB6lSSJSzQbOGz/hqoeD1rMxHwErgTLe8nSmGPwf68KVzIX7i0z5e6eE+TPlTM4J8DsXqHZsVxIxZdiqE" +
+                                "rx5hkBOrKzSfFQAdooYutM="
+                            });
 
-                    beforeEach('spawn new peer', () => {
-                        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
-
-                        newPeer.stdout.on('data', () => {});
+                        openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${NEW_PEER}}}`);
                     });
 
+
+                    beforeEach('spawn new peer', () => new Promise((resolve) => {
+
+                        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${newPeerConfig.index}.json`], {cwd: './scripts'});
+
+                        newPeer.stdout.on('data', (data) => {
+                            if (data.toString().includes('AppendEntriesReply')) {
+                                resolve()
+                            }
+                        });
+                    }));
+
                     afterEach('remove configs and peerslist and clear harness state', () => {
-                        deleteConfigs();
+                        // deleteConfigs();
                         resetHarnessState();
                     });
 
@@ -95,22 +113,12 @@ describe('swarm membership', () => {
                     context('is operational', () => {
 
                         shared.swarmIsOperational(clientsObj);
-
                     });
 
                     context('new node', () => {
 
                         it('should be communicating with swarm', async () => {
-
-                            return new Promise((res) => {
-                                newPeer.stdout.on('data', data => {
-
-                                    if (data.toString().includes('Received WS message:')) {
-                                        res()
-                                    }
-                                });
-                            })
-
+                            await pollStatus({port: newPeerConfig.content.listener_port, expectConnected: true})
                         })
                     });
                 });
@@ -118,21 +126,29 @@ describe('swarm membership', () => {
             });
         });
 
-        const msg = '"host":"127.0.0.1","http_port":8083,"name":"new_peer","port":50003,"uuid":';
+        // refactor this msg to within test cases?
+        const msg = `"host":"127.0.0.1","http_port":${8080 + numOfNodes},"name":"new_peer","port":${50000 + numOfNodes},"uuid":`;
         const scenarios = {
-            'peer with no signature': {
-                uuid: 'asdf',
-                get cmd() {
-                    return `{${msg}"${this.uuid}"}`
-                }
-            },
-            'peer with invalid signature': {
-                uuid: 'asdf',
-                signature: 'somesignature',
-                get cmd() {
-                    return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
-                }
-            },
+            // 'peer with no signature': {
+            //     uuid: '854e8e35-b5e6-46bb-93bb-33f266068be7',
+            //     get cmd() {
+            //         return `{${msg}"${this.uuid}"}`
+            //     }
+            // },
+            // 'peer with invalid signature': {
+            //     uuid: '7940d49c-9fac-4a46-b69f-6497fc411532',
+            //     signature: 'somesignature',
+            //     get cmd() {
+            //         return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
+            //     }
+            // },
+            // 'blacklisted peer with invalid signature': {
+            //     uuid: 'f06ab617-7ccc-45fe-aee2-d4f5d175891b',
+            //     signature: 'somesignature',
+            //     get cmd() {
+            //         return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
+            //     }
+            // }
             'blacklisted peer with valid signature': {
                 uuid: '51bfd541-ab3e-4f02-93c7-8c3328daccfa',
                 signature: 'yEQU8GZASNFYN5OEBnBfr/u0lLUnHpk4Qw0NlONKSocrFiBGx4hRdW4gZxl3p3Js' +
@@ -150,13 +166,7 @@ describe('swarm membership', () => {
                     return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
                 }
             },
-            'blacklisted peer with invalid signature': {
-                uuid: 'f06ab617-7ccc-45fe-aee2-d4f5d175891b',
-                signature: 'somesignature',
-                get cmd() {
-                    return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
-                }
-            }
+
         };
 
         Object.keys(scenarios).forEach((test) => {
@@ -166,27 +176,26 @@ describe('swarm membership', () => {
                 let newPeer;
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(3);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
+                    newPeerConfig = (await generateConfigs(1))[0]
                 });
 
-                beforeEach('edit manually started node config', () => {
+                beforeEach('edit new peer config', () => {
 
                     editFile(
                         {
-                            filename: 'bluzelle2.json',
+                            filename: `bluzelle${newPeerConfig.index}.json`,
                             changes: {
-                                listener_port: 50003,
                                 uuid: scenarios[test].uuid,
                                 bootstrap_file: './peers.json'
                             }
                         });
-
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 2})
+                    await spawnSwarm({consensusAlgo: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -196,7 +205,6 @@ describe('swarm membership', () => {
                         '71e2cd35-b606-41e6-bb08-f20de30df76c',
                         false
                     );
-
                 });
 
                 beforeEach('connect client', async () => {
@@ -206,11 +214,17 @@ describe('swarm membership', () => {
                 beforeEach('open ws connection to leader and send msg', done =>
                     openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${scenarios[test].cmd}}}`));
 
-                beforeEach('spawn new peer', () => {
-                    newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+                beforeEach('spawn new peer', () => new Promise((resolve) => {
+                    newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${newPeerConfig.index}.json`], {cwd: './scripts'});
 
-                    newPeer.stdout.on('data', () => {});
-                });
+                    newPeer.stdout.on('data', (data) => {
+                        // console.log(data.toString())
+
+                        if (data.toString().includes('Running node with ID')) {
+                            resolve()
+                        }
+                    });
+                }));
 
                 beforeEach('populate db', async () =>
                     await createKeys(clientsObj, 5, 500));
@@ -225,23 +239,102 @@ describe('swarm membership', () => {
                 afterEach('despawn swarm', despawnSwarm);
 
                 it('should not be able to communicate with swarm', async () => {
-
-                    return new Promise((res, rej) => {
-                        newPeer.stdout.on('data', data => {
-
-                            if (data.toString().includes('Received WS message:')) {
-                                rej(new Error('New peer connected to swarm. Expected to be singleton.'))
-                            }
-
-                        });
-
-                        setTimeout(res, 3000)
-                    })
-
+                    await pollStatus({port: newPeerConfig.content.listener_port, expectSingleton: true})
                 })
 
             });
         });
+
+        const INVALID_ADD_PEERS_REQUESTS = {
+            'peer with no signature': {
+                uuid: '854e8e35-b5e6-46bb-93bb-33f266068be7',
+                get cmd() {
+                    return `{${msg}"${this.uuid}"}`
+                }
+            },
+            'peer with invalid signature': {
+                uuid: '7940d49c-9fac-4a46-b69f-6497fc411532',
+                signature: 'somesignature',
+                get cmd() {
+                    return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
+                }
+            },
+            'blacklisted peer with invalid signature': {
+                uuid: 'f06ab617-7ccc-45fe-aee2-d4f5d175891b',
+                signature: 'somesignature',
+                get cmd() {
+                    return `{${msg}"${this.uuid}","signature":"${this.signature}"}`
+                }
+            }
+        };
+
+        Object.keys(INVALID_ADD_PEERS_REQUESTS).forEach((test) => {
+
+            context(test, () => {
+
+                beforeEach('generate configs and set harness state', async () => {
+                    await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = getSwarmObj();
+                    newPeerConfig = (await generateConfigs(1))[0]
+                });
+
+                beforeEach('edit new peer config', () => {
+
+                    editFile(
+                        {
+                            filename: `bluzelle${newPeerConfig.index}.json`,
+                            changes: {
+                                uuid: INVALID_ADD_PEERS_REQUESTS[test].uuid,
+                                bootstrap_file: './peers.json'
+                            }
+                        });
+                });
+
+                beforeEach('spawn swarm', async function () {
+                    this.timeout(20000);
+                    await spawnSwarm({consensusAlgo: 'raft'})
+                });
+
+                afterEach('remove configs and peerslist and clear harness state', () => {
+                    // deleteConfigs();
+                    resetHarnessState();
+                });
+
+                afterEach('despawn swarm', despawnSwarm);
+
+                it.only('should not be able to communicate with swarm', (done) => {
+                    try {
+                        // openSocketAndSendMsg(done, `{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${INVALID_ADD_PEERS_REQUESTS[test].cmd}}}`)
+
+                        socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
+
+                        socket.on('open', () => {
+
+                            socket.send(`{"bzn-api":"raft","cmd":"add_peer","data":{"peer":${INVALID_ADD_PEERS_REQUESTS[test].cmd}}}`);
+
+                        });
+
+                        socket.on('message', (message) => {
+                            let msg = JSON.parse(message);
+
+                            if (msg.error) {
+                                throw new Error(msg.error)
+                            } else {
+                                setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+                            }
+
+                        });
+                    } catch (e) {
+                        console.log('RECEIVED AN ERROR');
+                        console.log(e);
+
+                    // ERROR_UNABLE_TO_VALIDATE_UUID
+                    // ERROR_INVALID_SIGNATURE
+
+                    }
+                })
+            })
+        })
 
     });
 
@@ -330,13 +423,13 @@ describe('swarm membership', () => {
             context('has insufficient nodes alive for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(2);
+                    await generateSwarmConfigsAndSetState(6);
                     swarm = getSwarmObj();
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', failureAllowed: 0})
+                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 4, failureAllowed: 0}) // numOfNodes / 2 + 1
                 });
 
                 beforeEach('initialize client and connect', async () => {
@@ -384,7 +477,18 @@ const openSocketAndSendMsg = (done, msg) => {
 
         socket.send(msg);
 
-        setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+        // setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+
+    });
+
+    socket.on('message', (message) => {
+        let msg = JSON.parse(message);
+
+        if (msg.error) {
+            throw new Error(msg.error)
+        } else {
+            setTimeout(done, 500) // pause to give db time to achieve consensus and commit single quorum
+        }
 
     });
 };

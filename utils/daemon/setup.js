@@ -117,21 +117,111 @@ const setupUtils = {
             setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 1500)
         });
 
+
+
         socket.on('message', (message) => {
 
             let msg = JSON.parse(message);
 
-            if (msg.error) {
-                swarm.leader = msg.message.leader.name
-            } else {
-                swarm.leader = swarm.guaranteedNodes[0];
+            try {
+                if (msgSentToFollower(msg)) {
+                    swarm.leader = msg.message.leader.name;
+                    res(swarm.leader)
+                } else if (msgSentToLeader(msg)) {
+                    swarm.leader = swarm.guaranteedNodes[0];
+                    res(swarm.leader)
+                } else if (electionInProgress(msg)) {
+                    socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"}))
+                }
+            } catch (err) {
+                console.log(`Error setting leader, \n${err.stack}`);
+                console.log(`Response from daemon:`);
+                console.log(msg)
             }
-            res(swarm.leader)
+
         })
     }),
 
+    pollStatus: ({port, matchState, expectSingleton, expectConnected} = {}) => new Promise((resolve, reject) => {
+
+        let state, intervalId;
+        let statesArr = [];
+
+        try {
+            socket = new WebSocket(`ws:127.0.0.1:${port}`)
+        } catch (err) {
+            console.log(`Failed to connect to node. \n ${err.stack}`)
+        }
+
+        socket.on('open', () => {
+
+            intervalId = setInterval(() => {
+                socket.send(JSON.stringify({"bzn-api":"status"}))
+            }, 1500)
+
+        });
+
+        /*
+         {
+             "bzn-api" : "status",
+             "module" :
+             [
+                 {
+                     "name" : "raft",
+                     "status" :
+                     {
+                         "state" : "candidate"
+                     }
+                 }
+             ],
+             "version" : ".."
+         }
+         */
+
+        socket.on('message', (message) => {
+
+            let msg = JSON.parse(message);
+
+            state = msg.module[0].status.state;
+
+            console.log(state)
+
+            if (matchState && state === matchState) {
+                clearInterval(intervalId);
+                resolve(`Daemon reached ${matchState}`);
+                socket.close();
+            }
+
+            if (expectConnected && (state === 'leader' || state === 'follower')) {
+                clearInterval(intervalId);
+                resolve(`Daemon reached ${matchState}`);
+                socket.close();
+            }
+
+            statesArr.push(state);
+
+        });
+
+        if (expectSingleton) {
+
+            setTimeout(() => {
+
+                if (!statesArr.includes('follower') && !statesArr.includes('leader') ) {
+                    clearInterval(intervalId);
+                    resolve('Daemon stayed as singleton');
+                    socket.close();
+                } else {
+                    clearInterval(intervalId);
+                    reject(new Error('New peer connected to swarm. Expected to be singleton.'));
+                    socket.close();
+                }
+            }, 6000)
+        }
+
+    }),
+
     despawnSwarm: () => {
-        execSync('pkill -9 swarm');
+        exec('pkill -9 swarm');
     },
 
     deleteConfigs: () => {
@@ -159,6 +249,66 @@ const setupUtils = {
         });
     }
 };
+
+
+/*
+ @CASE 1: swarm in election
+
+ {
+     "error" : "ERROR_GET_PEERS_ELECTION_IN_PROGRESS_TRY_LATER"
+ }
+
+ @CASE 2: msg sent to follower
+ {
+     "error" : "ERROR_GET_PEERS_MUST_BE_SENT_TO_LEADER",
+     "message" :
+     {
+         "leader" :
+         {
+             "host" : "127.0.0.1",
+             "http_port" : 8081,
+             "name" : "daemon1",
+             "port" : 50001,
+             "uuid" : "4f072c3d-c0b8-4286-bba3-5f47ea321dac"
+         }
+     }
+ }
+
+ @CASE 3: msg sent to leader
+ {
+     "message" :
+     [
+         {
+             "host" : "127.0.0.1",
+             "http_port" : 8080,
+             "name" : "daemon0",
+             "port" : 50000,
+             "uuid" : "28e48261-13dc-49f0-a651-a1c70c0bddce"
+         },
+         {
+             "host" : "127.0.0.1",
+             "http_port" : 8081,
+             "name" : "daemon1",
+             "port" : 50001,
+             "uuid" : "4f072c3d-c0b8-4286-bba3-5f47ea321dac"
+         },
+         {
+             "host" : "127.0.0.1",
+             "http_port" : 8082,
+             "name" : "daemon2",
+             "port" : 50002,
+             "uuid" : "9687ff1f-c244-4159-9847-7bf10bee4e74"
+         }
+     ]
+ }
+ */
+
+const msgSentToFollower = (msg) => msg.error && msg.message;
+
+const msgSentToLeader = (msg) => msg.message;
+
+const electionInProgress = (msg) => msg.error;
+
 
 const difference = (arr1, arr2) => {
     return arr1

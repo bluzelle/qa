@@ -159,6 +159,9 @@ function Config(keys, edits) {
 const readTemplate = path => JSON.parse(fs.readFileSync(path).toString());
 
 const setValues = (fileContent, changes) => {
+
+    // if editing an array like peers list file, pass in an index value to target changes
+
     for (let key in changes) {
 
         if (key === 'index') {

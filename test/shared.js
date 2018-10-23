@@ -48,6 +48,8 @@ exports.createShouldTimeout = clientsObj => {
             .catch(e => {
                 if (e.message.toString().includes('Timed out after waiting for 5000ms')) {
                     done();
+                } else {
+                    console.log(e)
                 }
             })
     });
