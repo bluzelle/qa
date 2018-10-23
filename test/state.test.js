@@ -8,9 +8,7 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 
 let swarm;
-
 let clientsObj = {};
-
 let numOfNodes = 6;
 
 describe('storage', () => {

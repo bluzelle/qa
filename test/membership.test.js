@@ -7,12 +7,10 @@ const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj
 const shared = require('./shared');
 
 let swarm, newPeerConfig;
-
 let clientsObj = {};
-
 let numOfNodes = 6;
 
-describe.only('swarm membership', () => {
+describe('swarm membership', () => {
 
     context('adding', () => {
 

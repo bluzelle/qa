@@ -8,6 +8,7 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 let swarm;
 let clientsObj = {};
+let numOfNodes = 6;
 
 describe('scenarios', () => {
 
@@ -17,7 +18,7 @@ describe('scenarios', () => {
         let newestNode;
 
         beforeEach('generate configs and set harness state', async () => {
-            await generateSwarmConfigsAndSetState(5);
+            await generateSwarmConfigsAndSetState(numOfNodes);
             swarm = getSwarmObj();
             newestNode = getNewestNodes(1);
         });

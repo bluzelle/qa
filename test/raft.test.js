@@ -9,9 +9,9 @@ const {spawnSwarm, despawnSwarm, deleteConfigs, clearDaemonState, createKeys, ge
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 
 
-let swarm;
-
+let swarm, newPeerConfig;
 let clientsObj = {};
+let numOfNodes = 6;
 
 describe('raft', () => {
 
@@ -29,13 +29,14 @@ describe('raft', () => {
                 let newestNode;
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(4);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
+                    newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: 3})
+                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1})
                 });
 
                 beforeEach('initialize client', () => {
@@ -65,9 +66,10 @@ describe('raft', () => {
                 context('with clear local state', () => {
 
                     beforeEach(() => {
-                        newestNode = getNewestNodes(1);
+                        // newestNode = getNewestNodes(1);
 
-                        cfgIndexObj.index = swarm[newestNode[0]].index
+                        // cfgIndexObj.index = swarm[newestNode[0]].index
+                        cfgIndexObj.index = newPeerConfig.index
                     });
 
                     shared.daemonShouldSync(cfgIndexObj, 5, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
@@ -162,7 +164,7 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(3);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
                 });
 
@@ -213,7 +215,7 @@ describe('raft', () => {
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(3);
+                    await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
                 });
 
@@ -267,7 +269,7 @@ describe('raft', () => {
         context('leader dies', () => {
 
             beforeEach('generate configs and set harness state', async () => {
-                await generateSwarmConfigsAndSetState(3);
+                await generateSwarmConfigsAndSetState(numOfNodes);
                 swarm = getSwarmObj();
             });
 
