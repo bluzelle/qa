@@ -1,5 +1,6 @@
 const {spawn, exec, execSync} = require('child_process');
 const WebSocket = require('ws');
+const waitUntil = require("async-wait-until");
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader, pollStatus} = require('../utils/daemon/setup');
@@ -8,7 +9,7 @@ const shared = require('./shared');
 
 let swarm, newPeerConfig;
 let clientsObj = {};
-let numOfNodes = 6;
+let numOfNodes = 10;
 
 describe('swarm membership', () => {
 
@@ -40,9 +41,9 @@ describe('swarm membership', () => {
                     });
 
                     beforeEach('spawn swarm', async function () {
-                        const MINIMUM_REQUIRED_FOR_CONSENSUS = numOfNodes / 2 + 1;
+                        const MINIMUM_REQUIRED_FOR_CONSENSUS = Math.floor(numOfNodes / 2) + 1
                         this.timeout(20000);
-                        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
+                        await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                     });
 
                     beforeEach('initialize client', () => {
@@ -160,7 +161,7 @@ describe('swarm membership', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft'})
+                    await spawnSwarm({consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -250,7 +251,7 @@ describe('swarm membership', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft'})
+                    await spawnSwarm({consensusAlgorithm: 'raft'})
                 });
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
@@ -290,7 +291,7 @@ describe('swarm membership', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1});
+                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1});
                 });
 
                 beforeEach('spawn new peer', async () => await spawnDaemon(newPeerConfig.index));
@@ -353,14 +354,16 @@ describe('swarm membership', () => {
             context('has insufficient nodes alive for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
+                    // override numOfNodes so that resulting swarm is guaranteed to result in swarm without consensus
+                    numOfNodes = 9;
                     await generateSwarmConfigsAndSetState(numOfNodes);
                     swarm = getSwarmObj();
                 });
 
                 beforeEach('spawn swarm', async function () {
-                    const MINIMUM_REQUIRED_FOR_CONSENSUS = numOfNodes / 2 + 1;
+                    const MINIMUM_REQUIRED_FOR_CONSENSUS = Math.floor(numOfNodes / 2) + 1;
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
+                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                 });
 
                 beforeEach('initialize client and connect', async () => {
@@ -378,7 +381,10 @@ describe('swarm membership', () => {
                     await createKeys(clientsObj, 5, 500));
 
                 beforeEach('open ws connection to leader and send msg', async () => {
-                    const nodeAliveInSwarm = swarm.guaranteedNodes[0];
+
+                    let liveNodesInSwarmExcludingLeader = [...swarm.guaranteedNodes];
+                    liveNodesInSwarmExcludingLeader.splice(swarm.guaranteedNodes.indexOf(swarm.leader),1)
+                    const nodeAliveInSwarm = liveNodesInSwarmExcludingLeader[0];
 
                     try {
                         await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[nodeAliveInSwarm].uuid}"}}`);
@@ -407,7 +413,11 @@ describe('swarm membership', () => {
 
 const connectWsAndSendMsg = (swarm, msg) => new Promise((resolve, reject) => {
 
-        socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
+        try {
+            socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
+        } catch (err) {
+            rej(new Error('Failed to connect to leader'))
+        }
 
         socket.on('open', () => {
             socket.send(msg);
