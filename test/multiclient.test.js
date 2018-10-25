@@ -2,13 +2,13 @@ const assert = require('assert');
 const {expect} = require('chai');
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnSwarm, despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj} = require('../utils/daemon/configs');
 
 
 let clientsObj = {};
 let swarm;
-let numOfNodes = 6;
+let numOfNodes = 10;
 
 describe('multi-client', () => {
 
@@ -19,7 +19,7 @@ describe('multi-client', () => {
 
     beforeEach('spawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm({consensusAlgo: 'raft'})
+        await spawnSwarm({consensusAlgorithm: 'raft'})
     });
 
     beforeEach('initialize clients', () => {

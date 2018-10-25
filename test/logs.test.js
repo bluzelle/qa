@@ -3,13 +3,11 @@ const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {despawnSwarm, clearDaemonState, deleteConfigs} = require('../utils/daemon/setup');
+const {despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
 const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
-
-    beforeEach('clear daemon state state', clearDaemonState);
 
     beforeEach('generate configs and set harness state', async () =>
         await generateSwarmConfigsAndSetState(1));
@@ -19,7 +17,7 @@ describe('daemon', () => {
         resetHarnessState();
     });
 
-    after(() => {
+    after('delete dir created by test', () => {
         execSync('cd ./daemon-build/output/; rm -rf newlogsdir')
     });
 

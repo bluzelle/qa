@@ -1,29 +1,43 @@
 const {expect} = require('chai');
-const {spawn} = require('child_process');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnDaemon} = require('../utils/daemon/setup');
-
 
 
 exports.swarmIsOperational = clientsObj => {
 
     it('should be able to create', async () => {
 
-        await clientsObj.api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
     });
 
     it('should be able to read', async () => {
 
-        await clientsObj.api.create('key', 'abc');
+        try {
+            await clientsObj.api.create('key', 'abc');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
         expect(await clientsObj.api.read('key')).to.be.equal('abc');
     });
 
     it('should be able to update', async () => {
 
-        await clientsObj.api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
-        await clientsObj.api.update('key', 'abc');
+        try {
+            await clientsObj.api.update('key', 'abc');
+        } catch (err) {
+            throw new Error(`Failed to update \n ${err}`);
+        }
 
         expect(await clientsObj.api.read('key')).to.equal('abc');
 
@@ -31,9 +45,17 @@ exports.swarmIsOperational = clientsObj => {
 
     it('should be able to delete', async () => {
 
-        await clientsObj.api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
-        await clientsObj.api.remove('key');
+        try {
+            await clientsObj.api.remove('key');
+        } catch (err) {
+            throw new Error(`Failed to remove \n ${err}`);
+        }
 
         expect(await clientsObj.api.has('key')).to.be.false;
     })
@@ -41,17 +63,17 @@ exports.swarmIsOperational = clientsObj => {
 
 exports.createShouldTimeout = clientsObj => {
 
-    it('create should timeout at api level', done => {
+    it('create should timeout at api level', () => {
 
-        clientsObj.api.create('key', '123')
+        return clientsObj.api.create('key', '123')
             .then(() => {
                 throw new Error('Create was successful, expected to fail.')
             })
             .catch(err => {
-                if (err.message.toString().includes('Timed out after waiting for 5000ms')) {
-                    done();
+                if (err.message.includes('Timed out after waiting for 5000ms')) {
+                    return Promise.resolve()
                 } else {
-                    throw Error(err)
+                    throw (err);
                 }
             })
     });

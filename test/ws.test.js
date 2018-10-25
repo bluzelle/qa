@@ -13,20 +13,20 @@ const ENCODED_CMDS = {
 };
 
 let swarm;
-let numOFNodes = 6;
+let numOfNodes = 10;
 
 describe('web sockets interface', () => {
 
     describe('connected', () => {
 
         beforeEach('generate configs and set harness state', async () => {
-            await generateSwarmConfigsAndSetState(numOFNodes);
+            await generateSwarmConfigsAndSetState(numOfNodes);
             swarm = getSwarmObj();
         });
 
         beforeEach('spawn swarm', async function () {
             this.timeout(20000);
-            await spawnSwarm({consensusAlgo: 'raft'})
+            await spawnSwarm({consensusAlgorithm: 'raft'})
         });
 
         beforeEach('open ws connection', done => {
@@ -64,7 +64,7 @@ describe('web sockets interface', () => {
 
         beforeEach('spawn swarm', async function () {
             this.timeout(20000);
-            await spawnSwarm({consensusAlgo: 'raft'})
+            await spawnSwarm({consensusAlgorithm: 'raft'})
         });
 
         beforeEach(() =>

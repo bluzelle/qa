@@ -5,13 +5,13 @@ const fsPromises = require('fs').promises;
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
-const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
 const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
 
 
 let swarm, newPeerConfig;
 let clientsObj = {};
-let numOfNodes = 6;
+let numOfNodes = 10;
 
 describe('raft', () => {
 
@@ -34,7 +34,7 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1})
+                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1})
                 });
 
                 beforeEach('initialize client', () => {
@@ -67,7 +67,11 @@ describe('raft', () => {
                         cfgIndexObj.index = newPeerConfig.index
                     });
 
-                    shared.daemonShouldSync(cfgIndexObj, 5, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
+                    try {
+                        shared.daemonShouldSync(cfgIndexObj, 5, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
+                    } catch (err) {
+                        throw err
+                    }
                 });
 
                 context('with consistent but outdated state', () => {
@@ -96,7 +100,11 @@ describe('raft', () => {
                         await clientsObj.api.create('key3', '123');
                     });
 
-                    shared.daemonShouldSync(cfgIndexObj, 8, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
+                    try {
+                        shared.daemonShouldSync(cfgIndexObj, 8, '4982e0b0-0b2f-4c3a-b39f-26878e2ac814')
+                    } catch (err) {
+                        throw err
+                    }
 
                 });
 
@@ -153,7 +161,7 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft'})
+                    await spawnSwarm({consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -204,7 +212,7 @@ describe('raft', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgo: 'raft'})
+                    await spawnSwarm({consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -258,7 +266,7 @@ describe('raft', () => {
 
             beforeEach('spawn swarm', async function () {
                 this.timeout(20000);
-                await spawnSwarm({consensusAlgo: 'raft'})
+                await spawnSwarm({consensusAlgorithm: 'raft'})
             });
 
             beforeEach('initialize client', () => {

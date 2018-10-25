@@ -9,7 +9,7 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 let swarm;
 let clientsObj = {};
-let numOfNodes = 6;
+let numOfNodes = 10;
 
 describe('storage', () => {
 
@@ -20,7 +20,7 @@ describe('storage', () => {
 
     beforeEach('spawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1})
+        await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1})
     });
 
     beforeEach('initialize client', () => {
@@ -49,7 +49,7 @@ describe('storage', () => {
 
     beforeEach('respawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm({consensusAlgo: 'raft', partialSpawn: numOfNodes - 1, maintainState: true})
+        await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1, maintainState: true})
     });
 
     beforeEach('initialize client', () => {
@@ -93,8 +93,11 @@ describe('storage', () => {
             cfgIndexObj.index = swarm[newestNode[0]].index
         });
 
-        shared.daemonShouldSync(cfgIndexObj, 1, '71e2cd35-b606-41e6-bb08-f20de30df76c');
-
+        try {
+            shared.daemonShouldSync(cfgIndexObj, 1, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        } catch (err) {
+            throw err
+        }
     });
 
     context('limit', () => {
@@ -108,16 +111,12 @@ describe('storage', () => {
                 editFile({filename: `bluzelle${swarm[newestNode].index}.json`, changes: {max_storage: '700B'}})
             });
 
-            beforeEach('spawn node', () => {
-                newestNode = getNewestNodes(1);
-                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
-            });
-
             beforeEach('create key, exceed limit', () => {
                 clientsObj.api.create('key01', '123');
             });
 
             it('should log exceeded storage msg', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.stdout.on('data', data => {
@@ -129,6 +128,7 @@ describe('storage', () => {
             });
 
             it('should exit', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.on('close', code => {
@@ -138,6 +138,7 @@ describe('storage', () => {
             });
 
             it('should fail to restart', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newestNode].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.on('close', code => {
@@ -155,14 +156,6 @@ describe('storage', () => {
             });
 
             context('if limit increased', () => {
-
-                beforeEach('wait until exceeded daemon is stopped', async () => {
-                    await new Promise(resolve => {
-                        node.on('close', code => {
-                            resolve()
-                        });
-                    });
-                });
 
                 beforeEach('edit file', () => {
                     newestNode = getNewestNodes(1);

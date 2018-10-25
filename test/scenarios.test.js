@@ -8,7 +8,7 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 
 let swarm;
 let clientsObj = {};
-let numOfNodes = 6;
+let numOfNodes = 10;
 
 describe('scenarios', () => {
 
@@ -25,7 +25,7 @@ describe('scenarios', () => {
 
         beforeEach('spawn swarm', async function () {
             this.timeout(20000);
-            await spawnSwarm({consensusAlgo: 'raft'})
+            await spawnSwarm({consensusAlgorithm: 'raft'})
         });
 
         beforeEach('initialize client', () => {
