@@ -3,34 +3,22 @@ const split = require('split');
 const PromiseSome = require('bluebird').some;
 const WebSocket = require('ws');
 
-const {editFile, getSwarmObj} = require('./configs');
-
 
 const setupUtils = {
 
-    spawnSwarm: async ({consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
+    spawnSwarm: async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
 
         if (!maintainState) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
             setupUtils.clearDaemonState();
         }
 
-        let swarm = getSwarmObj();
+        const nodesToSpawn = partialSpawn ? swarm.nodes.slice(0, partialSpawn) : swarm.nodes;
 
-        let filteredSwarm = Object.keys(swarm).filter(key => key.includes('daemon'))
-            .reduce((obj, key) => {
-                obj[key] = swarm[key];
-                return obj
-            }, {});
-
-        const nodesToSpawn = partialSpawn ? Object.keys(filteredSwarm).slice(0, partialSpawn) : Object.keys(filteredSwarm);
-
-        const MINIMUM_NODES = Math.floor(Object.keys(nodesToSpawn).length * ( 1 - failureAllowed));
-
-        let guaranteedNodes;
+        const MINIMUM_NODES = Math.floor(nodesToSpawn.length * ( 1 - failureAllowed));
 
         try {
-            guaranteedNodes = await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
+            await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
                 const rejTimer = setTimeout(() => {
                     rej(new Error(`${daemon} stdout: \n ${buffer}`))
@@ -45,13 +33,16 @@ const setupUtils = {
 
                     if (data.toString().includes('Running node with ID:')) {
                         clearInterval(rejTimer);
-                        res(daemon)
+                        swarm.pushLiveNodes(daemon);
+                        res();
                     }
-                })
+                });
+
+                swarm[daemon].stream.on('close', code => {
+                    swarm.deadNode(daemon)
+                });
 
             })), MINIMUM_NODES);
-
-            swarm.guaranteedNodes = guaranteedNodes;
 
         } catch(err) {
 
@@ -64,15 +55,9 @@ const setupUtils = {
             }
         }
 
-
-        try {
-            if (consensusAlgorithm === 'raft') {
-                await setupUtils.getCurrentLeader(swarm, guaranteedNodes)
-            }
-        } catch (err) {
-            throw new Error('Swarm failed to declare leader')
+        if (consensusAlgorithm === 'raft') {
+            await setupUtils.getCurrentLeader(swarm)
         }
-
 
         if (consensusAlgorithm === 'pbft') {
             await new Promise((res) => {
@@ -110,17 +95,30 @@ const setupUtils = {
 
     },
 
-    getCurrentLeader: (swarm, reliableNodes = swarm.guaranteedNodes) => new Promise((res, rej) => {
+    getCurrentLeader: (swarm) => new Promise((res, rej) => {
+
+        let startTime, socket, nodePort;
+
+        startTime = Date.now();
+
+        rejAfterTimeElapsed(startTime, 9000, rej);
+
+        // if leader exists, connect to a follower, otherwise connect to any live node which could include leader
+        if (swarm.leader) {
+            nodePort = swarm[swarm.followers[0]].port
+        } else {
+            nodePort = swarm[swarm.liveNodes[0]].port
+        }
 
         try {
-            socket = new WebSocket(`ws://127.0.0.1:${swarm[reliableNodes[0]].port}`);
+            socket = new WebSocket(`ws://127.0.0.1:${nodePort}`);
         } catch (err) {
             rej(new Error(`Failed to connect to leader. \n ${err.stack}`))
         }
 
         socket.on('open', () => {
             // timeout required until KEP-684 bug resolved
-            setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 1500)
+            setTimeout(() => socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"})), 2000)
         });
 
         socket.on('message', (message) => {
@@ -130,10 +128,12 @@ const setupUtils = {
             try {
                 if (msgSentToFollower(msg)) {
                     swarm.leader = msg.message.leader.name;
-                    res(swarm.leader)
+                    res(swarm.leader);
+                    socket.close();
                 } else if (msgSentToLeader(msg)) {
-                    swarm.leader = swarm.guaranteedNodes[0];
-                    res(swarm.leader)
+                    swarm.leader = swarm.liveNodes[0];
+                    res(swarm.leader);
+                    socket.close();
                 } else if (electionInProgress(msg)) {
                     socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"}))
                 }
@@ -236,6 +236,16 @@ const setupUtils = {
             reject(new Error('Failed to spawn Daemon.'));
         });
     })
+};
+
+const rejAfterTimeElapsed = (startTime, ms, rej) => {
+    setInterval(() => {
+        let timeElapsed = Date.now() - startTime;
+
+        if (timeElapsed >= ms) {
+            rej(new Error(`Timed out after time elapsed: ${ms}`))
+        }
+    }, 500);
 };
 
 const msgSentToFollower = (msg) => msg.error && msg.message;

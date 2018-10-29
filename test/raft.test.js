@@ -6,8 +6,8 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
-const {generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes} = require('../utils/daemon/configs');
-
+const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const SwarmState = require('../utils/daemon/swarm');
 
 let swarm, newPeerConfig;
 let clientsObj = {};
@@ -27,14 +27,14 @@ describe('raft', () => {
                 let cfgIndexObj = {index: 0};
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                     newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1})
                 });
 
                 beforeEach('initialize client', () => {
@@ -76,15 +76,15 @@ describe('raft', () => {
 
                 context('with consistent but outdated state', () => {
 
-                    let newestNode;
+                    let newNode;
 
                     beforeEach('start new node', async () => {
 
-                        newestNode = getNewestNodes(1);
+                        newNode = swarm.lastNode;
 
-                        cfgIndexObj.index = swarm[newestNode[0]].index;
+                        cfgIndexObj.index = swarm[newNode].index;
 
-                        await spawnDaemon(swarm[newestNode].index)
+                        await spawnDaemon(swarm[newNode].index)
                     });
 
                     beforeEach('create key', async () => {
@@ -92,7 +92,7 @@ describe('raft', () => {
                     });
 
                     beforeEach('kill node', () => {
-                        execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`)
+                        execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[newNode].index}'| awk '{print $2}')`)
                     });
 
                     beforeEach('create keys after disconnect', async () => {
@@ -110,15 +110,15 @@ describe('raft', () => {
 
                 context('with inconsistent .dat file', () => {
 
-                    let node, newestNode;
+                    let node, newNode;
 
                     beforeEach('start new node', async () => {
 
-                        newestNode = getNewestNodes(1);
+                        newNode = swarm.lastNode;
 
-                        cfgIndexObj.index = swarm[newestNode[0]].index;
+                        cfgIndexObj.index = swarm[newNode].index;
 
-                        await spawnDaemon(swarm[newestNode].index)
+                        await spawnDaemon(swarm[newNode].index)
                     });
 
                     beforeEach('create key', async () => {
@@ -126,20 +126,20 @@ describe('raft', () => {
                     });
 
                     beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newestNode].index}'| awk '{print $2}')`));
+                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newNode].index}'| awk '{print $2}')`));
 
                     beforeEach('change index to render .dat file inconsistent', async () => {
 
-                        let fileContent = await fsPromises.readFile(`./daemon-build/output/.state/${swarm[newestNode].uuid}.dat`, 'utf8');
+                        let fileContent = await fsPromises.readFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
 
                         fileContent = fileContent.replace('1 1', '1 10');
 
-                        await fsPromises.writeFile(`./daemon-build/output/.state/${swarm[newestNode].uuid}.dat`, fileContent, 'utf8');
+                        await fsPromises.writeFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, fileContent, 'utf8');
                     });
 
                     it('should reject AppendEntries', async () => {
 
-                        node = await spawnDaemon(swarm[newestNode].index);
+                        node = await spawnDaemon(swarm[newNode].index);
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
@@ -155,13 +155,13 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft'})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -206,13 +206,13 @@ describe('raft', () => {
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft'})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -232,13 +232,11 @@ describe('raft', () => {
 
                 beforeEach('kill all followers', () => {
 
-                    const daemons = Object.keys(swarm).filter((key) => key.includes('daemon'));
+                    let followers = swarm.followers;
 
-                    daemons.splice(daemons.indexOf(swarm.leader), 1);
+                    followers.forEach(daemon => {
 
-                    daemons.forEach(daemon => {
-
-                        const cfgName = `[b]luzelle${daemon.split('').pop()}`;
+                        const cfgName = `[b]luzelle${swarm[daemon].index}`;
 
                         execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`)
                     })
@@ -260,13 +258,13 @@ describe('raft', () => {
         context('leader dies', () => {
 
             beforeEach('generate configs and set harness state', async () => {
-                await generateSwarmConfigsAndSetState(numOfNodes);
-                swarm = getSwarmObj();
+                let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                swarm = new SwarmState(configsWithIndex);
             });
 
             beforeEach('spawn swarm', async function () {
                 this.timeout(20000);
-                await spawnSwarm({consensusAlgorithm: 'raft'})
+                await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
             });
 
             beforeEach('initialize client', () => {
@@ -295,23 +293,17 @@ describe('raft', () => {
 
             it('should elect a new leader', async () => {
 
-                swarm = getSwarmObj();
+                const currentLeader = swarm.leader;
 
-                let guaranteedNodes = swarm.guaranteedNodes.slice();
-
-                guaranteedNodes.splice(guaranteedNodes.indexOf(swarm.leader),1);
-
-                const killedLeader = swarm.leader;
-
-                const cfgName = `[b]luzelle${swarm.leader.split('').pop()}`;
+                const cfgName = `[b]luzelle${swarm[swarm.leader].index}`;
 
                 execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`);
 
                 await waitUntil(async () => {
 
-                    await getCurrentLeader(swarm, guaranteedNodes);
+                    await getCurrentLeader(swarm);
 
-                    return swarm.leader !== killedLeader
+                    return swarm.leader !== currentLeader
                 }, 1000);
             })
         })

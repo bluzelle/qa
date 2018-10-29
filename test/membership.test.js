@@ -4,8 +4,9 @@ const waitUntil = require("async-wait-until");
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader, pollStatus} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, getSwarmObj, getNewestNodes, generateConfigs} = require('../utils/daemon/configs');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, generateConfigs} = require('../utils/daemon/configs');
 const shared = require('./shared');
+const SwarmState = require('../utils/daemon/swarm');
 
 let swarm, newPeerConfig;
 let clientsObj = {};
@@ -22,8 +23,8 @@ describe('swarm membership', () => {
                 context('has sufficient nodes alive for consensus', () => {
 
                     beforeEach('generate configs and set harness state', async () => {
-                        await generateSwarmConfigsAndSetState(numOfNodes);
-                        swarm = getSwarmObj();
+                        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                        swarm = new SwarmState(configsWithIndex);
 
                         newPeerConfig = (await generateConfigs(1))[0];
                     });
@@ -41,9 +42,9 @@ describe('swarm membership', () => {
                     });
 
                     beforeEach('spawn swarm', async function () {
-                        const MINIMUM_REQUIRED_FOR_CONSENSUS = Math.floor(numOfNodes / 2) + 1
+                        const MINIMUM_REQUIRED_FOR_CONSENSUS = Math.floor(numOfNodes / 2) + 1;
                         this.timeout(20000);
-                        await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
+                        await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                     });
 
                     beforeEach('initialize client', () => {
@@ -142,8 +143,8 @@ describe('swarm membership', () => {
             context.skip(test, () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                     newPeerConfig = (await generateConfigs(1))[0]
                 });
 
@@ -161,7 +162,7 @@ describe('swarm membership', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft'})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
                 });
 
                 beforeEach('initialize client', () => {
@@ -232,8 +233,8 @@ describe('swarm membership', () => {
             context(test, () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                     newPeerConfig = (await generateConfigs(1))[0]
                 });
 
@@ -251,7 +252,7 @@ describe('swarm membership', () => {
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft'})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
                 });
 
                 afterEach('remove configs and peerslist and clear harness state', () => {
@@ -284,14 +285,14 @@ describe('swarm membership', () => {
             context('has sufficient nodes alive for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                     newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
                 beforeEach('spawn swarm', async function () {
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1});
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1});
                 });
 
                 beforeEach('spawn new peer', async () => await spawnDaemon(newPeerConfig.index));
@@ -356,14 +357,14 @@ describe('swarm membership', () => {
                 beforeEach('generate configs and set harness state', async () => {
                     // override numOfNodes so that resulting swarm is guaranteed to result in swarm without consensus
                     numOfNodes = 9;
-                    await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = getSwarmObj();
+                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsWithIndex);
                 });
 
                 beforeEach('spawn swarm', async function () {
                     const MINIMUM_REQUIRED_FOR_CONSENSUS = Math.floor(numOfNodes / 2) + 1;
                     this.timeout(20000);
-                    await spawnSwarm({consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
+                    await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: MINIMUM_REQUIRED_FOR_CONSENSUS, failureAllowed: 0})
                 });
 
                 beforeEach('initialize client and connect', async () => {
@@ -382,12 +383,10 @@ describe('swarm membership', () => {
 
                 beforeEach('open ws connection to leader and send msg', async () => {
 
-                    let liveNodesInSwarmExcludingLeader = [...swarm.guaranteedNodes];
-                    liveNodesInSwarmExcludingLeader.splice(swarm.guaranteedNodes.indexOf(swarm.leader),1)
-                    const nodeAliveInSwarm = liveNodesInSwarmExcludingLeader[0];
+                    const randomFollower = swarm.followers[0];
 
                     try {
-                        await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[nodeAliveInSwarm].uuid}"}}`);
+                        await connectWsAndSendMsg(swarm, `{"bzn-api":"raft","cmd":"remove_peer","data":{"uuid":"${swarm[randomFollower].uuid}"}}`);
                     } catch (err) {
                         console.log(err)
                     }

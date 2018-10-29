@@ -127,7 +127,6 @@ const configUtils = {
 
     resetHarnessState: () => {
         configCounter.reset();
-        swarm = {};
     },
 
     getNewestNodes: (numOfNodesToReturn) => {
