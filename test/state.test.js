@@ -15,7 +15,6 @@ describe('storage', () => {
 
     beforeEach('generate configs and set harness state', async () => {
         let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-        save = [...configsWithIndex];
         swarm = new SwarmState(configsWithIndex);
     });
 
@@ -50,8 +49,6 @@ describe('storage', () => {
 
     beforeEach('respawn swarm', async function () {
         this.timeout(20000);
-
-        // swarm = new SwarmState(save);
         await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1, maintainState: true})
     });
 
@@ -77,12 +74,6 @@ describe('storage', () => {
 
     afterEach('despawn swarm', despawnSwarm);
 
-    afterEach(function() {
-        if (this.currentTest.state !== 'passed') {
-            console.log(swarm)
-        }
-    });
-
     context('values', () => {
 
         it('should persist through shut down', async () => {
@@ -96,7 +87,7 @@ describe('storage', () => {
         let cfgIndexObj = {index: 0};
 
         beforeEach('set cfgIndexObj', () => {
-            newPeer = swarm.lastNode;
+            let newPeer = swarm.lastNode;
             cfgIndexObj.index = swarm[newPeer].index
         });
 

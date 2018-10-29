@@ -111,11 +111,16 @@ exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
                 if (keys.length === numOfKeys) {
                     clearInterval(timeId);
                     res();
-                } else if (timeElapsed() >= 6000){
+                } else if (timeElapsed() >= 8000) {
                     clearInterval(timeId);
                     rej(new Error(`Daemon returned ${keys.length}, expected ${numOfKeys} keys`))
                 }
-            })
+            });
+
+            if (timeElapsed() >= 9000) {
+                clearInterval(timeId);
+                rej(new Error(`Daemon failed to return keys.`))
+            }
         }, 500);
 
     }));
