@@ -7,6 +7,14 @@ const WebSocket = require('ws');
 const setupUtils = {
 
     spawnSwarm: async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
+        /*
+        * Spawn a swarm of nodes
+        * @param {swarm} Swarm class object documenting Daemon config information and node states
+        * @param {consensusAlgorithm} 'raft' or 'pbft' Configures spawnSwarm to expect Raft leader election or PBFT primary expectation
+        * @param {partialSpawn} Optional. Integer. Spawn a subset of nodes in list passed in Swarm class object instead of full set
+        * @param {maintainState} Optional. Boolean. Persist Daemon state rather than purge state and start a fresh swarm
+        * @param {failureAllowed} Optional. Default 0.2. The % of nodes allowed to fail to start up erroring out
+        * */
 
         if (!maintainState) {
             // Daemon state is persisted in .state directory, wipe it to ensure clean slate
@@ -144,6 +152,14 @@ const setupUtils = {
     }),
 
     pollStatus: ({port, matchState, expectSingleton, expectConnected} = {}) => new Promise((resolve, reject) => {
+
+        /*
+        * Connect to a specific node to query its Raft status
+        * @params {port} Integer. Port of node to connect and query status
+        * @params {matchState} String. 'leader' or 'follower' for Raft. Expect node to be in a specific state
+        * @params {expectSingleton}. Boolean. Expect node to remain in 'candidate' state
+        * @params {expectConnected}. Boolean. Expect node to be either 'follower' or 'leader' state
+        * */
 
         let state, intervalId;
         let statesArr = [];
