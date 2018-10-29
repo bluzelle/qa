@@ -1,69 +1,120 @@
 const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
 
-const {startSwarm, killSwarm, createState, createKeys} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs} = require('../utils/daemon/setup');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const shared = require('./shared');
-const api = require('../bluzelle-js/lib/bluzelle-node');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const SwarmState = require('../utils/daemon/swarm');
 
+let swarm;
+let clientsObj = {};
+let numOfNodes = 10;
 
-let numOfKeys = 5;
+describe('storage', () => {
 
-describe.only('storage', () => {
+    beforeEach('generate configs and set harness state', async () => {
+        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+        swarm = new SwarmState(configsWithIndex);
+    });
+
+    beforeEach('spawn swarm', async function () {
+        this.timeout(20000);
+        await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1})
+    });
+
+    beforeEach('initialize client', () => {
+
+        clientsObj.api = new BluzelleClient(
+            `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            false
+        );
+    });
+
+    beforeEach('connect client', async () => {
+        await clientsObj.api.connect()
+    });
 
     beforeEach('create state', async () => {
-        await createState(api, 'stateExists', '123');
+        await clientsObj.api.create('stateExists', '123');
     });
 
-    beforeEach(async () => {
-        await startSwarm({maintainState: true});
+    beforeEach('disconnect api after state creation', () => clientsObj.api.disconnect());
+
+    beforeEach('despawn swarm after state creation', () => {
+        despawnSwarm();
+        clientsObj = {};
     });
 
-    beforeEach('initialize client api', async () =>
-        await api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
-
-    beforeEach('populate db', done => {
-        createKeys(done, api, numOfKeys);
+    beforeEach('respawn swarm', async function () {
+        this.timeout(20000);
+        await spawnSwarm(swarm, {consensusAlgorithm: 'raft', partialSpawn: numOfNodes - 1, maintainState: true})
     });
 
-    afterEach('disconnect api', api.disconnect);
+    beforeEach('initialize client', () => {
 
-    afterEach(async () => {
-        await killSwarm();
+        clientsObj.api = new BluzelleClient(
+            `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+            '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            false
+        );
     });
+
+    beforeEach('connect client', async () => {
+        await clientsObj.api.connect()
+    });
+
+    afterEach('remove configs and peerslist and clear harness state', () => {
+        deleteConfigs();
+        resetHarnessState();
+    });
+
+    afterEach('disconnect api', () => clientsObj.api.disconnect());
+
+    afterEach('despawn swarm', despawnSwarm);
 
     context('values', () => {
 
         it('should persist through shut down', async () => {
-            expect(await api.read('stateExists')).to.equal('123');
+            expect(await clientsObj.api.read('stateExists')).to.equal('123');
         });
 
     });
 
     context('a new node, after connecting to peers', () => {
 
-        shared.daemonShouldSync(api, 'bluzelle2', numOfKeys + 1);
+        let cfgIndexObj = {index: 0};
 
+        beforeEach('set cfgIndexObj', () => {
+            let newPeer = swarm.lastNode;
+            cfgIndexObj.index = swarm[newPeer].index
+        });
+
+        try {
+            shared.daemonShouldSync(cfgIndexObj, 1, '71e2cd35-b606-41e6-bb08-f20de30df76c');
+        } catch (err) {
+            throw err
+        }
     });
 
     context('limit', () => {
 
         context('when exceeded', () => {
 
-            let node;
+            let node, newPeer;
 
-            beforeEach('edit config', () =>
-                editFile({filename: 'bluzelle2.json', changes: {max_storage: '700B'}}));
-
-            beforeEach('spawn node', () => {
-                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
+            beforeEach('edit config', () => {
+                newPeer = swarm.lastNode;
+                editFile({filename: `bluzelle${swarm[newPeer].index}.json`, changes: {max_storage: '700B'}})
             });
 
             beforeEach('create key, exceed limit', () => {
-                api.create('key01', '123');
+                clientsObj.api.create('key01', '123');
             });
 
             it('should log exceeded storage msg', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newPeer].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.stdout.on('data', data => {
@@ -75,6 +126,7 @@ describe.only('storage', () => {
             });
 
             it('should exit', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newPeer].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.on('close', code => {
@@ -84,6 +136,7 @@ describe.only('storage', () => {
             });
 
             it('should fail to restart', async () => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newPeer].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
                     node.on('close', code => {
@@ -92,7 +145,8 @@ describe.only('storage', () => {
                 });
 
                 await new Promise(resolve => {
-                    exec('cd ./daemon-build/output/; ./swarm -c bluzelle2.json', (error, stdout, stderr) => {
+                    exec(`cd ./daemon-build/output/; ./swarm -c bluzelle${swarm[newPeer].index}.json`, (error, stdout, stderr) => {
+
                         if (stdout.toString().includes('Maximum storage has been exceeded')) {
                             resolve()
                         }
@@ -102,38 +156,52 @@ describe.only('storage', () => {
 
             context('if limit increased', () => {
 
-                beforeEach('wait until exceeded daemon is stopped', async () => {
-                    await new Promise(resolve => {
-                        node.on('close', code => {
-                            resolve()
-                        });
-                    });
+                beforeEach('edit file', () => {
+                    newPeer = swarm.lastNode;
+                    editFile({filename: `bluzelle${swarm[newPeer].index}.json`, changes: {max_storage: '1GB'}});
                 });
 
-                beforeEach('edit file', () =>
-                    editFile({filename: 'bluzelle2.json', changes: {max_storage: '1GB'}}));
 
                 beforeEach('start daemon with increased limit', async () => {
-                    node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle2.json'], {cwd: './scripts'});
-
-                    await new Promise(resolve => {
-                        node.stdout.on('data', data => {
-                            // connected to peer log msg: [debug] (node.cpp:84) - connection from: 127.0.0.1:62506
-                            if (data.toString().includes('Received WS message:')) {
-                                resolve()
-                            }
-                        })
-                    })
+                    await spawnDaemon(swarm[newPeer].index);
                 });
 
                 context('daemon is operational', () => {
 
-                    shared.swarmIsOperational(api);
+                    // shared.swarmIsOperational(clientsObj);
+
+                    it('should be able to create', async () => {
+
+                        await clientsObj.api.create('key', '123');
+                    });
+
+                    it('should be able to read', async () => {
+
+                        await clientsObj.api.create('key', 'abc');
+
+                        expect(await clientsObj.api.read('key')).to.be.equal('abc');
+                    });
+
+                    it('should be able to update', async () => {
+
+                        await clientsObj.api.create('key', '123');
+
+                        await clientsObj.api.update('key', 'abc');
+
+                        expect(await clientsObj.api.read('key')).to.equal('abc');
+
+                    });
+
+                    it('should be able to delete', async () => {
+
+                        await clientsObj.api.create('key', '123');
+
+                        await clientsObj.api.remove('key');
+
+                        expect(await clientsObj.api.has('key')).to.be.false;
+                    })
                 });
             });
         });
     });
 });
-
-
-

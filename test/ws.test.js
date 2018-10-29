@@ -1,8 +1,9 @@
 const WebSocket = require('ws');
 const expect = require('chai').expect;
 
-const {startSwarm, killSwarm} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
+const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
+const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const SwarmState = require('../utils/daemon/swarm');
 
 let socket;
 
@@ -12,19 +13,33 @@ const ENCODED_CMDS = {
     read: '{"bzn-api":"database","msg":"Ui8SJgokNzFlMmNkMzUtYjYwNi00MWU2LWJiMDgtZjIwZGUzMGRmNzZjWgUSA2tleQ=="}' // read('key')
 };
 
+let swarm;
+let numOfNodes = 10;
+
 describe('web sockets interface', () => {
 
     describe('connected', () => {
 
-        beforeEach(startSwarm);
+        beforeEach('generate configs and set harness state', async () => {
+            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsWithIndex);
+        });
+
+        beforeEach('spawn swarm', async function () {
+            this.timeout(20000);
+            await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
+        });
 
         beforeEach('open ws connection', done => {
-            socket = new WebSocket('ws://127.0.0.1:50000');
+            socket = new WebSocket(`ws://${process.env.address}:${swarm[swarm.leader].port}`);
             socket.on('open', done);
         });
 
-        afterEach( async () => {
-            await killSwarm();
+        afterEach('despawn swarm', despawnSwarm);
+
+        afterEach('remove configs and peerslist and clear harness state', () => {
+            deleteConfigs();
+            resetHarnessState();
         });
 
         it('should be responsive', async () => {
@@ -43,10 +58,19 @@ describe('web sockets interface', () => {
 
         let startTime, timeElapsed;
 
+        beforeEach('generate configs and set harness state', async () => {
+            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsWithIndex);
+        });
+
+        beforeEach('spawn swarm', async function () {
+            this.timeout(20000);
+            await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
+        });
+
         beforeEach(() =>
             editFile({filename: 'bluzelle0.json', changes: { ws_idle_timeout: 1}}));
 
-        beforeEach(startSwarm);
 
         beforeEach('ws connection', done => {
             startTime = Date.now();
@@ -55,7 +79,7 @@ describe('web sockets interface', () => {
             socket.on('open', done);
         });
 
-        afterEach(killSwarm);
+        afterEach('despawn swarm', despawnSwarm);
 
 
         it('should close after an idle period', async function () {

@@ -1,59 +1,78 @@
-const {spawn, execSync} = require('child_process');
+const {spawn, execSync, exec} = require('child_process');
 
-const {startSwarm, killSwarm, createKeys} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
+const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const shared = require('./shared');
-const api = require('../bluzelle-js/lib/bluzelle.node');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const SwarmState = require('../utils/daemon/swarm');
 
+let swarm;
+let clientsObj = {};
+let numOfNodes = 10;
 
 describe('scenarios', () => {
 
     // KEP-489
     context('recover from restart', () => {
 
-        before('initialize client api', () =>
-            api.connect(`ws://${process.env.address}:${process.env.port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+        let randomPeer;
 
-        beforeEach('start swarm', async () => {
-            await startSwarm();
-
-            await spawnNode('bluzelle2');
+        beforeEach('generate configs and set harness state', async () => {
+            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsWithIndex);
         });
 
-        beforeEach('populate db', done =>
-            createKeys(done, api, process.env.numOfKeys));
-
-        beforeEach('restarting 3rd node', async () => {
-
-            execSync(`kill $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
-
-            await spawnNode('bluzelle2');
-
+        beforeEach('spawn swarm', async function () {
+            this.timeout(20000);
+            await spawnSwarm(swarm, {consensusAlgorithm: 'raft'});
+            randomPeer = swarm.liveNodes[0];
         });
 
-        beforeEach('delete 3rd node state file, kill 3rd node', () => {
+        beforeEach('initialize client', () => {
 
-            execSync('rm ./daemon-build/output/.state/3726ec5f-72b4-4ce6-9e60-f5c47f619a41.dat');
-
-            execSync(`kill $(ps aux | grep '[b]luzelle2'| awk '{print $2}')`);
+            clientsObj.api = new BluzelleClient(
+                `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+                '71e2cd35-b606-41e6-bb08-f20de30df76c',
+                false
+            );
         });
 
-        beforeEach('start 3rd node', async () =>
-            await spawnNode('bluzelle2'));
+        beforeEach('connect client', async () => {
+            await clientsObj.api.connect()
+        });
 
-        afterEach('kill swarm', killSwarm);
+        beforeEach('populate db', async function() {
+            this.timeout(20000);
 
-        shared.swarmIsOperational(api);
+            await createKeys(clientsObj, 10, 500);
+        });
+
+        beforeEach('restarting node', async () => {
+
+            execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[randomPeer].index}'| awk '{print $2}')`);
+
+            await spawnDaemon(swarm[randomPeer].index);
+        });
+
+        beforeEach('delete node state file, kill node', () => {
+
+            execSync(`kill -9 $(ps aux | grep 'swarm -c [b]luzelle${swarm[randomPeer].index}' | awk '{print $2}')`);
+
+            execSync(`rm ./daemon-build/output/.state/${swarm[randomPeer].uuid}.dat`);
+        });
+
+        beforeEach('restart node', async () =>
+            await spawnDaemon(swarm[randomPeer].index));
+
+        afterEach('remove configs and peerslist and clear harness state', () => {
+            deleteConfigs();
+            resetHarnessState();
+        });
+
+        afterEach('disconnect api', () => clientsObj.api.disconnect());
+
+        afterEach('despawn swarm', despawnSwarm);
+
+        shared.swarmIsOperational(clientsObj);
     });
 });
-
-const spawnNode = cfgName =>
-    new Promise(resolve => {
-        let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `${cfgName}.json`], {cwd: './scripts'});
-
-        node.stdout.on('data', data => {
-
-            if (data.toString().includes('Running node with ID')) {
-                resolve()
-            }
-        });
-    });

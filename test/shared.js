@@ -1,74 +1,103 @@
 const {expect} = require('chai');
-const {spawn} = require('child_process');
+const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const {spawnDaemon} = require('../utils/daemon/setup');
 
 
-exports.swarmIsOperational = api => {
+exports.swarmIsOperational = clientsObj => {
 
     it('should be able to create', async () => {
 
-        await api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
     });
 
     it('should be able to read', async () => {
 
-        await api.create('key', 'abc');
+        try {
+            await clientsObj.api.create('key', 'abc');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
-        expect(await api.read('key')).to.be.equal('abc');
+        expect(await clientsObj.api.read('key')).to.be.equal('abc');
     });
 
     it('should be able to update', async () => {
 
-        await api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
-        await api.update('key', 'abc');
+        try {
+            await clientsObj.api.update('key', 'abc');
+        } catch (err) {
+            throw new Error(`Failed to update \n ${err}`);
+        }
 
-        expect(await api.read('key')).to.equal('abc');
+        expect(await clientsObj.api.read('key')).to.equal('abc');
 
     });
 
     it('should be able to delete', async () => {
 
-        await api.create('key', '123');
+        try {
+            await clientsObj.api.create('key', '123');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
 
-        await api.remove('key');
+        try {
+            await clientsObj.api.remove('key');
+        } catch (err) {
+            throw new Error(`Failed to remove \n ${err}`);
+        }
 
-        expect(await api.has('key')).to.be.false;
+        expect(await clientsObj.api.has('key')).to.be.false;
     })
 };
 
-exports.createShouldTimeout = api => {
+exports.createShouldTimeout = clientsObj => {
 
-    it('create should timeout at api level', done => {
+    it('create should timeout at api level', () => {
 
-        api.create('key', '123')
+        return clientsObj.api.create('key', '123')
             .then(() => {
                 throw new Error('Create was successful, expected to fail.')
             })
-            .catch(e => {
-                if (e.message.toString().includes('Timed out after waiting for 5000ms')) {
-                    done();
+            .catch(err => {
+                if (err.message.includes('Timed out after waiting for 5000ms')) {
+                    return Promise.resolve()
+                } else {
+                    throw (err);
                 }
             })
     });
 };
 
-exports.daemonShouldSync = (api, cfgName, numOfKeys) => {
+exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
 
-    let newPeer;
+    let api;
 
-    beforeEach('disconnect api', api.disconnect);
+    beforeEach('spawn new daemon', async () => {
+       await spawnDaemon(cfgIndexObj.index);
+    });
 
-    beforeEach('start daemon', () => new Promise((res) => {
-        newPeer = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `${cfgName}.json`], {cwd: './scripts'})
-        newPeer.stdout.on('data', (data) => {
-            if (data.toString().includes('Received WS message:')) {
-                res();
-            }
-        });
-    }));
+    beforeEach('initialize client', () => {
 
-    beforeEach('connect to specific daemon', async () =>
-        await api.connect(`ws://${process.env.address}:50002`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+        api = new BluzelleClient(
+            `ws://${process.env.address}:${50000 + parseInt(cfgIndexObj.index)}`,
+            uuid,
+            false
+        );
+    });
+
+    beforeEach('connect client', async () =>
+        await api.connect());
 
     it('should sync and return full keylist', async () => new Promise((res, rej) => {
 
@@ -82,10 +111,16 @@ exports.daemonShouldSync = (api, cfgName, numOfKeys) => {
                 if (keys.length === numOfKeys) {
                     clearInterval(timeId);
                     res();
-                } else if (timeElapsed() >= 6000){
+                } else if (timeElapsed() >= 8000) {
+                    clearInterval(timeId);
                     rej(new Error(`Daemon returned ${keys.length}, expected ${numOfKeys} keys`))
                 }
-            })
+            });
+
+            if (timeElapsed() >= 9000) {
+                clearInterval(timeId);
+                rej(new Error(`Daemon failed to return keys.`))
+            }
         }, 500);
 
     }));
