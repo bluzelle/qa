@@ -135,7 +135,9 @@ describe('storage', () => {
                 });
             });
 
-            it('should fail to restart', async () => {
+            it('should fail to restart', async function () {
+                this.timeout(20000);
+
                 node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newPeer].index}.json`], {cwd: './scripts'});
 
                 await new Promise(resolve => {
@@ -144,10 +146,11 @@ describe('storage', () => {
                     });
                 });
 
-                await new Promise(resolve => {
-                    exec(`cd ./daemon-build/output/; ./swarm -c bluzelle${swarm[newPeer].index}.json`, (error, stdout, stderr) => {
+                node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[newPeer].index}.json`], {cwd: './scripts'});
 
-                        if (stdout.toString().includes('Maximum storage has been exceeded')) {
+                await new Promise(resolve => {
+                    node.stdout.on('data', data => {
+                        if (data.toString().includes('Maximum storage has been exceeded')) {
                             resolve()
                         }
                     });
