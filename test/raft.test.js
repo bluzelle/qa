@@ -1,6 +1,6 @@
 const waitUntil = require("async-wait-until");
 const {exec, execSync, spawn} = require('child_process');
-const fsPromises = require('fs').promises;
+const fs = require('fs');
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
@@ -110,39 +110,47 @@ describe('raft', () => {
 
                 context('with inconsistent .dat file', () => {
 
-                    let node, newNode;
+                    let newNode;
 
                     beforeEach('start new node', async () => {
 
                         newNode = swarm.lastNode;
 
-                        cfgIndexObj.index = swarm[newNode].index;
-
                         await spawnDaemon(swarm[newNode].index)
                     });
 
-                    beforeEach('create key', async () => {
-                        await clientsObj.api.create('key1', '123')
-                    });
+                    beforeEach('change index to render .dat file inconsistent and kill node', async () => {
 
-                    beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newNode].index}'| awk '{print $2}')`));
+                        let fileContent;
 
-                    beforeEach('change index to render .dat file inconsistent', async () => {
+                        try {
+                            await waitUntil(() => {
 
-                        let fileContent = await fsPromises.readFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
+                                fileContent = fs.readFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
+
+                                return fileContent.includes('1 1')
+                            }, 8000);
+                        } catch (err) {
+                            console.log(`State file failed to log commit index 1 and log index 1`)
+                        }
+
+                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newNode].index}'| awk '{print $2}')`)
 
                         fileContent = fileContent.replace('1 1', '1 10');
 
-                        await fsPromises.writeFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, fileContent, 'utf8');
+                        fs.writeFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, fileContent, 'utf8');
+
                     });
 
                     it('should reject AppendEntries', async () => {
 
-                        node = await spawnDaemon(swarm[newNode].index);
+                        let fileContent = fs.readFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
+
+                        let node = await spawnDaemon(swarm[newNode].index);
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
+
                                 if (data.toString().includes('Rejecting AppendEntries because I do not agree with the previous index')) {
                                     resolve()
                                 }
