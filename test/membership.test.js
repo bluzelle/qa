@@ -12,7 +12,7 @@ let swarm, newPeerConfig;
 let clientsObj = {};
 let numOfNodes = 10;
 
-describe('swarm membership', () => {
+describe.skip('swarm membership', () => {
 
     context('adding', () => {
 
