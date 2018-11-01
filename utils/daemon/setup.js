@@ -218,7 +218,7 @@ const setupUtils = {
     }),
 
     despawnSwarm: () => {
-        exec('pkill -9 swarm');
+        execSync('pkill -9 swarm');
     },
 
     deleteConfigs: () => {
