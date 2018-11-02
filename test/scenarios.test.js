@@ -8,7 +8,7 @@ const SwarmState = require('../utils/daemon/swarm');
 
 let swarm;
 let clientsObj = {};
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('scenarios', () => {
 
@@ -31,7 +31,7 @@ describe('scenarios', () => {
         beforeEach('initialize client', () => {
 
             clientsObj.api = new BluzelleClient(
-                `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+                `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                 '71e2cd35-b606-41e6-bb08-f20de30df76c',
                 false
             );

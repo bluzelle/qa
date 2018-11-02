@@ -22,7 +22,7 @@ const killNodes = num => {
 describe.skip('pbft', () => {
 
     before('initialize client api', () =>
-        api.connect(`ws://${process.env.address}:${Object.values(swarmObj)[0].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+        api.connect(`ws://${harnessConfigs.address}:${Object.values(swarmObj)[0].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
 
     beforeEach('edit configs to use pbft', () => {
         [...Array(4).keys()].forEach(v => {

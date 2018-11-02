@@ -11,7 +11,7 @@ const SwarmState = require('../utils/daemon/swarm');
 
 let swarm, newPeerConfig;
 let clientsObj = {};
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('raft', () => {
 
@@ -40,7 +40,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -175,7 +175,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -226,7 +226,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -278,7 +278,7 @@ describe('raft', () => {
             beforeEach('initialize client', () => {
 
                 clientsObj.api = new BluzelleClient(
-                    `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                    `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                     '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                     false
                 );

@@ -14,7 +14,7 @@ const ENCODED_CMDS = {
 };
 
 let swarm;
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('web sockets interface', () => {
 
@@ -31,7 +31,7 @@ describe('web sockets interface', () => {
         });
 
         beforeEach('open ws connection', done => {
-            socket = new WebSocket(`ws://${process.env.address}:${swarm[swarm.leader].port}`);
+            socket = new WebSocket(`ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`);
             socket.on('open', done);
         });
 
@@ -75,7 +75,7 @@ describe('web sockets interface', () => {
         beforeEach('ws connection', done => {
             startTime = Date.now();
 
-            socket = new WebSocket(`ws://${process.env.address}:${process.env.port}`);
+            socket = new WebSocket(`ws://${harnessConfigs.address}:${harnessConfigs.port}`);
             socket.on('open', done);
         });
 
