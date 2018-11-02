@@ -2,6 +2,7 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 
 const uuids = require('./uuids');
+const crypto = require('./crypto');
 
 let swarm = {};
 
@@ -60,7 +61,9 @@ const configUtils = {
             }
         });
 
-        await Promise.all(configsWithIndex.map((obj) =>
+        let configsWithIndexAndSignature = await crypto.addSignaturesToConfigObject(configsWithIndex);
+
+        await Promise.all(configsWithIndexAndSignature.map((obj) =>
             fsPromises.writeFile(`./daemon-build/output/bluzelle${obj.index}.json`, JSON.stringify(obj.content))));
 
         return Promise.resolve(configsWithIndex);
