@@ -144,8 +144,6 @@ describe('raft', () => {
 
                     it('should reject AppendEntries', async () => {
 
-                        let fileContent = fs.readFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
-
                         let node = await spawnDaemon(swarm[newNode].index);
 
                         await new Promise(resolve => {
