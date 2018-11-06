@@ -151,7 +151,7 @@ const setupUtils = {
         })
     }),
 
-    pollStatus: ({port, matchState, expectSingleton, expectConnected} = {}) => new Promise((resolve, reject) => {
+    pollStatus: ({port, matchState, expectSingleton, expectConnected, debug} = {}) => new Promise((resolve, reject) => {
 
         /*
         * Connect to a specific node to query its Raft status
@@ -182,6 +182,10 @@ const setupUtils = {
             let msg = JSON.parse(message);
 
             state = msg.module[0].status.state;
+
+            if (debug) {
+                msg
+            }
 
             if (matchState && state === matchState) {
                 clearInterval(intervalId);
@@ -237,12 +241,15 @@ const setupUtils = {
         });
     },
 
-    spawnDaemon: (index) => new Promise((resolve, reject) => {
+    spawnDaemon: (index, {debug} = {}) => new Promise((resolve, reject) => {
         let daemon;
 
         daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`], {cwd: './scripts'});
 
         daemon.stdout.on('data', (data) => {
+            if (debug) {
+                console.log(data.toString());
+            }
             if (data.toString().includes('AppendEntriesReply')) {
                 resolve(daemon)
             }

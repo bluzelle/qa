@@ -1,5 +1,6 @@
 const fs = require('fs');
 const fsPromises = require('fs').promises;
+const assert = require('assert');
 
 const uuids = require('./uuids');
 const crypto = require('./crypto');
@@ -7,7 +8,7 @@ const crypto = require('./crypto');
 let swarm = {};
 
 const configUtils = {
-    editFile: ({filename, changes, remove, deleteKey}) => {
+    editFile: ({filename, changes, remove, deleteKey, push}) => {
         changes = {...changes};
 
         if (deleteKey) {
@@ -27,6 +28,8 @@ const configUtils = {
             removeValues(fileContent, remove);
         } else if (deleteKey) {
             delKey(fileContent, deleteKey);
+        } else if (push) {
+            fileContent.push(push)
         } else {
             setValues(fileContent, changes);
         }
@@ -40,33 +43,37 @@ const configUtils = {
         return fileContent
     },
 
-    generateConfigs: async (numOfConfigs) => {
+    generateConfigs: async ({numOfConfigs, uuidArray} = {}) => {
+        /*
+        * Generates config files used for Daemon and writes them to file through daemon-build symlink
+        * Requires either numOfConfigs or uuidArray
+        * @params {numOfConfigs} Integer. Number of configs to generate and write
+        * @params {uuidArray} Array. Optional. List of uuids to generate configs from
+        * @returns object containing configs and index numbers
+        * */
+
+        let uuidsList, _numOfConfigsToGenerate, configsObject;
 
         const template = readTemplate('./configs/template.json');
 
-        let uuidsList = uuids.generate(numOfConfigs);
+        if (numOfConfigs) {
+            uuidsList = uuids.generate(numOfConfigs);
+            _numOfConfigsToGenerate = numOfConfigs;
+        }
 
-        let configsWithIndex = [...Array(numOfConfigs).keys()].map((internalIndex) => {
+        if (uuidArray) {
+            assert.equal(typeof uuidArray, 'object');
+            uuidsList = uuidArray;
+            _numOfConfigsToGenerate = uuidArray.length;
+        }
 
-            let currentIndex = configCounter.increment();
+        configsObject = buildConfigObject(template, _numOfConfigsToGenerate, uuidsList);
 
-            return {
-                content: new Config(template,
-                    {
-                        listener_port: template.listener_port + currentIndex,
-                        http_port: template.http_port + currentIndex,
-                        uuid: uuidsList[internalIndex]
-                    }),
-                index: currentIndex
-            }
-        });
+        configsObject = await crypto.addSignaturesToConfigObject(configsObject);
 
-        let configsWithIndexAndSignature = await crypto.addSignaturesToConfigObject(configsWithIndex);
+        await writeFilesToDirectory(configsObject);
 
-        await Promise.all(configsWithIndexAndSignature.map((obj) =>
-            fsPromises.writeFile(`./daemon-build/output/bluzelle${obj.index}.json`, JSON.stringify(obj.content))));
-
-        return Promise.resolve(configsWithIndex);
+        return Promise.resolve(configsObject);
     },
 
     writePeersList: async (configsWithIndex, {add} = {}) => {
@@ -101,7 +108,7 @@ const configUtils = {
 
     generateSwarmConfigsAndSetState: async (numOfConfigs) => {
 
-        const configsWithIndex = await configUtils.generateConfigs(numOfConfigs);
+        const configsWithIndex = await configUtils.generateConfigs({numOfConfigs});
 
         const peersList = await configUtils.writePeersList(configsWithIndex);
 
@@ -132,14 +139,6 @@ const configUtils = {
         configCounter.reset();
     },
 
-    getNewestNodes: (numOfNodesToReturn) => {
-
-        const filteredDaemonList = Object.keys(swarm).filter(key => key.includes('daemon'));
-
-        const newestNodes = filteredDaemonList.slice(- numOfNodesToReturn);
-
-        return newestNodes
-    }
 };
 
 module.exports = configUtils;
@@ -157,6 +156,26 @@ function Config(keys, edits) {
         Object.entries(edits).forEach(key => this[key[0]] = key[1])
     }
 };
+
+const buildConfigObject = (template, _numOfConfigsToGenerate, uuidsList) => {
+    return [...Array(_numOfConfigsToGenerate).keys()].map((internalIndex) => {
+
+        let currentIndex = configCounter.increment();
+
+        return {
+            content: new Config(template,
+                {
+                    listener_port: template.listener_port + currentIndex,
+                    http_port: template.http_port + currentIndex,
+                    uuid: uuidsList[internalIndex]
+                }),
+            index: currentIndex
+        }
+    });
+};
+
+const writeFilesToDirectory = (configsObject) => Promise.all(configsObject.map((obj) =>
+    fsPromises.writeFile(`./daemon-build/output/bluzelle${obj.index}.json`, JSON.stringify(obj.content))));
 
 const readTemplate = path => JSON.parse(fs.readFileSync(path).toString());
 
