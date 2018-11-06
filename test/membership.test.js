@@ -408,7 +408,7 @@ describe('swarm membership', () => {
 
                     afterEach('despawn swarm', despawnSwarm);
 
-                    it('should not be able to communicate with swarm', async function () {
+                    it(`should receive ${INVALID_ADD_PEERS_REQUESTS[test].expect} from add_peer response`, async function () {
                         this.timeout(30000);
 
                         return new Promise(async (res) => {
