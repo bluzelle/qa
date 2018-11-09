@@ -10,32 +10,19 @@ node_js:
 
 matrix:
   include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb https://bluzelle.jfrog.io/bluzelle/debian-local all unstable'
-            - sourceline: 'deb http://ppa.launchpad.net/maarten-fonville/protobuf/ubuntu trusty main'
-              key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x4DEA8909DC6A13A3'
-          update: true
-          packages:
-            - protobuf-compiler
-            - g++-7
+    - os: osx
+      osx_image: xcode10
+      env:
+        - MATRIX_EVAL="brew update && brew unlink python && brew install protobuf && brew install snappy && brew install lz4"
 
 before_install:
-  - sudo apt-get install --no-install-recommends ca-certificates --allow-unauthenticated bluzelle-swarmdb
-
-before_script:
   - rm -rf daemon-build
-  - mkdir -p daemon-build/output/logs
+  - mkdir -p daemon-build/output/
   - cd daemon-build/output
-  - ln -s `which swarm`
-  - cd ../..
-  - cd bluzelle-js
-  - yarn
-  - webpack
-  - cd ..
+  - export LATEST_BLUZELLE_SWARMDB=$(curl https://bluzelle.jfrog.io/bluzelle/OSX/ | grep bluzelle-swarmdb | tail -1 | grep -o '"[^"]*"' | tr -d '"')
+  - curl -0 https://bluzelle.jfrog.io/bluzelle/OSX/$LATEST_BLUZELLE_SWARMDB | tar -zx
+  - cp ./$(echo $LATEST_BLUZELLE_SWARMDB | sed 's/\.tar\.gz//g')/swarm ./
+  - cd ../../
 
 script:
   - yarn test-daemon
