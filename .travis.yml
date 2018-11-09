@@ -10,18 +10,22 @@ node_js:
 
 matrix:
   include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - sourceline: 'deb https://bluzelle.jfrog.io/bluzelle/debian-local all unstable'
-            - sourceline: 'deb http://ppa.launchpad.net/maarten-fonville/protobuf/ubuntu trusty main'
-              key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x4DEA8909DC6A13A3'
-          update: true
-          packages:
-            - protobuf-compiler
-            - g++-7
+#    - os: linux
+#      addons:
+#        apt:
+#          sources:
+#            - ubuntu-toolchain-r-test
+#            - sourceline: 'deb https://bluzelle.jfrog.io/bluzelle/debian-local all unstable'
+#            - sourceline: 'deb http://ppa.launchpad.net/maarten-fonville/protobuf/ubuntu trusty main'
+#              key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x4DEA8909DC6A13A3'
+#          update: true
+#          packages:
+#            - protobuf-compiler
+#            - g++-7
+    - os: osx
+      osx_image: xcode10
+      env:
+        - MATRIX_EVAL="brew update && brew unlink python && brew install protobuf && brew install snappy && brew install lz4"
 
 before_install:
   - sudo apt-get install --no-install-recommends ca-certificates --allow-unauthenticated bluzelle-swarmdb
