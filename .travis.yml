@@ -28,18 +28,32 @@ matrix:
         - MATRIX_EVAL="brew update && brew unlink python && brew install protobuf && brew install snappy && brew install lz4"
 
 before_install:
-  - sudo apt-get install --no-install-recommends ca-certificates --allow-unauthenticated bluzelle-swarmdb
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      sudo apt-get install --no-install-recommends ca-certificates --allow-unauthenticated bluzelle-swarmdb
+    fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      rm -rf daemon-build
+      mkdir -p daemon-build/output/
+      cd daemon-build/output
+      export LATEST_BLUZELLE_SWARMDB=$(curl https://bluzelle.jfrog.io/bluzelle/OSX/ | grep bluzelle-swarmdb | tail -1 | grep -o '"[^"]*"' | tr -d '"')
+      curl -0 https://bluzelle.jfrog.io/bluzelle/OSX/$LATEST_BLUZELLE_SWARMDB | tar -zx
+      cp ./$(echo $LATEST_BLUZELLE_SWARMDB | sed 's/\.tar\.gz//g')/swarm ./
+      cd
+    fi
+
 
 before_script:
-  - rm -rf daemon-build
-  - mkdir -p daemon-build/output/logs
-  - cd daemon-build/output
-  - ln -s `which swarm`
-  - cd ../..
-  - cd bluzelle-js
-  - yarn
-  - webpack
-  - cd ..
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      rm -rf daemon-build
+      mkdir -p daemon-build/output/
+      cd daemon-build/output
+      ln -s `which swarm`
+      cd ../..
+      cd bluzelle-js
+      yarn
+      webpack
+      cd ..
+    fi
 
 script:
   - yarn test-daemon
