@@ -184,7 +184,7 @@ const setupUtils = {
             state = msg.module[0].status.state;
 
             if (debug) {
-                msg
+                console.log(msg)
             }
 
             if (matchState && state === matchState) {
