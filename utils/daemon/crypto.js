@@ -14,7 +14,7 @@ exports.addSignaturesToConfigObject = async (configsWithIndex) => {
 
 const generateSignature = (uuid) => new Promise((resolve, reject) => {
 
-    exec(`echo '${uuid}' | openssl dgst -sha256 -sign ${harnessConfigs.pathToKeyFile} -passin pass:${process.env.privateKeyPassword} | openssl base64`, (err, stdout, stderr) => {
+    exec(`echo '${uuid}' | openssl dgst -sha256 -sign ${harnessConfigs.pathToKeyFile} -passin pass:${process.env.PRIVATE_KEY_PASSWORD} | openssl base64`, (err, stdout, stderr) => {
         if (err) {
             reject(err)
         }

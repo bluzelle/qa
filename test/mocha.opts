@@ -1,4 +1,3 @@
 --timeout 10000
 --exit
 --require ./test/test.configurations
---require ./env

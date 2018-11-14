@@ -3,7 +3,7 @@
 qa.iml
 
 # passwords and keyfiles
-env.js
+.env
 *.pem
 
 .DS_Store
