@@ -76,7 +76,7 @@ const configUtils = {
         return Promise.resolve(configsObject);
     },
 
-    writePeersList: async (configsWithIndex, {add} = {}) => {
+    generatePeersList: async (configsWithIndex, {add} = {}) => {
 
         let peers = [];
 
@@ -108,9 +108,11 @@ const configUtils = {
 
     generateSwarmConfigsAndSetState: async (numOfConfigs) => {
 
+        numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
+
         const configsWithIndex = await configUtils.generateConfigs({numOfConfigs});
 
-        const peersList = await configUtils.writePeersList(configsWithIndex);
+        const peersList = await configUtils.generatePeersList(configsWithIndex);
 
         configUtils.setHarnessState(configsWithIndex);
 
