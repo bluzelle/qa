@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, createKeys, pollStatus} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState, generateConfigs} = require('../utils/daemon/configs');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState, generateConfigs} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const SwarmState = require('../utils/daemon/swarm');
 const uuids = require('../utils/daemon/uuids');
@@ -22,8 +22,8 @@ describe('swarm membership', () => {
             context('can auto add to swarm', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
 
                     newPeerConfig = (await generateConfigs({numOfConfigs: 1}))[0];
                 });
@@ -106,8 +106,8 @@ describe('swarm membership', () => {
                 context('has sufficient nodes alive for consensus', () => {
 
                     beforeEach('generate configs and set harness state', async () => {
-                        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                        swarm = new SwarmState(configsWithIndex);
+                        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                        swarm = new SwarmState(configsObject);
 
                         newPeerConfig = (await generateConfigs({numOfConfigs: 1}))[0];
                     });
@@ -183,8 +183,8 @@ describe('swarm membership', () => {
         context('blacklisted peer with valid signature', () => {
 
             beforeEach('generate configs and set harness state', async () => {
-                let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                swarm = new SwarmState(configsWithIndex);
+                let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                swarm = new SwarmState(configsObject);
 
                 const blackistedUuid = uuids.blacklist()[0];
                 newPeerConfig = (await generateConfigs({uuidArray: [blackistedUuid]}))[0];
@@ -271,8 +271,8 @@ describe('swarm membership', () => {
             context('will attempt auto add to swarm', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
 
                     const blackistedUuid = uuids.blacklist()[0];
                     newPeerConfig = (await generateConfigs({uuidArray: [blackistedUuid]}))[0];
@@ -378,8 +378,8 @@ describe('swarm membership', () => {
                 context(test, () => {
 
                     beforeEach('generate configs and set harness state', async () => {
-                        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                        swarm = new SwarmState(configsWithIndex);
+                        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                        swarm = new SwarmState(configsObject);
                         newPeerConfig = (await generateConfigs({numOfConfigs: 1}))[0]
                     });
 
@@ -437,8 +437,8 @@ describe('swarm membership', () => {
             context('has sufficient nodes alive for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                     newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
@@ -509,8 +509,8 @@ describe('swarm membership', () => {
                 beforeEach('generate configs and set harness state', async () => {
                     // override numOfNodes so that resulting swarm is guaranteed to result in swarm without consensus
                     numOfNodes = 9;
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                 });
 
                 beforeEach('spawn swarm', async function () {

@@ -4,7 +4,7 @@ const {expect} = require('chai');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
-const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
 let clientsObj = {};
@@ -14,8 +14,8 @@ let numOfNodes = harnessConfigs.numOfNodes;
 describe('multi-client', () => {
 
     beforeEach('generate configs and set harness state', async function () {
-        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-        swarm = new SwarmState(configsWithIndex);
+        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+        swarm = new SwarmState(configsObject);
     });
 
     beforeEach('spawn swarm', async function () {

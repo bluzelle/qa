@@ -1,9 +1,9 @@
 module.exports = class SwarmState {
 
-    constructor (configsWithIndex) {
+    constructor (configsObject) {
         this._nodes = [];
         this._liveNodes = [];
-        this.load(configsWithIndex);
+        this.load(configsObject);
     }
 
     get nodes() {
@@ -51,8 +51,8 @@ module.exports = class SwarmState {
         }
     }
 
-    load(configsWithIndex) {
-        configsWithIndex.forEach(data => {
+    load(configsObject) {
+        configsObject.forEach(data => {
 
             this._nodes.push(`daemon${data.index}`)
 

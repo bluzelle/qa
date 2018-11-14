@@ -1,12 +1,10 @@
 const {spawnSwarm, despawnSwarm, createKeys} = require('../utils/daemon/setup');
-const {editFile, getSwarmObj} = require('../utils/daemon/configs');
+const {editFile} = require('../utils/daemon/configs');
 const api = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {execSync} = require('child_process');
 
-
-let swarmObj = getSwarmObj();
 
 const killNodes = num => {
     // kills nodes starting from end of swarmObj list

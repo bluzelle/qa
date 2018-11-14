@@ -1,15 +1,15 @@
 const {exec} = require('child_process');
 
-exports.addSignaturesToConfigObject = async (configsWithIndex) => {
+exports.addSignaturesToConfigObject = async (configsObject) => {
 
-    let signatures = await Promise.all(configsWithIndex.map((obj) => generateSignature(obj.content.uuid)));
+    let signatures = await Promise.all(configsObject.map((obj) => generateSignature(obj.content.uuid)));
 
     signatures = signatures.map((str) => removeNewLineChar(str));
 
     return signatures.reduce((acc, curr, idx) => {
         acc[idx].content['signed_key'] = curr;
         return acc;
-    }, configsWithIndex);
+    }, configsObject);
 };
 
 const generateSignature = (uuid) => new Promise((resolve, reject) => {

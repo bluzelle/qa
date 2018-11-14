@@ -2,13 +2,13 @@ const {exec, spawn} = require('child_process');
 const waitUntil = require("async-wait-until");
 
 const {despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
 describe('daemon startup', () => {
 
     beforeEach('generate configs and set harness state', async () =>
-        await generateSwarmConfigsAndSetState(1));
+        await generateSwarmJsonsAndSetState(1));
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();

@@ -2,7 +2,7 @@ const {spawn, exec} = require('child_process');
 const {expect} = require('chai');
 
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const SwarmState = require('../utils/daemon/swarm');
@@ -14,8 +14,8 @@ let numOfNodes = harnessConfigs.numOfNodes;
 describe('storage', () => {
 
     beforeEach('generate configs and set harness state', async () => {
-        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-        swarm = new SwarmState(configsWithIndex);
+        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+        swarm = new SwarmState(configsObject);
     });
 
     beforeEach('spawn swarm', async function () {

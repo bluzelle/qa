@@ -8,6 +8,124 @@ const crypto = require('./crypto');
 let swarm = {};
 
 const configUtils = {
+
+    generateSwarmJsonsAndSetState: async (numOfConfigs) => {
+
+        numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
+
+        const configsObject = await configUtils.generateConfigs({numOfConfigs});
+
+        const peersList = await configUtils.generatePeersList(configsObject);
+
+        configUtils.setHarnessState(configsObject);
+
+        return [configsObject, peersList]
+    },
+
+    generateConfigs: async ({numOfConfigs, uuidArray} = {}) => {
+        /*
+        * Generates config files used for Daemon and writes them to file through daemon-build symlink
+        * Requires either numOfConfigs or uuidArray
+        * @params {numOfConfigs} Integer. Number of configs to generate and write
+        * @params {uuidArray} Array. Optional. List of uuids to generate configs from
+        * @returns object containing configs and index numbers
+        * */
+
+        let uuidsList, _numOfConfigsToGenerate, configsObject;
+
+        const template = readTemplate('./configs/template.json');
+
+        if (numOfConfigs) {
+            uuidsList = uuids.generate(numOfConfigs);
+            _numOfConfigsToGenerate = numOfConfigs;
+        }
+
+        if (uuidArray) {
+            assert.equal(typeof uuidArray, 'object');
+            uuidsList = uuidArray;
+            _numOfConfigsToGenerate = uuidArray.length;
+        }
+
+        configsObject = buildConfigsObject(template, _numOfConfigsToGenerate, uuidsList);
+
+        configsObject = await crypto.addSignaturesToConfigObject(configsObject);
+
+        await writeFilesToDirectory(configsObject);
+
+        return Promise.resolve(configsObject);
+    },
+
+    generatePeersList: async (configsObject, {add} = {}) => {
+
+        /*
+        * Generates peers list for Daemon and writes to file through daemon-build symlink
+        * @params {configsObject} Object. Iterates over configsObject from buildConfigsObject() to generate peers list
+        * @params {add} Boolean. Add to existing peers list from new configsObject
+        * @returns object contain peers
+        * [{
+             "name": "daemon0",
+             "host": "127.0.0.1",
+             "port": 50000,
+             "uuid": "16befa78-9ecc-416d-80ff-667509fede4b",
+             "http_port": 8080
+         }, {
+             "name": "daemon1",
+             "host": "127.0.0.1",
+             "port": 50001,
+             "uuid": "394b8d9e-1dbb-4937-bf57-4dbab9a439d5",
+             "http_port": 8081
+         },
+         ...
+        * */
+
+        let peers = [];
+
+        if (add) {
+            try {
+                let output = await fsPromises.readFile('./daemon-build/output/peers.json');
+                peers = JSON.parse(output)
+            } catch (err) {
+                console.log('Error reading existing peers list. \n' , + err.stack)
+            }
+        }
+
+        configsObject.forEach(data => {
+            peers.push(
+                {
+                    name: `daemon${data.index}`,
+                    host: '127.0.0.1',
+                    port: data.content.listener_port,
+                    uuid: data.content.uuid,
+                    http_port: data.content.http_port
+                }
+            )
+        });
+
+        await fsPromises.writeFile(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
+
+        return peers
+    },
+
+    setHarnessState: (configsObject) => {
+
+        configsObject.forEach(data => {
+
+            swarm[`daemon${data.index}`] =
+                {
+                    uuid: data.content.uuid,
+                    port: data.content.listener_port,
+                    http_port: data.content.http_port,
+                    index: data.index
+                }
+        });
+
+        return swarm
+    },
+
+    resetHarnessState: () => {
+        configCounter.reset();
+    },
+
     editFile: ({filename, changes, remove, deleteKey, push}) => {
         changes = {...changes};
 
@@ -41,106 +159,7 @@ const configUtils = {
         }
 
         return fileContent
-    },
-
-    generateConfigs: async ({numOfConfigs, uuidArray} = {}) => {
-        /*
-        * Generates config files used for Daemon and writes them to file through daemon-build symlink
-        * Requires either numOfConfigs or uuidArray
-        * @params {numOfConfigs} Integer. Number of configs to generate and write
-        * @params {uuidArray} Array. Optional. List of uuids to generate configs from
-        * @returns object containing configs and index numbers
-        * */
-
-        let uuidsList, _numOfConfigsToGenerate, configsObject;
-
-        const template = readTemplate('./configs/template.json');
-
-        if (numOfConfigs) {
-            uuidsList = uuids.generate(numOfConfigs);
-            _numOfConfigsToGenerate = numOfConfigs;
-        }
-
-        if (uuidArray) {
-            assert.equal(typeof uuidArray, 'object');
-            uuidsList = uuidArray;
-            _numOfConfigsToGenerate = uuidArray.length;
-        }
-
-        configsObject = buildConfigObject(template, _numOfConfigsToGenerate, uuidsList);
-
-        configsObject = await crypto.addSignaturesToConfigObject(configsObject);
-
-        await writeFilesToDirectory(configsObject);
-
-        return Promise.resolve(configsObject);
-    },
-
-    generatePeersList: async (configsWithIndex, {add} = {}) => {
-
-        let peers = [];
-
-        if (add) {
-            try {
-                let output = await fsPromises.readFile('./daemon-build/output/peers.json');
-                peers = JSON.parse(output)
-            } catch (err) {
-                console.log('Error reading existing peers list. \n' , + err.stack)
-            }
-        }
-
-        configsWithIndex.forEach(data => {
-            peers.push(
-                {
-                    name: `daemon${data.index}`,
-                    host: '127.0.0.1',
-                    port: data.content.listener_port,
-                    uuid: data.content.uuid,
-                    http_port: data.content.http_port
-                }
-            )
-        });
-
-        await fsPromises.writeFile(`./daemon-build/output/peers.json`, JSON.stringify(peers), 'utf8');
-
-        return peers
-    },
-
-    generateSwarmConfigsAndSetState: async (numOfConfigs) => {
-
-        numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
-
-        const configsWithIndex = await configUtils.generateConfigs({numOfConfigs});
-
-        const peersList = await configUtils.generatePeersList(configsWithIndex);
-
-        configUtils.setHarnessState(configsWithIndex);
-
-        return [configsWithIndex, peersList]
-    },
-
-    getSwarmObj: () => swarm,
-
-    setHarnessState: (configsWithIndex) => {
-
-        configsWithIndex.forEach(data => {
-
-            swarm[`daemon${data.index}`] =
-                {
-                    uuid: data.content.uuid,
-                    port: data.content.listener_port,
-                    http_port: data.content.http_port,
-                    index: data.index
-                }
-        });
-
-        return swarm
-    },
-
-    resetHarnessState: () => {
-        configCounter.reset();
-    },
-
+    }
 };
 
 module.exports = configUtils;
@@ -159,7 +178,37 @@ function Config(keys, edits) {
     }
 };
 
-const buildConfigObject = (template, _numOfConfigsToGenerate, uuidsList) => {
+const buildConfigsObject = (template, _numOfConfigsToGenerate, uuidsList) => {
+    /*
+    * Returns an array of objects containing daemon configs written to file and the index of each daemon.
+      [{ content:
+           Config {
+             listener_address: '127.0.0.1',
+             listener_port: 50000,
+             http_port: 8080,
+             ethereum: '0xddbd2b932c763ba5b1b7ae3b362eac3e8d40121a',
+             ethereum_io_api_token: '*****************************',
+             bootstrap_file: './peers.json',
+             uuid: '0a217b8d-b474-4af1-9a50-0549115d026e',
+             debug_logging: true,
+             log_to_stdout: true,
+             peer_validation_enabled: true,
+             max_storage: '2GB',
+             logfile_dir: 'logs/',
+             logfile_rotation_size: '1MB',
+             logfile_max_size: '10MB'
+             signed_key: "eAKBCtQgdi..." // signed_key is included if sign_uuid is enabled in test.configurations.js
+           },
+         index: 0 },
+        { content:
+           Config {
+             ...
+           },
+         index: 1 },
+         ...
+      ]
+     * */
+
     return [...Array(_numOfConfigsToGenerate).keys()].map((internalIndex) => {
 
         let currentIndex = configCounter.increment();

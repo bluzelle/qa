@@ -6,7 +6,7 @@ const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
-const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 
 let swarm, newPeerConfig;
@@ -27,8 +27,8 @@ describe('raft', () => {
                 let cfgIndexObj = {index: 0};
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                     newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
@@ -161,8 +161,8 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                 });
 
                 beforeEach('spawn swarm', async function () {
@@ -212,8 +212,8 @@ describe('raft', () => {
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                 });
 
                 beforeEach('spawn swarm', async function () {
@@ -264,8 +264,8 @@ describe('raft', () => {
         context('leader dies', () => {
 
             beforeEach('generate configs and set harness state', async () => {
-                let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                swarm = new SwarmState(configsWithIndex);
+                let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                swarm = new SwarmState(configsObject);
             });
 
             beforeEach('spawn swarm', async function () {
