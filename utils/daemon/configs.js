@@ -48,7 +48,9 @@ const configUtils = {
 
         configsObject = buildConfigsObject(template, _numOfConfigsToGenerate, uuidsList);
 
-        configsObject = await crypto.addSignaturesToConfigObject(configsObject);
+        if (harnessConfigs.sign_uuid) {
+            configsObject = await crypto.addSignaturesToConfigObject(configsObject);
+        }
 
         await writeFilesToDirectory(configsObject);
 
