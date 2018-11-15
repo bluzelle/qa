@@ -15,6 +15,9 @@ matrix:
       env:
         - MATRIX_EVAL="brew update && brew unlink python && brew install protobuf && brew install snappy && brew install lz4"
 
+before_install:
+    - eval "${MATRIX_EVAL}"
+
 before_script:
   - cd bluzelle-js
   - yarn && yarn build
