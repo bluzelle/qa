@@ -51,11 +51,12 @@ describe('swarm membership', () => {
 
                 beforeEach('edit config files for new peer', () => {
                     // new peer can only auto add if it contains itself in its peerlist
-                    execSync('cd ./daemon-build/output/; cp peers.json peersWithNewPeer.json', (error, stdout, stderr) => {
-                        if (error) {
-                            throw new Error(error);
-                        }
-                    });
+                    try {
+                        execSync('cd ./daemon-build/output/; cp peers.json peersWithNewPeer.json')
+                    } catch (err) {
+                        throw new Error('Error copying peers list');
+                        throw err;
+                    }
 
                     editFile(
                         {filename: 'peersWithNewPeer.json', push:
@@ -301,11 +302,13 @@ describe('swarm membership', () => {
 
                 beforeEach('edit config files for new peer', () => {
                     // new peer can only auto add if it contains itself in its peerlist
-                    execSync('cd ./daemon-build/output/; cp peers.json peersWithNewPeer.json', (error, stdout, stderr) => {
-                        if (error) {
-                            throw new Error(error);
-                        }
-                    });
+                    try {
+                        execSync('cd ./daemon-build/output/; cp peers.json peersWithNewPeer.json')
+
+                    } catch (err) {
+                        throw new Error('Error copying peers list');
+                        throw err;
+                    }
 
                     editFile(
                         {filename: 'peersWithNewPeer.json', push:
