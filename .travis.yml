@@ -17,6 +17,7 @@ matrix:
 
 before_install:
     - eval "${MATRIX_EVAL}"
+    - openssl aes-256-cbc -K $encrypted_eb7be93110e3_key -iv $encrypted_eb7be93110e3_iv -in ./encrypted-key -out ./private.pem -d
 
 before_script:
   - cd bluzelle-js
