@@ -16,6 +16,9 @@ matrix:
         - MATRIX_EVAL="brew update && brew unlink python && brew install protobuf && brew install snappy && brew install lz4"
 
 before_install:
+  - cd bluzelle-js
+  - yarn build
+  - cd ..
   - rm -rf daemon-build
   - mkdir -p daemon-build/output/
   - cd daemon-build/output
