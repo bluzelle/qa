@@ -23,7 +23,6 @@ before_install:
   - curl -0 https://bluzelle.jfrog.io/bluzelle/OSX/$LATEST_BLUZELLE_SWARMDB | tar -zx
   - cp ./$(echo $LATEST_BLUZELLE_SWARMDB | sed 's/\.tar\.gz//g')/swarm ./
   - cd ../../
-  - cp ./env.js.sample ./env.js
 
 script:
   - yarn test-daemon
