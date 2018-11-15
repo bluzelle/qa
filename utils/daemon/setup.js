@@ -6,7 +6,7 @@ const WebSocket = require('ws');
 
 const setupUtils = {
 
-    spawnSwarm: async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2} = {}) => {
+    spawnSwarm: async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2}) => {
         /*
         * Spawn a swarm of nodes
         * @param {swarm} Swarm class object documenting Daemon config information and node states
@@ -151,7 +151,7 @@ const setupUtils = {
         })
     }),
 
-    pollStatus: ({port, matchState, expectSingleton, expectConnected, debug} = {}) => new Promise((resolve, reject) => {
+    pollStatus: ({port, matchState, expectSingleton, expectConnected, debug}) => new Promise((resolve, reject) => {
 
         /*
         * Connect to a specific node to query its Raft status
