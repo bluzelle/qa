@@ -17,7 +17,7 @@ matrix:
 
 before_install:
   - cd bluzelle-js
-  - yarn build
+  - yarn && yarn build
   - cd ..
   - rm -rf daemon-build
   - mkdir -p daemon-build/output/
