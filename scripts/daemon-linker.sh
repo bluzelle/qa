@@ -4,6 +4,17 @@
 if [ -z "$1" ]
   then
     echo "No argument received. Please pass in path to swarmDB build originating from root of QA."
+    echo "
+    Example:
+
+    ├── qa
+    └── swarmDB
+        └── build
+            └── output
+                └── swarm
+
+    $ yarn link-daemon ../swarmDB/build
+    "
     exit 1
 fi
 
