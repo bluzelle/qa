@@ -3,14 +3,14 @@ const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {despawnSwarm, deleteConfigs, clearDaemonState} = require('../utils/daemon/setup');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const {readDir} = require('../utils/daemon/logs');
 
 describe('daemon', () => {
 
     beforeEach('generate configs and set harness state', async () =>
-        await generateSwarmConfigsAndSetState(1));
+        await generateSwarmJsonsAndSetState(3));
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
@@ -26,6 +26,9 @@ describe('daemon', () => {
         context('with log_to_stdout: true', () => {
 
             let node;
+            let output = '';
+
+            beforeEach('clear daemon state', clearDaemonState);
 
             beforeEach('edit config file', () => {
                 editFile({
@@ -38,11 +41,17 @@ describe('daemon', () => {
                 // https://stackoverflow.com/questions/11337041/force-line-buffering-of-stdout-when-piping-to-tee/11349234#11349234
                 // force daemon stdout to output more frequently
                 node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
+
+                node.stdout.on('data', data => {
+                    output += data.toString();
+                });
             });
 
             afterEach('kill daemons', despawnSwarm);
 
             it('should create a log', async () => {
+
+                await waitUntil(() => includes(readDir('output/'), 'newlogsdir'));
 
                 await waitUntil(() => includes(readDir('output/newlogsdir')[0], '.log'));
 
@@ -53,15 +62,7 @@ describe('daemon', () => {
 
             it('should output to stdout', async () => {
 
-                await new Promise(resolve => {
-
-                    node.stdout.on('data', data => {
-
-                        if (data.toString().includes('RAFT State: Candidate')) {
-                            resolve()
-                        }
-                    });
-                });
+                await waitUntil(() => output.includes('RAFT State: Candidate'))
             });
 
             it('should be able to change logs dir path and name', async () => {
@@ -75,7 +76,7 @@ describe('daemon', () => {
 
         context('with log_to_stdout: false', () => {
 
-            let node;
+            let node, chunk;
 
             beforeEach('edit config file', () => {
                 editFile({
@@ -86,6 +87,12 @@ describe('daemon', () => {
 
             beforeEach('start daemon', () => {
                 node = spawn('script', ['-q' ,'/dev/null', './run-daemon.sh', 'bluzelle0.json'], {cwd: './scripts'});
+
+                chunk = 0;
+
+                node.stdout.on('data', data => {
+                    chunk += 1;
+                });
             });
 
             afterEach('kill daemons', despawnSwarm);
@@ -100,17 +107,13 @@ describe('daemon', () => {
             });
 
             it('should not output to stdout', async () => {
-                await new Promise(resolve => {
-
-                    let chunk = 0;
-
-                    node.stdout.on('data', data => {
-                        chunk += 1;
-                    });
+                await new Promise((resolve, reject) => {
 
                     setTimeout(() => {
-                        if (chunk === 1) {
+                        if (chunk > 0 && chunk <= 2) {
                             resolve()
+                        } else {
+                            reject(new Error(`Received: ${chunk} chunks of data, expected: 1 `))
                         }
                     }, 2000)
                 });

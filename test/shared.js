@@ -90,7 +90,7 @@ exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
     beforeEach('initialize client', () => {
 
         api = new BluzelleClient(
-            `ws://${process.env.address}:${50000 + parseInt(cfgIndexObj.index)}`,
+            `ws://${harnessConfigs.address}:${harnessConfigs.port + parseInt(cfgIndexObj.index)}`,
             uuid,
             false
         );

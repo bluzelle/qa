@@ -1,0 +1,4 @@
+--timeout 10000
+--slow 3000
+--exit
+--require ./test/test.configurations

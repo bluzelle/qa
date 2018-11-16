@@ -4,18 +4,18 @@ const {expect} = require('chai');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
-const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
 let clientsObj = {};
 let swarm;
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('multi-client', () => {
 
     beforeEach('generate configs and set harness state', async function () {
-        let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-        swarm = new SwarmState(configsWithIndex);
+        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+        swarm = new SwarmState(configsObject);
     });
 
     beforeEach('spawn swarm', async function () {
@@ -26,13 +26,13 @@ describe('multi-client', () => {
     beforeEach('initialize clients', () => {
 
         clientsObj.api1 = new BluzelleClient(
-            `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
             '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
             false
         );
 
         clientsObj.api2 = new BluzelleClient(
-            `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
             '71e2cd35-b606-41e6-bb08-f20de30df76c',
             false
         );
@@ -139,7 +139,7 @@ describe('multi-client', () => {
         beforeEach('initialize new client with colliding uuid', () => {
 
             clientsObj.api3 = new BluzelleClient(
-                `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                 '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                 false
             );

@@ -1,17 +1,17 @@
 const waitUntil = require("async-wait-until");
 const {exec, execSync, spawn} = require('child_process');
-const fsPromises = require('fs').promises;
+const fs = require('fs');
 
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const shared = require('./shared');
 
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
-const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 
 let swarm, newPeerConfig;
 let clientsObj = {};
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('raft', () => {
 
@@ -27,8 +27,8 @@ describe('raft', () => {
                 let cfgIndexObj = {index: 0};
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                     newPeerConfig = swarm[`daemon${numOfNodes - 1}`];
                 });
 
@@ -40,7 +40,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -110,39 +110,45 @@ describe('raft', () => {
 
                 context('with inconsistent .dat file', () => {
 
-                    let node, newNode;
+                    let newNode;
 
                     beforeEach('start new node', async () => {
 
                         newNode = swarm.lastNode;
 
-                        cfgIndexObj.index = swarm[newNode].index;
-
                         await spawnDaemon(swarm[newNode].index)
                     });
 
-                    beforeEach('create key', async () => {
-                        await clientsObj.api.create('key1', '123')
-                    });
+                    beforeEach('change index to render .dat file inconsistent and kill node', async () => {
 
-                    beforeEach('kill node', () =>
-                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newNode].index}'| awk '{print $2}')`));
+                        let fileContent;
 
-                    beforeEach('change index to render .dat file inconsistent', async () => {
+                        try {
+                            await waitUntil(() => {
 
-                        let fileContent = await fsPromises.readFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
+                                fileContent = fs.readFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, 'utf8');
+
+                                return fileContent.includes('1 1')
+                            }, 8000);
+                        } catch (err) {
+                            console.log(`State file failed to log commit index 1 and log index 1`)
+                        }
+
+                        execSync(`kill $(ps aux | grep '[b]luzelle${swarm[newNode].index}'| awk '{print $2}')`)
 
                         fileContent = fileContent.replace('1 1', '1 10');
 
-                        await fsPromises.writeFile(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, fileContent, 'utf8');
+                        fs.writeFileSync(`./daemon-build/output/.state/${swarm[newNode].uuid}.dat`, fileContent, 'utf8');
+
                     });
 
                     it('should reject AppendEntries', async () => {
 
-                        node = await spawnDaemon(swarm[newNode].index);
+                        let node = await spawnDaemon(swarm[newNode].index);
 
                         await new Promise(resolve => {
                             node.stdout.on('data', data => {
+
                                 if (data.toString().includes('Rejecting AppendEntries because I do not agree with the previous index')) {
                                     resolve()
                                 }
@@ -155,8 +161,8 @@ describe('raft', () => {
             context('with sufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                 });
 
                 beforeEach('spawn swarm', async function () {
@@ -167,7 +173,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -206,8 +212,8 @@ describe('raft', () => {
             context('with insufficient nodes for consensus', () => {
 
                 beforeEach('generate configs and set harness state', async () => {
-                    let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                    swarm = new SwarmState(configsWithIndex);
+                    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                    swarm = new SwarmState(configsObject);
                 });
 
                 beforeEach('spawn swarm', async function () {
@@ -218,7 +224,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -258,8 +264,8 @@ describe('raft', () => {
         context('leader dies', () => {
 
             beforeEach('generate configs and set harness state', async () => {
-                let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-                swarm = new SwarmState(configsWithIndex);
+                let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+                swarm = new SwarmState(configsObject);
             });
 
             beforeEach('spawn swarm', async function () {
@@ -270,7 +276,7 @@ describe('raft', () => {
             beforeEach('initialize client', () => {
 
                 clientsObj.api = new BluzelleClient(
-                    `ws://${process.env.address}:${swarm[swarm.leader].port}`,
+                    `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                     '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                     false
                 );

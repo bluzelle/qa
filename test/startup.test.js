@@ -1,13 +1,14 @@
 const {exec, spawn} = require('child_process');
+const waitUntil = require("async-wait-until");
 
 const {despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 
 
 describe('daemon startup', () => {
 
     beforeEach('generate configs and set harness state', async () =>
-        await generateSwarmConfigsAndSetState(1));
+        await generateSwarmJsonsAndSetState(1));
 
     afterEach('remove configs and peerslist and clear harness state', () => {
         deleteConfigs();
@@ -137,11 +138,11 @@ describe('daemon startup', () => {
 
             });
 
-            afterEach(despawnSwarm);
-
             context('with valid address', () => {
 
                 context('with balance > 0', () => {
+
+                    afterEach(despawnSwarm);
 
                     it('successfully starts up', async () => {
 
@@ -224,14 +225,13 @@ describe('daemon startup', () => {
 
                 afterEach('kill daemon', despawnSwarm);
 
-                it('should default to 8080', async () => new Promise((resolve) => {
-                    exec('lsof -i:8080', (error, stdout, stderr) => {
-                        if (stdout.includes('swarm')) {
-                            resolve()
-                        }
-                    });
-
-                }));
+                it('should default to 8080', async () => {
+                    await waitUntil(() => {
+                        return exec('lsof -i:8080', (error, stdout, stderr) => {
+                            return stdout.includes('swarm')
+                        });
+                    })
+                })
             });
 
             context('exists', () => {
@@ -251,14 +251,13 @@ describe('daemon startup', () => {
 
                 afterEach('kill daemon', despawnSwarm);
 
-                it('should override default port', async () => new Promise((resolve) => {
-
-                    exec('lsof -i:8081', (error, stdout, stderr) => {
-                        if (stdout.includes('swarm')) {
-                            resolve()
-                        }
-                    });
-                }));
+                it('should override default port', async () => {
+                    await waitUntil(() => {
+                        return exec('lsof -i:8081', (error, stdout, stderr) => {
+                            return stdout.includes('swarm')
+                        });
+                    })
+                });
             });
         });
 

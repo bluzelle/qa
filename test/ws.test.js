@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const expect = require('chai').expect;
 
 const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {editFile, generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 
 let socket;
@@ -14,15 +14,15 @@ const ENCODED_CMDS = {
 };
 
 let swarm;
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('web sockets interface', () => {
 
     describe('connected', () => {
 
         beforeEach('generate configs and set harness state', async () => {
-            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-            swarm = new SwarmState(configsWithIndex);
+            let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsObject);
         });
 
         beforeEach('spawn swarm', async function () {
@@ -31,7 +31,7 @@ describe('web sockets interface', () => {
         });
 
         beforeEach('open ws connection', done => {
-            socket = new WebSocket(`ws://${process.env.address}:${swarm[swarm.leader].port}`);
+            socket = new WebSocket(`ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`);
             socket.on('open', done);
         });
 
@@ -59,8 +59,8 @@ describe('web sockets interface', () => {
         let startTime, timeElapsed;
 
         beforeEach('generate configs and set harness state', async () => {
-            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-            swarm = new SwarmState(configsWithIndex);
+            let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsObject);
         });
 
         beforeEach('spawn swarm', async function () {
@@ -75,7 +75,7 @@ describe('web sockets interface', () => {
         beforeEach('ws connection', done => {
             startTime = Date.now();
 
-            socket = new WebSocket(`ws://${process.env.address}:${process.env.port}`);
+            socket = new WebSocket(`ws://${harnessConfigs.address}:${harnessConfigs.port}`);
             socket.on('open', done);
         });
 

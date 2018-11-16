@@ -1,12 +1,13 @@
 {
   "scripts": {
-    "test-daemon": "numOfKeys=5 port=50000 address=localhost quiet=true mocha test/*test.js --exit --timeout 10000",
+    "test-daemon": "mocha test/*test.js",
     "setup-bluzelle-js": "git submodule init; git submodule update; cd bluzelle-js && yarn && webpack"
   },
   "dependencies": {
     "async-wait-until": "^1.2.4",
     "bluebird": "^3.5.2",
     "chai": "^4.1.2",
+    "dotenv": "^6.1.0",
     "fs": "^0.0.1-security",
     "lodash": "^4.17.10",
     "mocha": "^5.2.0",

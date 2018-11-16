@@ -1,14 +1,14 @@
 const {spawn, execSync, exec} = require('child_process');
 
 const {spawnSwarm, despawnSwarm, spawnDaemon, deleteConfigs, clearDaemonState, createKeys, getCurrentLeader} = require('../utils/daemon/setup');
-const {generateSwarmConfigsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const SwarmState = require('../utils/daemon/swarm');
 
 let swarm;
 let clientsObj = {};
-let numOfNodes = 10;
+let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('scenarios', () => {
 
@@ -18,8 +18,8 @@ describe('scenarios', () => {
         let randomPeer;
 
         beforeEach('generate configs and set harness state', async () => {
-            let [configsWithIndex] = await generateSwarmConfigsAndSetState(numOfNodes);
-            swarm = new SwarmState(configsWithIndex);
+            let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+            swarm = new SwarmState(configsObject);
         });
 
         beforeEach('spawn swarm', async function () {
@@ -31,7 +31,7 @@ describe('scenarios', () => {
         beforeEach('initialize client', () => {
 
             clientsObj.api = new BluzelleClient(
-                `ws://${process.env.address}::${swarm[swarm.leader].port}`,
+                `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
                 '71e2cd35-b606-41e6-bb08-f20de30df76c',
                 false
             );
