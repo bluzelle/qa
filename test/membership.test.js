@@ -77,7 +77,7 @@ describe('swarm membership', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', () => clientsObj.api.disconnect());
+                afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -162,7 +162,7 @@ describe('swarm membership', () => {
                         resetHarnessState();
                     });
 
-                    afterEach('disconnect api', () => clientsObj.api.disconnect());
+                    afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
                     afterEach('despawn swarm', despawnSwarm);
 
@@ -237,7 +237,7 @@ describe('swarm membership', () => {
                 resetHarnessState();
             });
 
-            afterEach('disconnect api', () => clientsObj.api.disconnect());
+            afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
             afterEach('despawn swarm', despawnSwarm);
 
@@ -329,7 +329,7 @@ describe('swarm membership', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', () => clientsObj.api.disconnect());
+                afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -479,7 +479,7 @@ describe('swarm membership', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', () => clientsObj.api.disconnect());
+                afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
@@ -552,7 +552,7 @@ describe('swarm membership', () => {
                     resetHarnessState();
                 });
 
-                afterEach('disconnect api', () => clientsObj.api.disconnect());
+                afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
                 afterEach('despawn swarm', despawnSwarm);
 
