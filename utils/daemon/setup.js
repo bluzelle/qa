@@ -222,23 +222,35 @@ const setupUtils = {
     }),
 
     despawnSwarm: () => {
-        execSync('pkill -9 swarm');
+        try {
+            execSync('pkill -9 swarm');
+        } catch (err) {
+            // do nothing, cmd throws error if no swarm to kill
+        }
     },
 
     deleteConfigs: () => {
-        execSync('cd ./daemon-build/output/; rm *.json', (error, stdout, stderr) => {
-            if (error) {
-                throw new Error(error);
+        try {
+            execSync('cd ./daemon-build/output/; rm *.json');
+        } catch (err) {
+            if (err.message.includes('No such file or directory')) {
+                // do nothing
+            } else {
+                throw err
             }
-        });
+        }
     },
 
     clearDaemonState: () => {
-        execSync('cd ./daemon-build/output/; rm -rf .state', (error, stdout, stderr) => {
-            if (error) {
-                throw new Error(error);
+        try {
+            execSync('cd ./daemon-build/output/; rm -rf .state');
+        } catch (err) {
+            if (err.message.includes('No such file or directory')) {
+                // do nothing
+            } else {
+                throw err
             }
-        });
+        }
     },
 
     spawnDaemon: (index, {debug} = {}) => new Promise((resolve, reject) => {

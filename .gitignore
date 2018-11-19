@@ -6,6 +6,9 @@ qa.iml
 .env
 *.pem
 
+# symlink pointing to daemon build
+daemon-build
+
 .DS_Store
 node_modules
 yarn-error.log

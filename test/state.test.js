@@ -40,7 +40,7 @@ describe('storage', () => {
         await clientsObj.api.create('stateExists', '123');
     });
 
-    beforeEach('disconnect api after state creation', () => clientsObj.api.disconnect());
+    beforeEach('disconnect api after state creation', () => clientsObj.api && clientsObj.api.disconnect());
 
     beforeEach('despawn swarm after state creation', () => {
         despawnSwarm();
@@ -70,7 +70,7 @@ describe('storage', () => {
         resetHarnessState();
     });
 
-    afterEach('disconnect api', () => clientsObj.api.disconnect());
+    afterEach('disconnect api', () => clientsObj.api && clientsObj.api.disconnect());
 
     afterEach('despawn swarm', despawnSwarm);
 
