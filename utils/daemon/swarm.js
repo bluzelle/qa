@@ -1,3 +1,7 @@
+/*
+* Class used to manage generated daemons' information and state.
+* */
+
 module.exports = class SwarmState {
 
     constructor (configsObject) {
@@ -54,11 +58,11 @@ module.exports = class SwarmState {
     load(configsObject) {
         configsObject.forEach(data => {
 
-            this._nodes.push(`daemon${data.index}`)
+            this._nodes.push(`daemon${data.index}`);
 
             this[`daemon${data.index}`] =
                 {
-                    uuid: data.content.uuid,
+                    pubKey: data.pubKey,
                     port: data.content.listener_port,
                     http_port: data.content.http_port,
                     index: data.index
