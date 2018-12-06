@@ -27,19 +27,19 @@ module.exports = class SwarmState {
         this._liveNodes.push(node)
     }
 
-    set leader(node) {
-        this._leader = node
+    set primary(node) {
+        this._primary = node
     }
 
-    get leader() {
-        return this._leader
+    get primary() {
+        return this._primary
     }
 
     get followers() {
-        if (this._leader) {
-            return this._liveNodes.filter((node) => node !== this._leader)
+        if (this._primary) {
+            return this._liveNodes.filter((node) => node !== this._primary)
         } else {
-            return new Error('No leader set')
+            return new Error('No primary set')
         }
     }
 

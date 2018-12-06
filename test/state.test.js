@@ -26,7 +26,7 @@ describe('storage', () => {
     beforeEach('initialize client', () => {
 
         clientsObj.api = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
             '71e2cd35-b606-41e6-bb08-f20de30df76c',
             false
         );
@@ -55,7 +55,7 @@ describe('storage', () => {
     beforeEach('initialize client', () => {
 
         clientsObj.api = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
             '71e2cd35-b606-41e6-bb08-f20de30df76c',
             false
         );

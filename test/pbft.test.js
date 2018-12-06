@@ -36,7 +36,7 @@ describe('pbft', () => {
     beforeEach('initialize clients', () => {
 
         clientsObj.api1 = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
             '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
             false
         );
@@ -51,7 +51,7 @@ describe('pbft', () => {
     context('start up', () => {
 
         it.only('primary is set', () => {
-            assert(swarm.leader !== undefined);
+            assert(swarm.primary !== undefined);
         });
     });
 

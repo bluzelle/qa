@@ -36,7 +36,7 @@ describe('swarm membership', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '71e2cd35-b606-41e6-bb08-f20de30df76c',
                         false
                     );
@@ -122,7 +122,7 @@ describe('swarm membership', () => {
                     beforeEach('initialize client', () => {
 
                         clientsObj.api = new BluzelleClient(
-                            `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                             '71e2cd35-b606-41e6-bb08-f20de30df76c',
                             false
                         );
@@ -199,7 +199,7 @@ describe('swarm membership', () => {
             beforeEach('initialize client', () => {
 
                 clientsObj.api = new BluzelleClient(
-                    `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                    `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                     '71e2cd35-b606-41e6-bb08-f20de30df76c',
                     false
                 );
@@ -287,7 +287,7 @@ describe('swarm membership', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '71e2cd35-b606-41e6-bb08-f20de30df76c',
                         false
                     );
@@ -455,7 +455,7 @@ describe('swarm membership', () => {
                 beforeEach('initialize client and connect', async () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '71e2cd35-b606-41e6-bb08-f20de30df76c',
                         false
                     );
@@ -525,7 +525,7 @@ describe('swarm membership', () => {
                 beforeEach('initialize client and connect', async () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '71e2cd35-b606-41e6-bb08-f20de30df76c',
                         false
                     );
@@ -568,7 +568,7 @@ describe('swarm membership', () => {
 const connectWsAndSendMsg = (swarm, msg, {debug} = {}) => new Promise((resolve, reject) => {
 
         try {
-            socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.leader].port}`);
+            socket = new WebSocket(`ws://127.0.0.1:${swarm[swarm.primary].port}`);
         } catch (err) {
             rej(new Error('Failed to connect to leader'))
         }

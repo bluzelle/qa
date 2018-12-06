@@ -31,7 +31,7 @@ describe('web sockets interface', () => {
         });
 
         beforeEach('open ws connection', done => {
-            socket = new WebSocket(`ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`);
+            socket = new WebSocket(`ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`);
             socket.on('open', done);
         });
 

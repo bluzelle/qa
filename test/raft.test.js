@@ -40,7 +40,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -173,7 +173,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -189,7 +189,7 @@ describe('raft', () => {
 
                     const daemons = Object.keys(swarm).filter((key) => key.includes('daemon'));
 
-                    daemons.splice(daemons.indexOf(swarm.leader), 1);
+                    daemons.splice(daemons.indexOf(swarm.primary), 1);
 
                     const cfgName = `[b]luzelle${daemons[0].split('').pop()}`;
 
@@ -224,7 +224,7 @@ describe('raft', () => {
                 beforeEach('initialize client', () => {
 
                     clientsObj.api = new BluzelleClient(
-                        `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                        `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                         '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                         false
                     );
@@ -276,7 +276,7 @@ describe('raft', () => {
             beforeEach('initialize client', () => {
 
                 clientsObj.api = new BluzelleClient(
-                    `ws://${harnessConfigs.address}:${swarm[swarm.leader].port}`,
+                    `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
                     '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
                     false
                 );
@@ -299,9 +299,9 @@ describe('raft', () => {
 
             it('should elect a new leader', async () => {
 
-                const currentLeader = swarm.leader;
+                const currentLeader = swarm.primary;
 
-                const cfgName = `[b]luzelle${swarm[swarm.leader].index}`;
+                const cfgName = `[b]luzelle${swarm[swarm.primary].index}`;
 
                 execSync(`kill $(ps aux | grep '${cfgName}' | awk '{print $2}')`);
 
@@ -309,7 +309,7 @@ describe('raft', () => {
 
                     await getCurrentLeader(swarm);
 
-                    return swarm.leader !== currentLeader
+                    return swarm.primary !== currentLeader
                 }, 1000);
             })
         })

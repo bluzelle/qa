@@ -69,7 +69,7 @@ const setupUtils = {
 
         if (consensusAlgorithm === 'pbft') {
 
-            swarm.leader = await new Promise((res) => {
+            swarm.primary = await new Promise((res) => {
 
             swarm.daemon0.stream.stdout
                 .pipe(split())
@@ -119,7 +119,7 @@ const setupUtils = {
         rejAfterTimeElapsed(startTime, 9000, rej);
 
         // if leader exists, connect to a follower, otherwise connect to any live node which could include leader
-        if (swarm.leader) {
+        if (swarm.primary) {
             nodePort = swarm[swarm.followers[0]].port
         } else {
             nodePort = swarm[swarm.liveNodes[0]].port
@@ -142,12 +142,12 @@ const setupUtils = {
 
             try {
                 if (msgSentToFollower(msg)) {
-                    swarm.leader = msg.message.leader.name;
-                    res(swarm.leader);
+                    swarm.primary = msg.message.primary.name;
+                    res(swarm.primary);
                     socket.close();
                 } else if (msgSentToLeader(msg)) {
-                    swarm.leader = swarm.liveNodes[0];
-                    res(swarm.leader);
+                    swarm.primary = swarm.liveNodes[0];
+                    res(swarm.primary);
                     socket.close();
                 } else if (electionInProgress(msg)) {
                     socket.send(JSON.stringify({"bzn-api" : "raft", "cmd" : "get_peers"}))
@@ -200,7 +200,7 @@ const setupUtils = {
                 socket.close();
             }
 
-            if (expectConnected && (state === 'leader' || state === 'follower')) {
+            if (expectConnected && (state === 'primary' || state === 'follower')) {
                 clearInterval(intervalId);
                 resolve(`Daemon reached ${matchState}`);
                 socket.close();
@@ -214,7 +214,7 @@ const setupUtils = {
 
             setTimeout(() => {
 
-                if (!statesArr.includes('follower') && !statesArr.includes('leader') ) {
+                if (!statesArr.includes('follower') && !statesArr.includes('primary') ) {
                     clearInterval(intervalId);
                     resolve('Daemon stayed as singleton');
                     socket.close();
