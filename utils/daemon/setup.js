@@ -34,7 +34,7 @@ const setupUtils = {
 
                 let buffer = '';
 
-                swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`], {cwd: './scripts'});
+                swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
                 swarm[daemon].stream.stdout.on('data', (data) => {
                     buffer += data.toString();
@@ -68,15 +68,22 @@ const setupUtils = {
         }
 
         if (consensusAlgorithm === 'pbft') {
-            await new Promise((res) => {
+
+            swarm.leader = await new Promise((res) => {
 
             swarm.daemon0.stream.stdout
                 .pipe(split())
                 .on('data', function (line) {
-                    // daemon implementation starts with daemon1 as primary
+
+                    // pbft implemntation lexicographically sorts uuids and uses position [1] as first primary
                     // `sorted_uuids_list[view_number % number_of_nodes]`
-                    if (line.toString().includes(`primary: "${swarm.daemon1.uuid}"`)) {
-                        res(swarm.daemon1.uuid)
+
+                    const sortedUuids = swarm.sortedUuidsMap.entries();
+                    sortedUuids.next();
+                    const [expectedPrimaryUuid, expectedPrimaryName] = sortedUuids.next().value;
+
+                    if (line.toString().includes(`observed primary of view 1 to be '${expectedPrimaryUuid}'`)) {
+                        res(expectedPrimaryName)
                     }
                 });
             })
@@ -226,6 +233,18 @@ const setupUtils = {
             execSync('pkill -9 swarm');
         } catch (err) {
             // do nothing, cmd throws error if no swarm to kill
+        }
+    },
+
+    clearDaemonStateAndConfigs: () => {
+        try {
+            execSync('cd ./daemon-build/output/; rm -rf ./daemon*/')
+        } catch (err) {
+            if (err.message.includes('No such file or directory')) {
+                // do nothing
+            } else {
+                throw err
+            }
         }
     },
 

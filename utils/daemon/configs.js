@@ -77,7 +77,8 @@ const configUtils = {
                     name: `daemon${data.index}`,
                     host: '127.0.0.1',
                     port: data.content.listener_port,
-                    http_port: data.content.http_port
+                    http_port: data.content.http_port,
+                    uuid: data.uuid
                 }
             )
         });
@@ -93,11 +94,10 @@ const configUtils = {
 
             swarm[`daemon${data.index}`] =
                 {
-                    uuid: data.content.uuid,
+                    uuid: data.uuid,
                     port: data.content.listener_port,
                     http_port: data.content.http_port,
-                    index: data.index,
-                    pubKey: data.pubKey
+                    index: data.index
                 }
         });
 
@@ -223,7 +223,7 @@ const buildConfigsObject = (template, _numOfConfigsToGenerate, pubKeysList) => {
                     http_port: template.http_port + currentIndex
                 }),
             index: currentIndex,
-            pubKey: pubKeysList[internalIndex]
+            uuid: pubKeysList[internalIndex]
         }
     });
 };

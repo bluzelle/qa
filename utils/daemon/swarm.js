@@ -7,6 +7,7 @@ module.exports = class SwarmState {
     constructor (configsObject) {
         this._nodes = [];
         this._liveNodes = [];
+        this._uuidsMap = new Map();
         this.load(configsObject);
     }
 
@@ -36,7 +37,7 @@ module.exports = class SwarmState {
 
     get followers() {
         if (this._leader) {
-            return this._liveNodes.filter((node) => node != this._leader)
+            return this._liveNodes.filter((node) => node !== this._leader)
         } else {
             return new Error('No leader set')
         }
@@ -44,6 +45,11 @@ module.exports = class SwarmState {
 
     get lastNode() {
         return this._nodes[this._nodes.length - 1]
+    }
+
+    get sortedUuidsMap() {
+        // sort Map of uuids => daemonName lexicographically to match PBFT Primary round-robin order
+        return new Map(Array.from(this._uuidsMap).sort())
     }
 
     deadNode(daemon) {
@@ -62,11 +68,13 @@ module.exports = class SwarmState {
 
             this[`daemon${data.index}`] =
                 {
-                    pubKey: data.pubKey,
+                    uuid: data.uuid,
                     port: data.content.listener_port,
                     http_port: data.content.http_port,
                     index: data.index
-                }
+                };
+
+            this._uuidsMap.set(data.uuid, `daemon${data.index}`);
         });
     }
 };
