@@ -1,16 +1,15 @@
-const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
+const bluzelle = require('../bluzelle-js/src/main');
+
 const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const assert = require('assert');
 
-
 let clientsObj = {};
 let swarm;
 
 const killNodes = num => {
-    // kills nodes starting from end of swarmObj list
 
     const backUpNodes = swarm.followers();
     const deathRow = backUpNodes.slice(backUpNodes.length - num);
@@ -33,26 +32,45 @@ describe('pbft', () => {
         await spawnSwarm(swarm, {consensusAlgorithm: 'pbft'})
     });
 
-    beforeEach('initialize clients', () => {
+    beforeEach('initialize client, create db', async () => {
 
-        clientsObj.api1 = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
-            '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
-            false
-        );
+        clientsObj.api = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+            uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+            private_pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='
+        });
+
+        try {
+            await api.createDB();
+        } catch (err) {
+            console.log('Failed to createDB()')
+        }
     });
 
     afterEach('remove configs and peerslist and clear harness state', () => {
-        clearDaemonStateAndConfigs();
+        // clearDaemonStateAndConfigs();
     });
 
     afterEach(despawnSwarm);
 
     context('start up', () => {
 
-        it.only('primary is set', () => {
+        it('primary is set', () => {
             assert(swarm.primary !== undefined);
         });
+    });
+
+    context('test create', () => {
+
+        it.only('create', async () => {
+            try {
+                await api.create('hello', 'world');
+            } catch (err) {
+                console.log('Failed to create key')
+            }
+
+            assert(await bz.has('hello'));
+        })
     });
 
     context('with >2/3 nodes alive', () => {
