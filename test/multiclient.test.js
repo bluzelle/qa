@@ -1,10 +1,10 @@
 const assert = require('assert');
 const {expect} = require('chai');
 
-const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnSwarm, despawnSwarm, deleteConfigs} = require('../utils/daemon/setup');
+const {bluzelle} = require('../bluzelle-js/src/main');
+const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
-const {generateSwarmJsonsAndSetState, resetHarnessState} = require('../utils/daemon/configs');
+const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 
 
 let clientsObj = {};
@@ -20,43 +20,43 @@ describe('multi-client', () => {
 
     beforeEach('spawn swarm', async function () {
         this.timeout(20000);
-        await spawnSwarm(swarm, {consensusAlgorithm: 'raft'})
+        await spawnSwarm(swarm, {consensusAlgorithm: 'pbft'})
     });
 
-    beforeEach('initialize clients', () => {
+    beforeEach('initialize clients and createDB', async () => {
 
-        clientsObj.api1 = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
-            '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
-            false
-        );
+        clientsObj.api1 = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+            uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+            private_pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='
+        });
 
-        clientsObj.api2 = new BluzelleClient(
-            `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
-            '71e2cd35-b606-41e6-bb08-f20de30df76c',
-            false
-        );
+        try {
+            await clientsObj.api1.createDB();
+        } catch (err) {
+            console.log('Failed to createDB()')
+        }
 
+        clientsObj.api2 = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+            uuid: '71e2cd35-b606-41e6-bb08-f20de30df76c',
+            private_pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bh=='
+        });
+
+        try {
+            await clientsObj.api2.createDB();
+        } catch (err) {
+            console.log('Failed to createDB()')
+        }
     });
 
     afterEach('remove configs and peerslist and clear harness state', () => {
-        deleteConfigs();
-        resetHarnessState();
+        clearDaemonStateAndConfigs();
     });
 
     afterEach(despawnSwarm);
 
     context('distinct uuids', () => {
-
-        beforeEach('connect clients', async () => {
-            await clientsObj.api1.connect();
-            await clientsObj.api2.connect();
-        });
-
-        afterEach('disconnect clients', () => {
-            clientsObj.api1.disconnect();
-            clientsObj.api2.disconnect();
-        });
 
         it('client1 should be able to write to database', async () => {
             await clientsObj.api1.create('myKey', '123');
@@ -88,7 +88,7 @@ describe('multi-client', () => {
             });
 
             it('should be able to delete with no cross talk', async () => {
-                await clientsObj.api1.remove('myKey');
+                await clientsObj.api1.delete('myKey');
 
                 assert(await clientsObj.api2.read('myKey') === 'good morning');
             });
@@ -124,7 +124,7 @@ describe('multi-client', () => {
                 });
 
                 it('when trying to delete a key not in its database', done => {
-                    clientsObj.api2.remove('onlyInOne')
+                    clientsObj.api2.delete('onlyInOne')
                         .catch(error => {
                             expect(error.toString()).to.include('RECORD_NOT_FOUND');
                             done()
@@ -136,23 +136,13 @@ describe('multi-client', () => {
 
     describe('colliding uuid', () => {
 
-        beforeEach('initialize new client with colliding uuid', () => {
+        beforeEach('initialize new client with colliding uuid and private_pem', async () => {
 
-            clientsObj.api3 = new BluzelleClient(
-                `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
-                '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
-                false
-            );
-        });
-
-        beforeEach('connect clients', async () => {
-            await clientsObj.api1.connect();
-            await clientsObj.api3.connect();
-        });
-
-        afterEach('disconnect clients', () => {
-            clientsObj.api1.disconnect();
-            clientsObj.api3.disconnect();
+            clientsObj.api3 = bluzelle({
+                entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+                uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
+                private_pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bh=='
+            });
         });
 
         it('client1 should be able to write to database', async () => {
@@ -195,7 +185,7 @@ describe('multi-client', () => {
 
             beforeEach('creating state', async () => {
                 await clientsObj.api1.create('myTextKey', 'hello world');
-                await clientsObj.api3.remove('myTextKey');
+                await clientsObj.api3.delete('myTextKey');
             });
 
             it('should throw error when attempting to read', done => {
