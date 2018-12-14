@@ -3,7 +3,6 @@ const fsPromises = require('fs').promises;
 const {execSync} = require('child_process');
 const assert = require('assert');
 
-const uuids = require('./uuids');
 const crypto = require('./crypto');
 
 let swarm = {};
@@ -17,6 +16,8 @@ const configUtils = {
         */
 
         numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
+
+        configUtils.resetDaemonConfigCounter();
 
         const pathList = createDirectories(numOfConfigs);
 
@@ -104,11 +105,11 @@ const configUtils = {
         return swarm
     },
 
-    resetHarnessState: () => {
+    resetDaemonConfigCounter: () => {
         configCounter.reset();
     },
 
-    editFile: ({filename, changes, remove, deleteKey, push}) => {
+    editFile: ({filepath, changes, remove, deleteKey, push}) => {
         changes = {...changes};
 
         if (deleteKey) {
@@ -118,7 +119,7 @@ const configUtils = {
         let fileContent;
 
         try {
-            fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/${filename}`, 'utf8'));
+            fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/${filepath}`, 'utf8'));
         } catch (e) {
             throw new Error('Read and parse as JSON failed.')
         }
@@ -135,7 +136,7 @@ const configUtils = {
         }
 
         try {
-            fs.writeFileSync(`./daemon-build/output/${filename}`, JSON.stringify(fileContent), 'utf8');
+            fs.writeFileSync(`./daemon-build/output/${filepath}`, JSON.stringify(fileContent), 'utf8');
         } catch (e) {
             throw new Error('Writing changes failed.')
         }
