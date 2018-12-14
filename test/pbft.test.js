@@ -1,17 +1,20 @@
-const bluzelle = require('../bluzelle-js/src/main');
+const {execSync} = require('child_process');
 
+const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const shared = require('./shared');
 const assert = require('assert');
 
+
 let clientsObj = {};
 let swarm;
+let numOfNodes = harnessConfigs.numOfNodes;
 
-const killNodes = num => {
+const killNodes = (num, swarmObj) => {
 
-    const backUpNodes = swarm.followers();
+    const backUpNodes = swarmObj.followers;
     const deathRow = backUpNodes.slice(backUpNodes.length - num);
 
     deathRow.forEach(daemon => {
@@ -23,7 +26,7 @@ const killNodes = num => {
 describe('pbft', () => {
 
     beforeEach('generate configs and set harness state', async function () {
-        let [configsObject] = await generateSwarmJsonsAndSetState(3);
+        let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
         swarm = new SwarmState(configsObject);
     });
 
@@ -41,14 +44,14 @@ describe('pbft', () => {
         });
 
         try {
-            await api.createDB();
+            await clientsObj.api.createDB();
         } catch (err) {
             console.log('Failed to createDB()')
         }
     });
 
     afterEach('remove configs and peerslist and clear harness state', () => {
-        // clearDaemonStateAndConfigs();
+        clearDaemonStateAndConfigs();
     });
 
     afterEach(despawnSwarm);
@@ -60,44 +63,31 @@ describe('pbft', () => {
         });
     });
 
-    context('test create', () => {
-
-        it.only('create', async () => {
-            try {
-                await api.create('hello', 'world');
-            } catch (err) {
-                console.log('Failed to create key')
-            }
-
-            assert(await bz.has('hello'));
-        })
-    });
-
-    context('with >2/3 nodes alive', () => {
+    context.skip('with >2/3 nodes alive', () => {
 
         beforeEach('kill < 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.floor(swarm.liveNodes().length * 1/3);
-            killNodes(numOfNodesToKill)
+
+            console.log(execSync('ps aux | grep swarm').toString());
+
+            const numOfNodesToKill = Math.floor(swarm.followers.length * 1/3);
+            killNodes(numOfNodesToKill, swarm);
+
         });
 
         it('swarm should be operational', () => {
-            shared.swarmIsOperational(clientsObj)
+            shared.crudFunctionality(clientsObj)
         });
     });
 
-    context('with <2/3 nodes alive', () => {
+    context.skip('with <2/3 nodes alive', () => {
 
         beforeEach('kill > 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.ceil(swarm.liveNodes().length * 1/3);
-            killNodes(numOfNodesToKill)
+            const numOfNodesToKill = Math.ceil(swarm.followers.length * 1/3);
+            killNodes(numOfNodesToKill, swarm)
         });
 
         it('swarm should NOT be operational', () => {
             shared.createShouldTimeout(clientsObj)
         });
-    });
-
-    context('crud', () => {
-        shared.swarmIsOperational(clientsObj);
     });
 });
