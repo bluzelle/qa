@@ -1,7 +1,7 @@
 const assert = require('assert');
 const {expect} = require('chai');
 
-const {bluzelle} = require('../bluzelle-js/src/main');
+const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
