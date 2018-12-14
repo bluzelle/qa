@@ -12,7 +12,7 @@ let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 
 
-describe('core functionality', () => {
+describe('database management', () => {
 
     beforeEach('generate configs and set harness state', async function () {
         let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
