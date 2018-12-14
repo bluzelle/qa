@@ -90,24 +90,11 @@ const setupUtils = {
         }
     },
 
-    createKeys: async (clientsObj, numOfKeys, ms) => {
+    createKeys: async (clientsObj, numOfKeys = 10) => {
 
-        const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+        const arrayOfKeys = [...Array(numOfKeys).keys()];
 
-        const batched = chunk([...Array(parseInt(numOfKeys)).keys()]);
-
-        let batchedWithDelay = batched.reduce((acc, cur) => {
-            acc.push(cur);
-            acc.push(delay);
-            return acc
-        }, []);
-
-        try {
-            await processAssortedArray(batchedWithDelay, clientsObj, ms);
-        } catch (err) {
-            return Promise.reject(err)
-        }
-
+        await Promise.all(arrayOfKeys.map(v => clientsObj.api.create('batch' + v, 'value')));
     },
 
     getCurrentLeader: (swarm) => new Promise((res, rej) => {

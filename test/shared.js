@@ -1,9 +1,10 @@
 const {expect} = require('chai');
 const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnDaemon} = require('../utils/daemon/setup');
+const assert = require('assert');
 
 
-exports.swarmIsOperational = clientsObj => {
+exports.crudFunctionality = clientsObj => {
 
     it('should be able to create', async () => {
 
@@ -52,13 +53,75 @@ exports.swarmIsOperational = clientsObj => {
         }
 
         try {
-            await clientsObj.api.remove('key');
+            await clientsObj.api.delete('key');
         } catch (err) {
             throw new Error(`Failed to remove \n ${err}`);
         }
 
         expect(await clientsObj.api.has('key')).to.be.false;
     })
+};
+
+exports.miscFunctionality = clientsObj => {
+
+    it('should be able to "has"', async () => {
+
+        let result;
+
+        try {
+            await clientsObj.api.create('key', '123')
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
+
+        try {
+            result = await clientsObj.api.has('key');
+        } catch (err) {
+            throw new Error(`Failed to "has" \n ${err}`);
+        }
+
+        assert(result);
+    });
+
+
+    it('should be able to get keys', async () => {
+
+        let result;
+
+        try {
+            await clientsObj.api.create('key', '123')
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
+
+        try {
+            result = await clientsObj.api.keys()
+        } catch (err) {
+            throw new Error(`Failed to "keys"\n ${err}`);
+        }
+
+        assert(result.length > 0);
+    });
+
+    it('should be able to get size', async () => {
+
+        let result;
+
+        try {
+            await clientsObj.api.create('key', '123')
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
+
+        try {
+            result = await clientsObj.api.size();
+        } catch (err) {
+            throw new Error(`Failed to get size \n ${err}`);
+        }
+
+        assert(result > 0);
+    });
+
 };
 
 exports.createShouldTimeout = clientsObj => {
