@@ -1,7 +1,7 @@
 const assert = require('assert');
 
 const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
+const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs, createKeys} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 
@@ -86,42 +86,94 @@ describe('core functionality', () => {
             await clientsObj.api.createDB();
         });
 
-        it('should be able to createDB', async () => {
+        context('with keys in db', () => {
 
-            try {
-                await clientsObj.api.createDB();
-            } catch (err) {
-                if (err.message.includes('DATABASE_EXISTS')) {
-                    // expected, do nothing
-                } else {
-                    throw new Error(`Failed to createDB \n ${err}`)
+            beforeEach('load db', async function () {
+                this.timeout(30000);
+
+                await createKeys(clientsObj, 15);
+            });
+
+            it('should be able to createDB', async () => {
+
+                try {
+                    await clientsObj.api.createDB();
+                } catch (err) {
+                    if (err.message.includes('DATABASE_EXISTS')) {
+                        // expected, do nothing
+                    } else {
+                        throw new Error(`Failed to createDB \n ${err}`)
+                    }
                 }
-            }
 
+            });
+
+            it('should be able to hasDB', async () => {
+
+                let res;
+
+                try {
+                    res = await clientsObj.api.hasDB();
+                } catch (err) {
+                    throw new Error(`Failed to hasDB \n ${err}`)
+                }
+
+                assert(res === true);
+
+            });
+
+            it('should be able to deleteDB', async () => {
+
+                try {
+                    await clientsObj.api.deleteDB();
+                } catch (err) {
+                    throw new Error(`Failed to deleteDB \n ${err}`)
+                }
+
+            });
         });
 
-        it('should be able to hasDB', async () => {
+        context('with empty db', () => {
 
-            let res;
+            it('should be able to createDB', async () => {
 
-            try {
-                res = await clientsObj.api.hasDB();
-            } catch (err) {
-                throw new Error(`Failed to hasDB \n ${err}`)
-            }
+                try {
+                    await clientsObj.api.createDB();
+                } catch (err) {
+                    if (err.message.includes('DATABASE_EXISTS')) {
+                        // expected, do nothing
+                    } else {
+                        throw new Error(`Failed to createDB \n ${err}`)
+                    }
+                }
 
-            assert(res === true);
+            });
 
-        });
+            it('should be able to hasDB', async () => {
 
-        it('should be able to deleteDB', async () => {
+                let res;
 
-            try {
-                await clientsObj.api.deleteDB();
-            } catch (err) {
-                throw new Error(`Failed to deleteDB \n ${err}`)
-            }
+                try {
+                    res = await clientsObj.api.hasDB();
+                } catch (err) {
+                    throw new Error(`Failed to hasDB \n ${err}`)
+                }
 
+                assert(res === true);
+
+            });
+
+            it('should be able to deleteDB', async () => {
+
+                try {
+                    await clientsObj.api.deleteDB();
+                } catch (err) {
+                    throw new Error(`Failed to deleteDB \n ${err}`)
+                }
+
+            });
         });
     });
 });
+
+
