@@ -4,7 +4,7 @@ const {spawnDaemon} = require('../utils/daemon/setup');
 const assert = require('assert');
 
 
-exports.crudFunctionality = clientsObj => {
+exports.crudFunctionalityTests = clientsObj => {
 
     it('should be able to create', async () => {
 
@@ -62,7 +62,7 @@ exports.crudFunctionality = clientsObj => {
     })
 };
 
-exports.miscFunctionality = clientsObj => {
+exports.miscFunctionalityTests = clientsObj => {
 
     it('should be able to "has"', async () => {
 

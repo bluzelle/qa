@@ -4,7 +4,7 @@ const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
-const shared = require('./shared');
+const common = require('./common');
 const assert = require('assert');
 
 
@@ -14,7 +14,7 @@ let numOfNodes = harnessConfigs.numOfNodes;
 
 const killNodes = (num, swarmObj) => {
 
-    const backUpNodes = swarmObj.followers;
+    const backUpNodes = swarmObj.backups;
     const deathRow = backUpNodes.slice(backUpNodes.length - num);
 
     deathRow.forEach(daemon => {
@@ -69,25 +69,25 @@ describe('pbft', () => {
 
             console.log(execSync('ps aux | grep swarm').toString());
 
-            const numOfNodesToKill = Math.floor(swarm.followers.length * 1/3);
+            const numOfNodesToKill = Math.floor(swarm.backups.length * 1/3);
             killNodes(numOfNodesToKill, swarm);
 
         });
 
         it('swarm should be operational', () => {
-            shared.crudFunctionality(clientsObj)
+            common.crudFunctionalityTests(clientsObj)
         });
     });
 
     context.skip('with <2/3 nodes alive', () => {
 
         beforeEach('kill > 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.ceil(swarm.followers.length * 1/3);
+            const numOfNodesToKill = Math.ceil(swarm.backups.length * 1/3);
             killNodes(numOfNodesToKill, swarm)
         });
 
         it('swarm should NOT be operational', () => {
-            shared.createShouldTimeout(clientsObj)
+            common.createShouldTimeout(clientsObj)
         });
     });
 });

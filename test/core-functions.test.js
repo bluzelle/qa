@@ -2,7 +2,7 @@ const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
 const SwarmState = require('../utils/daemon/swarm');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
-const shared = require('./shared');
+const shared = require('./common');
 
 
 let clientsObj = {};
@@ -39,8 +39,8 @@ describe('core functionality', () => {
 
     afterEach(despawnSwarm);
 
-    shared.crudFunctionality(clientsObj);
+    shared.crudFunctionalityTests(clientsObj);
 
-    shared.miscFunctionality(clientsObj);
+    shared.miscFunctionalityTests(clientsObj);
 
 });

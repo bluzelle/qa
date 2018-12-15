@@ -35,7 +35,7 @@ module.exports = class SwarmState {
         return this._primary
     }
 
-    get followers() {
+    get backups() {
         if (this._primary) {
             return this._liveNodes.filter((node) => node !== this._primary)
         } else {

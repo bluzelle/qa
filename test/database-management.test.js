@@ -89,7 +89,7 @@ describe('database management', () => {
         context('with keys in db', () => {
 
             beforeEach('load db', async function () {
-                this.timeout(30000);
+                this.timeout(40000);
 
                 await createKeys(clientsObj, 15);
             });
