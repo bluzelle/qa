@@ -7,16 +7,9 @@
 ```javascript
 $ yarn
 $ yarn setup-bluzelle-js
-$ yarn link-daemon <path/to/daemon/build/directory>
+$ yarn link-daemon <relative/path/to/daemon/build/directory>
+// run yarn link-daemon for more detailed instructions
 ```
-
-##### Raft security testing:
-To test `peer_validation_enabled` configuration on the daemon. Bluzelle's private-key and accompanying password is required 
-
-Configure the following:
-* qa/test.configurations.js: `sign_uuid: true`
-* qa/test.configurations.js: `pathToKeyFile: './path/to/key/file/.pem'` 
-* and set the password to that .pem file as an env variable: PRIVATE_KEY_PASSWORD
 
 ## System Requirements
 - Node > v10.10.0
