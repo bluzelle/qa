@@ -1,7 +1,12 @@
 const {expect} = require('chai');
-const {BluzelleClient} = require('../bluzelle-js/lib/bluzelle-node');
-const {spawnDaemon} = require('../utils/daemon/setup');
+const {execSync} = require('child_process');
 const assert = require('assert');
+const {writeFileSync} = require('fs');
+
+const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
+const {spawnSwarm, despawnSwarm, clearDaemonStateAndConfigs, spawnDaemon} = require('../utils/daemon/setup');
+const SwarmState = require('../utils/daemon/swarm');
+const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 
 
 exports.crudFunctionalityTests = clientsObj => {
@@ -187,4 +192,61 @@ exports.daemonShouldSync = (cfgIndexObj, numOfKeys, uuid) => {
         }, 500);
 
     }));
+};
+
+exports.startSwarm = async ({numOfNodes}) => {
+
+    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+    const swarm = new SwarmState(configsObject);
+
+    await spawnSwarm(swarm, {consensusAlgorithm: 'pbft'});
+
+    return swarm;
+};
+
+exports.initializeClient = async ({uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==', swarm, setupDB} = {}) => {
+
+    const api = bluzelle({
+        entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+        uuid: uuid,
+        private_pem: pem
+    });
+
+    if (setupDB) {
+        try {
+            await api.createDB();
+        } catch (err) {
+            console.log('Failed to createDB()')
+        }
+    }
+
+    return api;
+};
+
+exports.teardown = function (logFailures) {
+
+    if (logFailures && this.state === 'failed') {
+        exportDaemonAndHarnessState.call(this);
+    };
+
+    despawnSwarm();
+
+    clearDaemonStateAndConfigs();
+};
+
+function exportDaemonAndHarnessState() {
+    const {ctx, parent, ...culledState} = this;
+    const testTitle = replaceSpacesWithDashes(culledState);
+    const pathToDump = `./daemon-build/output/failure_dumps/${testTitle}`;
+
+    execSync(`mkdir -p ${pathToDump}`);
+    execSync(`cp -a ./daemon-build/output/daemon[0-9] ${pathToDump}`);
+
+    writeFileSync(`${pathToDump}/mocha-error.json`, JSON.stringify(culledState));
+    console.log(`Test failed, dumping logs and state to ${pathToDump}`);
+}
+
+const replaceSpacesWithDashes = (culledState) => {
+    const testTitle = culledState.title.replace(/\s+/g, '-');
+    return testTitle;
 };
