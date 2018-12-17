@@ -13,5 +13,5 @@ $ yarn link-daemon <relative/path/to/daemon/build/directory>
 
 ## System Requirements
 - Node > v10.10.0
-- OpenSSL > 1.0.2 or LibreSSL > 2.2.7 *required for `peer_validation_enabled`*
+- OpenSSL > 1.0.2 or LibreSSL > 2.2.7
 - Stable internet connection > 15 Mbps down
