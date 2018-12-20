@@ -12,5 +12,7 @@
   "private_key_file" : "./private-key.pem",
   "crypto_enabled_outgoing" : true,
   "crypto_enabled_incoming" : true,
-  "chaos_testing_enabled" : false
+  "chaos_testing_enabled" : false,
+  "logfile_rotation_size" : "5MB",
+  "logfile_max_size" : "20MB"
 }

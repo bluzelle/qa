@@ -1,6 +1,7 @@
 const assert = require('assert');
 const {expect} = require('chai');
 const common = require('./common');
+const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
 
 
 let clientsObj = {};
@@ -10,17 +11,18 @@ let numOfNodes = harnessConfigs.numOfNodes;
 describe('multi-client', () => {
 
     beforeEach('stand up swarm and client', async function () {
-        swarm = await common.startSwarm({numOfNodes});
+        this.timeout(30000);
+        swarm = await startSwarm({numOfNodes});
 
         const client1 = {uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='};
         const client2 = {uuid: '71e2cd35-b606-41e6-bb08-f20de30df76c', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='};
 
-        clientsObj.api1 = await common.initializeClient({uuid: client1.uuid, pem: client1.pem, swarm, setupDB: true});
-        clientsObj.api2 = await common.initializeClient({uuid: client2.uuid, pem: client2.pem, swarm, setupDB: true});
+        clientsObj.api1 = await initializeClient({uuid: client1.uuid, pem: client1.pem, swarm, setupDB: true});
+        clientsObj.api2 = await initializeClient({uuid: client2.uuid, pem: client2.pem, swarm, setupDB: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
-        common.teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
     });
 
     context('distinct uuids', () => {
@@ -105,7 +107,7 @@ describe('multi-client', () => {
 
         beforeEach('initialize new client with colliding uuid and private_pem', async () => {
             const client1Clone = {uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='};
-            clientsObj.api3 = await common.initializeClient({uuid: client1Clone.uuid, pem: client1Clone.pem, swarm});
+            clientsObj.api3 = await initializeClient({uuid: client1Clone.uuid, pem: client1Clone.pem, swarm});
         });
 
         it('client1 should be able to write to database', async () => {

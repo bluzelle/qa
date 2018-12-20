@@ -1,5 +1,5 @@
 const assert = require('assert');
-const {createKeys} = require('../utils/daemon/setup');
+const {startSwarm, initializeClient, teardown, createKeys} = require('../utils/daemon/setup');
 const common = require('./common');
 
 
@@ -11,12 +11,13 @@ let numOfNodes = harnessConfigs.numOfNodes;
 describe('database management', () => {
 
     beforeEach('stand up swarm and client', async function () {
-        swarm = await common.startSwarm({numOfNodes});
-        clientsObj.api = await common.initializeClient({swarm});
+        this.timeout(30000);
+        swarm = await startSwarm({numOfNodes});
+        clientsObj.api = await initializeClient({swarm});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
-        common.teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
     });
 
 
