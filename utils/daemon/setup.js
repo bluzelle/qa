@@ -71,9 +71,9 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
     try {
         await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
-            const rejTimer = setTimeout(() => {
+            const daemonTimeout = setTimeout(() => {
                 rej(new Error(`${daemon} stdout: \n ${buffer}`))
-            }, 20000);
+            }, 15000);
 
             let buffer = '';
 
@@ -83,7 +83,7 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
                 buffer += data.toString();
 
                 if (data.toString().includes('Running node with ID:')) {
-                    clearInterval(rejTimer);
+                    clearInterval(daemonTimeout);
                     swarm.pushLiveNodes(daemon);
                     res();
                 }
@@ -108,7 +108,15 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
 
     if (consensusAlgorithm === 'pbft') {
 
-        swarm.primary = await new Promise((res) => {
+        swarm.primary = await new Promise((res, rej) => {
+
+            const sortedUuids = swarm.sortedUuidsMap.entries();
+            sortedUuids.next();
+            const [expectedPrimaryUuid, expectedPrimaryName] = sortedUuids.next().value;
+
+            const primaryTimeout = setTimeout(() => {
+                rej(new Error(`Failed to observe ${expectedPrimaryName}: ${expectedPrimaryUuid} as primary.`))
+            }, 10000);
 
             swarm.daemon0.stream.stdout
                 .pipe(split())
@@ -116,12 +124,8 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
 
                     // pbft implemntation lexicographically sorts uuids and uses position [1] as first primary
                     // `sorted_uuids_list[view_number % number_of_nodes]`
-
-                    const sortedUuids = swarm.sortedUuidsMap.entries();
-                    sortedUuids.next();
-                    const [expectedPrimaryUuid, expectedPrimaryName] = sortedUuids.next().value;
-
                     if (line.toString().includes(`observed primary of view 1 to be '${expectedPrimaryUuid}'`)) {
+                        clearInterval(primaryTimeout);
                         res(expectedPrimaryName)
                     }
                 });
