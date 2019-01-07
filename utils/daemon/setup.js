@@ -37,7 +37,7 @@ const initializeClient = async ({uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', 
     return api;
 };
 
-const teardown = function (logFailures) {
+const teardown = function (logFailures, maintainState) {
 
     if (logFailures && this.state === 'failed') {
         exportDaemonAndHarnessState.call(this);
@@ -45,7 +45,9 @@ const teardown = function (logFailures) {
 
     despawnSwarm();
 
-    clearDaemonStateAndConfigs();
+    if (!maintainState) {
+        clearDaemonStateAndConfigs();
+    }
 };
 
 /*

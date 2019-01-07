@@ -40,7 +40,12 @@ const configUtils = {
 
         const template = readTemplate('./configs/pbft-template.json');
 
-        const pubKeys = pathList.map((path) => crypto.generateKey(path));
+        const keyPairs = pathList.map((path) => crypto.generateKey(path));
+
+        const pubKeys = keyPairs.reduce((results, keys) => {
+            results.push(keys[0]);
+            return results;
+        }, []);
 
         const configsObject = buildConfigsObject(template, numOfConfigs, pubKeys);
 
