@@ -1,6 +1,7 @@
 {
   "scripts": {
     "test-daemon": "if [ -d ./daemon-build ]; then mocha test/*test.js; else echo \"Please run yarn link-daemon first.\"; exit 1; fi",
+    "debug-daemon": "mocha test/*test.js debug",
     "setup-bluzelle-js": "git submodule update --init --recursive; cd bluzelle-js && yarn && webpack",
     "link-daemon": "./scripts/daemon-linker.sh"
   },

@@ -1,8 +1,13 @@
+/*
+* Class used to manage generated daemons' information and state.
+* */
+
 module.exports = class SwarmState {
 
     constructor (configsObject) {
         this._nodes = [];
         this._liveNodes = [];
+        this._uuidsMap = new Map();
         this.load(configsObject);
     }
 
@@ -22,24 +27,29 @@ module.exports = class SwarmState {
         this._liveNodes.push(node)
     }
 
-    set leader(node) {
-        this._leader = node
+    set primary(node) {
+        this._primary = node
     }
 
-    get leader() {
-        return this._leader
+    get primary() {
+        return this._primary
     }
 
-    get followers() {
-        if (this._leader) {
-            return this._liveNodes.filter((node) => node != this._leader)
+    get backups() {
+        if (this._primary) {
+            return this._liveNodes.filter((node) => node !== this._primary)
         } else {
-            return new Error('No leader set')
+            return new Error('No primary set')
         }
     }
 
     get lastNode() {
         return this._nodes[this._nodes.length - 1]
+    }
+
+    get sortedUuidsMap() {
+        // sort Map of uuids => daemonName lexicographically to match PBFT Primary round-robin order
+        return new Map(Array.from(this._uuidsMap).sort())
     }
 
     deadNode(daemon) {
@@ -54,15 +64,17 @@ module.exports = class SwarmState {
     load(configsObject) {
         configsObject.forEach(data => {
 
-            this._nodes.push(`daemon${data.index}`)
+            this._nodes.push(`daemon${data.index}`);
 
             this[`daemon${data.index}`] =
                 {
-                    uuid: data.content.uuid,
+                    uuid: data.uuid,
                     port: data.content.listener_port,
                     http_port: data.content.http_port,
                     index: data.index
-                }
+                };
+
+            this._uuidsMap.set(data.uuid, `daemon${data.index}`);
         });
     }
 };

@@ -1,75 +1,74 @@
-const {spawnSwarm, despawnSwarm, createKeys} = require('../utils/daemon/setup');
-const {editFile} = require('../utils/daemon/configs');
-const api = require('../bluzelle-js/lib/bluzelle-node');
-const shared = require('./shared');
-
 const {execSync} = require('child_process');
+const assert = require('assert');
+const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+
+const common = require('./common');
 
 
-const killNodes = num => {
-    // kills nodes starting from end of swarmObj list
+let clientsObj = {};
+let swarm;
+let numOfNodes = harnessConfigs.numOfNodes;
 
-    const daemonList = Object.keys(swarmObj);
-    const deathRow = daemonList.slice(daemonList.length - num);
+const killNodes = (num, swarmObj) => {
+
+    const backUpNodes = swarmObj.backups;
+    const deathRow = backUpNodes.slice(backUpNodes.length - num);
 
     deathRow.forEach(daemon => {
         execSync(`kill $(ps aux | grep 'bluzelle${swarmObj[daemon].index}' | awk '{print $2}')`);
     });
 };
 
-describe.skip('pbft', () => {
 
-    before('initialize client api', () =>
-        api.connect(`ws://${harnessConfigs.address}:${Object.values(swarmObj)[0].port}`, '71e2cd35-b606-41e6-bb08-f20de30df76c'));
+describe('pbft', () => {
 
-    beforeEach('edit configs to use pbft', () => {
-        [...Array(4).keys()].forEach(v => {
-            editFile({
-                filename: `bluzelle${v}.json`,
-                changes: {
-                    use_pbft: true
-                }
-            })
-        });
+    beforeEach('stand up swarm and client', async function () {
+        this.timeout(30000);
+        swarm = await startSwarm({numOfNodes});
+        clientsObj.api = await initializeClient({swarm, setupDB: true});
     });
 
-    beforeEach('spawn PBFT swarm', async () => {
-        await spawnSwarm('pbft')
+    afterEach('remove configs and peerslist and clear harness state', function () {
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
     });
 
-    afterEach('despawn swarm', despawnSwarm);
 
     context('start up', () => {
 
         it('primary is set', () => {
+            assert(swarm.primary !== undefined);
         });
+
+        context('test', () => {
+            common.crudFunctionalityTests(clientsObj)
+        })
     });
 
-    context('with >2/3 nodes alive', () => {
+    context.skip('with >2/3 nodes alive', () => {
 
         beforeEach('kill < 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.floor(Object.keys(swarmObj).length * 1/3);
-            killNodes(numOfNodesToKill)
+
+            console.log(execSync('ps aux | grep swarm').toString());
+
+            const numOfNodesToKill = Math.floor(swarm.backups.length * 1/3);
+            killNodes(numOfNodesToKill, swarm);
+
         });
 
         it('swarm should be operational', () => {
-            shared.swarmIsOperational(api)
+            common.crudFunctionalityTests(clientsObj)
         });
     });
 
-    context('with <2/3 nodes alive', () => {
+    context.skip('with <2/3 nodes alive', () => {
 
         beforeEach('kill > 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.ceil(Object.keys(swarmObj).length * 1/3);
-            killNodes(numOfNodesToKill)
+            const numOfNodesToKill = Math.ceil(swarm.backups.length * 1/3);
+            killNodes(numOfNodesToKill, swarm)
         });
 
         it('swarm should NOT be operational', () => {
-            shared.createShouldTimeout(api)
+            common.createShouldTimeout(clientsObj)
         });
-    });
-
-    context('crud', () => {
-        shared.swarmIsOperational(api);
     });
 });
