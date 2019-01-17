@@ -5,13 +5,12 @@
 module.exports = class SwarmState {
 
     constructor (configsObject) {
-        this._nodes = [];
         this._liveNodes = [];
-        this._uuidsMap = new Map();
         this.load(configsObject);
     }
 
     get nodes() {
+        // returns an array of arrays of [daemon#, pubKey] pairs, sorted lexicographically by pubKey
         return this._nodes
     }
 
@@ -47,24 +46,21 @@ module.exports = class SwarmState {
         return this._nodes[this._nodes.length - 1]
     }
 
-    get sortedUuidsMap() {
-        // sort Map of uuids => daemonName lexicographically to match PBFT Primary round-robin order
-        return new Map(Array.from(this._uuidsMap).sort())
-    }
-
-    deadNode(daemon) {
-        if (nodeExistsInLiveNodes) {
+    declareDeadNode(daemon) {
+        if (nodeExistsInLiveNodes.call(this, daemon)) {
             this._liveNodes.splice(this._liveNodes.indexOf(daemon),1);
         }
+
         if (this[daemon].stream){
             this[daemon].stream = null
         }
     }
 
     load(configsObject) {
-        configsObject.forEach(data => {
 
-            this._nodes.push(`daemon${data.index}`);
+        const _temp = [];
+
+        configsObject.forEach(data => {
 
             this[`daemon${data.index}`] =
                 {
@@ -74,10 +70,13 @@ module.exports = class SwarmState {
                     index: data.index
                 };
 
-            this._uuidsMap.set(data.uuid, `daemon${data.index}`);
+            _temp.push([ data.uuid, `daemon${data.index}`]);
         });
+
+        this._nodes = _temp.sort();
     }
 };
 
-
-const nodeExistsInLiveNodes = () => this._liveNodes.indexOf(daemon) >= 0;
+function nodeExistsInLiveNodes (daemon) {
+    return this._liveNodes.indexOf(daemon) >= 0;
+}

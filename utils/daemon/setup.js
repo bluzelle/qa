@@ -66,7 +66,9 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
         clearDaemonState();
     }
 
-    const nodesToSpawn = partialSpawn ? swarm.nodes.slice(0, partialSpawn) : swarm.nodes;
+    const nodeNames = swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]);
+
+    const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
 
     const MINIMUM_NODES = Math.floor(nodesToSpawn.length * (1 - failureAllowed));
 
@@ -92,7 +94,7 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
             });
 
             swarm[daemon].stream.on('close', code => {
-                swarm.deadNode(daemon)
+                swarm.declareDeadNode(daemon)
             });
 
         })), MINIMUM_NODES);
@@ -112,20 +114,19 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
 
         swarm.primary = await new Promise((res, rej) => {
 
-            const sortedUuids = swarm.sortedUuidsMap.entries();
-            sortedUuids.next();
-            const [expectedPrimaryUuid, expectedPrimaryName] = sortedUuids.next().value;
+            // pbft implemntation lexicographically sorts uuids and uses position [1] as first primary
+            // `sorted_uuids_list[view_number % number_of_nodes]`
+            const [expectedPrimaryUuid, expectedPrimaryName] = swarm.nodes[1];
 
             const primaryTimeout = setTimeout(() => {
                 rej(new Error(`Failed to observe ${expectedPrimaryName}: ${expectedPrimaryUuid} as primary.`))
             }, 10000);
 
-            swarm.daemon0.stream.stdout
+            swarm[expectedPrimaryName].stream.stdout
                 .pipe(split())
                 .on('data', function (line) {
 
-                    // pbft implemntation lexicographically sorts uuids and uses position [1] as first primary
-                    // `sorted_uuids_list[view_number % number_of_nodes]`
+
                     if (line.toString().includes(`observed primary of view 1 to be '${expectedPrimaryUuid}'`)) {
                         clearInterval(primaryTimeout);
                         res(expectedPrimaryName)
