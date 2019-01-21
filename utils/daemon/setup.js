@@ -175,12 +175,15 @@ const clearDaemonState = () => {
     }
 };
 
-const spawnDaemon = (index, {debug} = {}) => new Promise((resolve, reject) => {
-    let daemon;
+const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject) => {
+    let daemon = 'daemon' + index;
 
-    daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
+    swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
+    // daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
-    daemon.stdout.on('data', (data) => {
+    swarm[daemon].stream.stdout.on('data', (data) => {
+        // console.log(data.toString());
+
         if (debug) {
             console.log(data.toString());
         }
@@ -189,7 +192,7 @@ const spawnDaemon = (index, {debug} = {}) => new Promise((resolve, reject) => {
         }
     });
 
-    daemon.on('error', (err) => {
+    swarm[daemon].stream.on('error', (err) => {
         reject(new Error('Failed to spawn Daemon.'));
     });
 });
