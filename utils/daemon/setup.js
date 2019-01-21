@@ -18,12 +18,13 @@ const startSwarm = async ({numOfNodes}) => {
     return swarm;
 };
 
-const initializeClient = async ({uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==', swarm, setupDB} = {}) => {
+const initializeClient = async ({log, swarm, setupDB, uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='} = {}) => {
 
     const api = bluzelle({
         entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
         uuid: uuid,
-        private_pem: pem
+        private_pem: pem,
+        log: log
     });
 
     if (setupDB) {
@@ -136,9 +137,9 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
     }
 };
 
-const createKeys = async (clientsObj, numOfKeys = 10) => {
+const createKeys = async (clientsObj, numOfKeys = 10, start = 0) => {
 
-    const arrayOfKeys = [...Array(numOfKeys).keys()];
+    const arrayOfKeys = Array.from(Array(numOfKeys), (_,i) => i + start);
 
     await Promise.all(arrayOfKeys.map(v => clientsObj.api.create('batch' + v, 'value')));
 };
@@ -175,12 +176,13 @@ const clearDaemonState = () => {
     }
 };
 
-const spawnDaemon = (index, {debug} = {}) => new Promise((resolve, reject) => {
-    let daemon;
+const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject) => {
+    let daemon = 'daemon' + index;
 
-    daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
+    swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
 
-    daemon.stdout.on('data', (data) => {
+    swarm[daemon].stream.stdout.on('data', (data) => {
+
         if (debug) {
             console.log(data.toString());
         }
@@ -189,7 +191,7 @@ const spawnDaemon = (index, {debug} = {}) => new Promise((resolve, reject) => {
         }
     });
 
-    daemon.on('error', (err) => {
+    swarm[daemon].stream.on('error', (err) => {
         reject(new Error('Failed to spawn Daemon.'));
     });
 });
