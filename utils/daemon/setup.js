@@ -8,16 +8,11 @@ const {writeFileSync} = require('fs');
 const {bluzelle} = require('../../bluzelle-js/lib/bluzelle-node');
 const {generateSwarmJsonsAndSetState} = require('./configs');
 const SwarmState = require('./swarm');
-const {memoize, curry} = require('lodash/fp');
-
+const {memoize, curry, first} = require('lodash/fp');
 
 exports.startSwarm = async ({numOfNodes}) => {
-
-    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
-    const swarm = new SwarmState(configsObject);
-
+    const swarm = new SwarmState(await generateSwarmJsonsAndSetState(numOfNodes).then(first));
     await spawnSwarm(swarm, {consensusAlgorithm: 'pbft'});
-
     return swarm;
 };
 
@@ -41,18 +36,10 @@ exports.initializeClient = async ({log, swarm, setupDB, uuid = '4982e0b0-0b2f-4c
     return api;
 };
 
-const teardown = function (logFailures, maintainState) {
-
-    if (logFailures && this.state === 'failed') {
-        exportDaemonAndHarnessState.call(this);
-    }
-    ;
-
+exports.teardown = function (logFailures, maintainState) {
+    logFailures && this.state === 'failed' && exportDaemonAndHarnessState(this);
     despawnSwarm();
-
-    if (!maintainState) {
-        clearDaemonStateAndConfigs();
-    }
+    maintainState || clearDaemonStateAndConfigs();
 };
 
 /*
@@ -70,16 +57,16 @@ const withTimeout = (timeout, error, fn) => new Promise((resolve, reject) => {
 });
 
 
-const spawnDaemon = curry((swarm, daemon) => {
-    const buffer = [];
+const spawnDaemon = curry((swarm, daemon, idx) => {
+    const buffer = Buffer.alloc(0);
     withTimeout(
         15000,
         new Error(`${daemon} stdout: \n ${buffer.join('')}`),
         () => new Promise((resolve, reject) => {
-            swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
+            const stream = swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
-            swarm[daemon].stream.stdout.on('data', (data) => {
-                buffer.push(data.toString());
+            stream.stdout.on('data', (data) => {
+                Buffer.concat([buffer, data]);
 
                 if (data.toString().includes('Running node with ID:')) {
                     swarm.pushLiveNodes(daemon);
@@ -87,7 +74,8 @@ const spawnDaemon = curry((swarm, daemon) => {
                 }
             });
 
-            swarm[daemon].stream.on('close', code => {
+
+            stream.on('close', code => {
                 console.log('daemon died', code);
                 swarm.declareDeadNode(daemon)
             });
@@ -147,7 +135,7 @@ const spawnSwarm = exports.spawnSwarm = async (swarm, {consensusAlgorithm, parti
     }
 };
 
-const createKeys = async (clientsObj, numOfKeys = 10) => {
+exports.createKeys = async (clientsObj, numOfKeys = 10) => {
 
     const arrayOfKeys = [...Array(numOfKeys).keys()];
 
@@ -156,7 +144,7 @@ const createKeys = async (clientsObj, numOfKeys = 10) => {
     await PromiseMap(arrayOfKeys, v => clientsObj.api.create('batch' + v, 'value'), {concurrency: 10});
 };
 
-const despawnSwarm = () => {
+const despawnSwarm = exports.despawnSwarm = () => {
     try {
         execSync('pkill -9 swarm');
     } catch (err) {
@@ -164,7 +152,7 @@ const despawnSwarm = () => {
     }
 };
 
-const clearDaemonStateAndConfigs = () => {
+const clearDaemonStateAndConfigs = exports.clearDaemonStateAndConfigs = () => {
     try {
         execSync('cd ./daemon-build/output/; rm -rf ./daemon*/')
     } catch (err) {
@@ -176,7 +164,7 @@ const clearDaemonStateAndConfigs = () => {
     }
 };
 
-const clearDaemonState = () => {
+const clearDaemonState = exports.clearDaemonState = () => {
     try {
         execSync('cd ./daemon-build/output/; rm -rf .state');
     } catch (err) {
@@ -189,8 +177,7 @@ const clearDaemonState = () => {
 };
 
 
-function exportDaemonAndHarnessState() {
-    const {ctx, parent, ...culledState} = this;
+function exportDaemonAndHarnessState({ctx, parent, ...culledState}) {
     const testTitle = replaceSpacesWithDashes(culledState);
     const pathToDump = `./daemon-build/output/failure_dumps/${testTitle}`;
 
@@ -207,12 +194,3 @@ const replaceSpacesWithDashes = (culledState) => {
 };
 
 
-module.exports = {
-    ...module.exports,
-    teardown,
-    despawnSwarm,
-//    spawnDaemon,
-    clearDaemonStateAndConfigs,
-    clearDaemonState,
-    createKeys
-};

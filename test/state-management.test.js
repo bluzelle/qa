@@ -51,7 +51,7 @@ describe.only('state management', () => {
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-            let numOfKeys = 10;
+            let numOfKeys = 20;
 
             const arrayOfKeys = [...Array(numOfKeys).keys()];
 
