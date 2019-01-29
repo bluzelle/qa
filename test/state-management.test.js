@@ -51,7 +51,7 @@ describe.only('state management', () => {
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-            const NUM_OF_KEYS = 20;
+            const NUM_OF_KEYS = 10;
 
             const createKey = idx => this.client.create(`batch${idx}`, 'value');
 

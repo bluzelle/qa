@@ -9,6 +9,7 @@ const {bluzelle} = require('../../bluzelle-js/lib/bluzelle-node');
 const {generateSwarmJsonsAndSetState} = require('./configs');
 const SwarmState = require('./swarm');
 const {memoize, curry, first} = require('lodash/fp');
+const path = require('path');
 
 exports.startSwarm = async ({numOfNodes}) => {
     const swarm = new SwarmState(await generateSwarmJsonsAndSetState(numOfNodes).then(first));
@@ -63,10 +64,15 @@ const spawnDaemon = curry((swarm, daemon) => {
         15000,
         new Error(`${daemon} stdout: \n ${buffer.join('')}`),
         () => new Promise((resolve, reject) => {
-            const stream = swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
+            const child = swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
-            stream.stdout.on('data', (data) => {
+            child.on('error', (...args) => {
+                console.log('** ERROR', args);
+            });
+
+            child.stdout.on('data', (data) => {
                 Buffer.concat([buffer, data]);
+                console.log('** OUT', swarm[daemon].index, data.toString());
 
                 if (data.toString().includes('Running node with ID:')) {
                     swarm.pushLiveNodes(daemon);
@@ -75,7 +81,7 @@ const spawnDaemon = curry((swarm, daemon) => {
             });
 
 
-            stream.on('close', code => {
+            child.on('close', code => {
                 console.log('daemon died', code);
                 swarm.declareDeadNode(daemon)
             });
@@ -94,7 +100,6 @@ const spawnSwarm = exports.spawnSwarm = async (swarm, {consensusAlgorithm, parti
     const nodesToSpawn = memoize(() => partialSpawn ? nodeNames().slice(0, partialSpawn) : nodeNames());
 
     const minimumNodes = () => Math.floor(nodesToSpawn().length * (1 - failureAllowed));
-
 
     try {
         await PromiseSome(nodesToSpawn().map(spawnDaemon(swarm)), minimumNodes());
