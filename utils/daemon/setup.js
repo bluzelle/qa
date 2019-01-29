@@ -8,9 +8,10 @@ const {writeFileSync} = require('fs');
 const {bluzelle} = require('../../bluzelle-js/lib/bluzelle-node');
 const {generateSwarmJsonsAndSetState} = require('./configs');
 const SwarmState = require('./swarm');
+const {memoize, curry} = require('lodash/fp');
 
 
-const startSwarm = async ({numOfNodes}) => {
+exports.startSwarm = async ({numOfNodes}) => {
 
     let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
     const swarm = new SwarmState(configsObject);
@@ -20,7 +21,7 @@ const startSwarm = async ({numOfNodes}) => {
     return swarm;
 };
 
-const initializeClient = async ({log, swarm, setupDB, uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='} = {}) => {
+exports.initializeClient = async ({log, swarm, setupDB, uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='} = {}) => {
 
     const api = bluzelle({
         entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
@@ -44,7 +45,8 @@ const teardown = function (logFailures, maintainState) {
 
     if (logFailures && this.state === 'failed') {
         exportDaemonAndHarnessState.call(this);
-    };
+    }
+    ;
 
     despawnSwarm();
 
@@ -61,47 +63,53 @@ const teardown = function (logFailures, maintainState) {
  * @param {maintainState} Optional. Boolean. Persist Daemon state rather than purge state and start a fresh swarm
  * @param {failureAllowed} Optional. Default 0.2. The % of nodes allowed to fail to start up erroring out
 */
-const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2}) => {
+
+const withTimeout = (timeout, error, fn) => new Promise((resolve, reject) => {
+    setTimeout(() => reject(error), timeout);
+    fn().then(resolve);
+});
 
 
-    if (!maintainState) {
-        // Daemon state is persisted in .state directory, wipe it to ensure clean slate
-        clearDaemonState();
-    }
-
-    const nodeNames = swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]);
-
-    const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
-
-    const MINIMUM_NODES = Math.floor(nodesToSpawn.length * (1 - failureAllowed));
-
-    try {
-        await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
-
-            const daemonTimeout = setTimeout(() => {
-                rej(new Error(`${daemon} stdout: \n ${buffer}`))
-            }, 15000);
-
-            let buffer = '';
-
+const spawnDaemon = curry((swarm, daemon) => {
+    const buffer = [];
+    withTimeout(
+        15000,
+        new Error(`${daemon} stdout: \n ${buffer.join('')}`),
+        () => new Promise((resolve, reject) => {
             swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
             swarm[daemon].stream.stdout.on('data', (data) => {
-                buffer += data.toString();
+                buffer.push(data.toString());
 
                 if (data.toString().includes('Running node with ID:')) {
-                    clearInterval(daemonTimeout);
                     swarm.pushLiveNodes(daemon);
-                    res();
+                    resolve();
                 }
             });
 
             swarm[daemon].stream.on('close', code => {
+                console.log('daemon died', code);
                 swarm.declareDeadNode(daemon)
             });
+        })
+    )
+});
 
-        })), MINIMUM_NODES);
 
+const spawnSwarm = exports.spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2}) => {
+
+    // Daemon state is persisted in .state directory, wipe it to ensure clean slate
+    maintainState || clearDaemonState();
+
+    const nodeNames = memoize(() => swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]));
+
+    const nodesToSpawn = memoize(() => partialSpawn ? nodeNames().slice(0, partialSpawn) : nodeNames());
+
+    const minimumNodes = () => Math.floor(nodesToSpawn().length * (1 - failureAllowed));
+
+
+    try {
+        await PromiseSome(nodesToSpawn().map(spawnDaemon(swarm)), minimumNodes());
     } catch (err) {
 
         if (err instanceof Array) {
@@ -180,27 +188,6 @@ const clearDaemonState = () => {
     }
 };
 
-const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject) => {
-    let daemon = 'daemon' + index;
-
-    swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
-    // daemon = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
-
-    swarm[daemon].stream.stdout.on('data', (data) => {
-        // console.log(data.toString());
-
-        if (debug) {
-            console.log(data.toString());
-        }
-        if (data.toString().includes('Running node with ID:')) {
-            resolve(daemon)
-        }
-    });
-
-    swarm[daemon].stream.on('error', (err) => {
-        reject(new Error('Failed to spawn Daemon.'));
-    });
-});
 
 function exportDaemonAndHarnessState() {
     const {ctx, parent, ...culledState} = this;
@@ -221,12 +208,10 @@ const replaceSpacesWithDashes = (culledState) => {
 
 
 module.exports = {
-    startSwarm,
-    initializeClient,
+    ...module.exports,
     teardown,
-    spawnSwarm,
     despawnSwarm,
-    spawnDaemon,
+//    spawnDaemon,
     clearDaemonStateAndConfigs,
     clearDaemonState,
     createKeys

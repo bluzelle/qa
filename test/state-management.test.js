@@ -11,30 +11,51 @@ let numOfNodes = harnessConfigs.numOfNodes;
 
 describe.only('state management', () => {
 
+    // beforeEach('initialize client and connect to external swarm', async function () {
+    //
+    //     const UUID = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814';
+    //     const PEM = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==';
+    //
+    //     const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
+    //
+    //     clientsObj.api = bluzelle({
+    //         entry: `ws://127.0.0.1:50000`,
+    //         uuid: UUID,
+    //         private_pem: PEM,
+    //         log: true
+    //     });
+    //
+    //     await clientsObj.api.createDB();
+    //
+    // });
+
+    afterEach('delete database for external swarm', async function () {
+        await clientsObj.api.deleteDB();
+    });
+
     beforeEach('stand up swarm and client', async function () {
         this.timeout(30000);
 
         let [configsObject] = await generateSwarmJsonsAndSetState(3);
         swarm = new SwarmState(configsObject);
 
-        await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 2});
+       await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 2});
 
         clientsObj.api = await initializeClient({swarm, setupDB: true, log: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
+// SAB - commented to leave config file to run manually        teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
     });
 
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-
-            let numOfKeys = 200;
+            let numOfKeys = 10;
 
             const arrayOfKeys = [...Array(numOfKeys).keys()];
 
-            await Promise.all(arrayOfKeys.map(v => clientsObj.api.create('batch' + v, 'value')));
+            await Promise.all(arrayOfKeys.map(v => clientsObj.api.create(`batch${v}`, 'value')));
 
             // Using Bluebird's Promise.amp to batch firing doesn't seem to help:
             // await PromiseMap(arrayOfKeys, v => clientsObj.api.create('batch' + v, 'value'), {concurrency: 10});
