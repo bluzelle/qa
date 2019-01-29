@@ -18,14 +18,14 @@ describe.only('state management', () => {
     //
     //     const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
     //
-    //     clientsObj.api = bluzelle({
+    //     this.client = bluzelle({
     //         entry: `ws://127.0.0.1:50000`,
     //         uuid: UUID,
     //         private_pem: PEM,
     //         log: true
     //     });
     //
-    //     await clientsObj.api.createDB();
+    //     await this.client.createDB();
     //
     // });
 
@@ -36,10 +36,10 @@ describe.only('state management', () => {
     beforeEach('stand up swarm and client', async function () {
         this.timeout(30000);
 
-        let [configsObject] = await generateSwarmJsonsAndSetState(3);
+        const {configsObject} = await generateSwarmJsonsAndSetState(3);
         swarm = new SwarmState(configsObject);
 
-       await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 2});
+       await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 3});
 
         this.client = await initializeClient({swarm, setupDB: true, log: true});
     });
@@ -51,7 +51,7 @@ describe.only('state management', () => {
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-            const NUM_OF_KEYS = 10;
+            const NUM_OF_KEYS = 20;
 
             const createKey = idx => this.client.create(`batch${idx}`, 'value');
 

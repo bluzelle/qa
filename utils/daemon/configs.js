@@ -27,7 +27,7 @@ const configUtils = {
 
         configUtils.setHarnessState(configsObject);
 
-        return [configsObject, peersList]
+        return {configsObject, peersList}
     },
 
     generateConfigs: async ({numOfConfigs, pathList}) => {
