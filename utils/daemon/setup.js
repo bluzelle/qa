@@ -57,7 +57,7 @@ const withTimeout = (timeout, error, fn) => new Promise((resolve, reject) => {
 });
 
 
-const spawnDaemon = curry((swarm, daemon, idx) => {
+const spawnDaemon = curry((swarm, daemon) => {
     const buffer = Buffer.alloc(0);
     withTimeout(
         15000,

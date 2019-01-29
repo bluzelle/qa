@@ -4,9 +4,9 @@ const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 const PromiseMap = require('bluebird').map;
 
-let clientsObj = {};
 let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
+const {times} = require('lodash/fp');
 
 
 describe.only('state management', () => {
@@ -30,7 +30,7 @@ describe.only('state management', () => {
     // });
 
     afterEach('delete database for external swarm', async function () {
-        await clientsObj.api.deleteDB();
+        await this.client.deleteDB();
     });
 
     beforeEach('stand up swarm and client', async function () {
@@ -41,7 +41,7 @@ describe.only('state management', () => {
 
        await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 2});
 
-        clientsObj.api = await initializeClient({swarm, setupDB: true, log: true});
+        this.client = await initializeClient({swarm, setupDB: true, log: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
@@ -51,11 +51,12 @@ describe.only('state management', () => {
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-            let numOfKeys = 20;
+            const NUM_OF_KEYS = 20;
 
-            const arrayOfKeys = [...Array(numOfKeys).keys()];
+            const createKey = idx => this.client.create(`batch${idx}`, 'value');
 
-            await Promise.all(arrayOfKeys.map(v => clientsObj.api.create(`batch${v}`, 'value')));
+            await Promise.all(times(createKey, NUM_OF_KEYS));
+
 
             // Using Bluebird's Promise.amp to batch firing doesn't seem to help:
             // await PromiseMap(arrayOfKeys, v => clientsObj.api.create('batch' + v, 'value'), {concurrency: 10});
