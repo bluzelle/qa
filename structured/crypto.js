@@ -1,6 +1,6 @@
 const {execSync} = require('child_process');
 const fs = require('fs');
-const {pipe} = require('lodash/fp');
+const {pipe, invoke} = require('lodash/fp');
 
 exports.generateKeys = (path) => {
 
@@ -14,7 +14,7 @@ exports.generateKeys = (path) => {
     const getKey = pipe(
         type => `${path}/${type}-key.pem`,
         fs.readFileSync,
-        x => x.toString(),
+        invoke('toString'),
         stripHeaderAndFooter
     );
 

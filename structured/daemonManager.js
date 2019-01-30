@@ -1,16 +1,34 @@
 const {times, invoke, pipe, curry, pick} = require('lodash/fp');
-const {writeDaemonFile, writeJsonFile, removeDaemonDirectory, getDaemonOuputDir} = require('./FileService');
+const {writeDaemonFile, writeJsonFile, removeDaemonDirectory, getDaemonOutputDir, copyToDaemonDir} = require('./FileService');
 const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
 
+
+setTimeout(() => startSwarm({numberOfDaemons: 3}));
+
+const startSwarm = ({numberOfDaemons}) => {
+    const daemonConfigs = writeSwarmConfig({numberOfDaemons});
+    daemonConfigs.forEach(copyDaemonBinary);
+    const daemons = daemonConfigs.forEach(startDaemon);
+    return {
+        stop: () => daemons.forEach(invoke('stop'))
+    }
+};
+
+const startDaemon = daemonConfig => {
+
+    console.log('****', daemonConfig);
+};
+
+const copyDaemonBinary = (daemonConfig) => copyToDaemonDir(daemonConfig, '../daemon-build/output/swarm', 'swarm').run();
+
 const writeSwarmConfig = ({numberOfDaemons}) => {
     const assignListenerPort = counter({start: 50000});
-    const assignHttpPort = counter({start: 8000});
+    const assignHttpPort = counter({start: 8080});
 
     removeDaemonDirectory().run();
 
     const daemonConfigs = times(pipe(
-
         () => writeDaemonConfigObject({
             listener_port: assignListenerPort(),
             http_port: assignHttpPort()
@@ -18,13 +36,14 @@ const writeSwarmConfig = ({numberOfDaemons}) => {
 
         daemonConfig => ({
             ...daemonConfig,
-            publicKey:  generateKeys(getDaemonOuputDir(daemonConfig.listener_port))[0]
+            publicKey: generateKeys(getDaemonOutputDir(daemonConfig))[0]
         })
-
     ), numberOfDaemons);
 
 
     writePeersList(daemonConfigs);
+
+    return daemonConfigs;
 };
 
 const writePeersList = (daemonConfigs) => {
@@ -61,7 +80,6 @@ const counter = ({start, step = 1}) => {
     return () => count += step
 };
 
-setTimeout(() => writeSwarmConfig({numberOfDaemons: 3}));
 
 
 
