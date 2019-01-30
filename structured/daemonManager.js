@@ -1,24 +1,45 @@
 const {times, invoke, pipe, curry, pick} = require('lodash/fp');
-const {writeDaemonFile, writeJsonFile} = require('./FileService');
+const {writeDaemonFile, writeJsonFile, removeDaemonDirectory, getDaemonOuputDir} = require('./FileService');
+const {generateKeys} = require('./crypto');
+const {IO} = require('monet');
 
 const writeSwarmConfig = ({numberOfDaemons}) => {
     const assignListenerPort = counter({start: 50000});
     const assignHttpPort = counter({start: 8000});
 
-    const daemons = times(() => writeDaemonConfigObject({
-        listener_port: assignListenerPort(),
+    removeDaemonDirectory().run();
+
+    const daemonConfigs = times(() => {
+
+        const daemonConfig = writeDaemonConfigObject({
+            listener_port: assignListenerPort(),
             http_port: assignHttpPort()
-    }), numberOfDaemons);
-    console.log('****', daemons);
+        });
+
+        const [publicKey] = generateKeys(getDaemonOuputDir(daemonConfig.listener_port));
+
+        return {...daemonConfig, publicKey};
+
+    }, numberOfDaemons);
+
+    writePeersList(daemonConfigs);
 };
 
-const writeDaemonConfig = (config) =>
-    writeDaemonConfigObject(config);
+const writePeersList = (daemonConfigs) => {
+    const output = daemonConfigs.map(config => ({
+        name: `daemon${config.listener_port}`,
+        host: '127.0.0.1',
+        port: config.listener_port,
+        http_port: config.http_port,
+        uuid: config.publicKey
+    }));
 
+    daemonConfigs.forEach(daemonConfig => writeDaemonFile(daemonConfig, 'peers.json', output).run());
+};
 
 const writeDaemonConfigObject = (config) => {
-    daemonConfigTemplate()
-        .map(createDaemonConfigObject(pick(['listener_port', 'http_port'], config)))
+    getDaemonConfigTemplate()
+        .map(createDaemonConfigObject(config))
         .flatMap(writeDaemonFile(config, `bluzelle-${config.listener_port}.json`))
         .run();
     return config;
@@ -31,14 +52,12 @@ const createDaemonConfigObject = curry(({listener_port, http_port}, template) =>
 }));
 
 
-
-
+const getDaemonConfigTemplate = () => IO.of(require('./config-template'));
 
 const counter = ({start, step = 1}) => {
     let count = start - 1;
     return () => count += step
 };
-
 
 setTimeout(() => writeSwarmConfig({numberOfDaemons: 3}));
 
