@@ -9,18 +9,20 @@ const writeSwarmConfig = ({numberOfDaemons}) => {
 
     removeDaemonDirectory().run();
 
-    const daemonConfigs = times(() => {
+    const daemonConfigs = times(pipe(
 
-        const daemonConfig = writeDaemonConfigObject({
+        () => writeDaemonConfigObject({
             listener_port: assignListenerPort(),
             http_port: assignHttpPort()
-        });
+        }),
 
-        const [publicKey] = generateKeys(getDaemonOuputDir(daemonConfig.listener_port));
+        daemonConfig => ({
+            ...daemonConfig,
+            publicKey:  generateKeys(getDaemonOuputDir(daemonConfig.listener_port))[0]
+        })
 
-        return {...daemonConfig, publicKey};
+    ), numberOfDaemons);
 
-    }, numberOfDaemons);
 
     writePeersList(daemonConfigs);
 };
