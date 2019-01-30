@@ -2,12 +2,18 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const {execSync} = require('child_process');
 const assert = require('assert');
-
+const path = require('path');
 const crypto = require('./crypto');
 
 let swarm = {};
+const {times} = require('lodash/fp');
 
-const configUtils = {
+
+const ensureNumber = x => typeof x === 'number' ? x : parseInt(x);
+
+const configUtils = module.exports = {
+
+
 
     generateSwarmJsonsAndSetState: async (numOfConfigs) => {
         /*
@@ -15,7 +21,8 @@ const configUtils = {
         * separate directory at ./daemon-build/output/daemon*
         */
 
-        numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
+        // TODO: Why do this, why not just reuire a number
+        numOfConfigs = ensureNumber(numOfConfigs);
 
         configUtils.resetDaemonConfigCounter();
 
@@ -38,14 +45,11 @@ const configUtils = {
         * @returns object containing configs and index numbers
         * */
 
-        const template = readTemplate('./configs/pbft-template.json');
+        const template = readTemplate(path.resolve('./configs/pbft-template.json'));
 
         const keyPairs = pathList.map((path) => crypto.generateKey(path));
 
-        const pubKeys = keyPairs.reduce((results, keys) => {
-            results.push(keys[0]);
-            return results;
-        }, []);
+        const pubKeys = keyPairs.reduce((results, keys) => results.concat([keys[0]]), []);
 
         const configsObject = buildConfigsObject(template, numOfConfigs, pubKeys);
 
@@ -114,6 +118,7 @@ const configUtils = {
         configCounter.reset();
     },
 
+    // TODO: SAB - would be greatly improved by composition
     editFile: ({filepath, changes, remove, deleteKey, push}) => {
         changes = {...changes};
 
@@ -124,7 +129,7 @@ const configUtils = {
         let fileContent;
 
         try {
-            fileContent = JSON.parse(fs.readFileSync(`./daemon-build/output/${filepath}`, 'utf8'));
+            fileContent = JSON.parse(fs.readFileSync(path.resolve(`./daemon-build/output/${filepath}`), 'utf8'));
         } catch (e) {
             throw new Error('Read and parse as JSON failed.')
         }
@@ -141,7 +146,7 @@ const configUtils = {
         }
 
         try {
-            fs.writeFileSync(`./daemon-build/output/${filepath}`, JSON.stringify(fileContent), 'utf8');
+            fs.writeFileSync(path.resolve(`./daemon-build/output/${filepath}`), JSON.stringify(fileContent), 'utf8');
         } catch (e) {
             throw new Error('Writing changes failed.')
         }
@@ -150,35 +155,23 @@ const configUtils = {
     }
 };
 
-module.exports = configUtils;
 
 const createDirectories = (numOfDirectories) => {
 
     const BASE_DIR_NAME = 'daemon';
 
-    const pathList = [];
+    const pathList = times(createDirectory, numOfDirectories);
 
-    for (let i = 0; i < parseInt(numOfDirectories); i++) {
-
-        const path = './daemon-build/output/' + BASE_DIR_NAME + i;
-        pathList.push(path);
-
-        try {
-            fs.mkdirSync(path);
-        } catch (err) {
-            if (err.message.includes('EEXIST: file already exists')) {
-                // do nothing
-            } else {
-                throw err;
-            }
-        }
-    };
-
-    pathList.map((path) => execSync(`cp ./daemon-build/output/swarm ${path}/swarm`));
+    pathList.forEach((dir) => execSync(`cp ${path.resolve(`./daemon-build/output/swarm ${dir}/swarm`)}`));
 
     return pathList;
-};
 
+    function createDirectory(i) {
+        const dir = path.resolve(`./daemon-build/output/${BASE_DIR_NAME}${i}`);
+        fs.existsSync(dir) || fs.mkdirSync(dir)
+        return dir;
+    }
+};
 
 
 const configCounter = {
