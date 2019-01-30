@@ -3,7 +3,8 @@ const {resolve: resolvePath} = require('path');
 const {IO} = require('monet');
 const {curry} = require('lodash/fp');
 
-const getDaemonOutputDir = exports.getDaemonOutputDir = (daemonConfig) => `./output/daemon-${daemonConfig.listener_port}`;
+
+const getDaemonOutputDir = exports.getDaemonOutputDir = (daemonConfig) => resolvePath(__dirname, `./output/daemon-${daemonConfig.listener_port}`);
 
 exports.writeDaemonFile = curry((daemonConfig, filename, data) =>
     IO(() => outputJsonSync(`${getDaemonOutputDir(daemonConfig)}/${filename}`, data)));

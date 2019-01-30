@@ -4,6 +4,8 @@ const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 const PromiseMap = require('bluebird').map;
 
+const {startSwarm} = require('../structured/daemonManager');
+
 let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 const {times} = require('lodash/fp');
@@ -33,15 +35,19 @@ describe.only('state management', () => {
         await this.client.deleteDB();
     });
 
-    beforeEach('stand up swarm and client', async function () {
+    beforeEach('stand up swarm and client', async function (done) {
         this.timeout(30000);
 
-        const {configsObject} = await generateSwarmJsonsAndSetState(3);
-        swarm = new SwarmState(configsObject);
+        console.log('****', startSwarm({numberOfDaemons: 3}));
 
-       await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 3});
+        setTimeout(() => done, 5000)
 
-        this.client = await initializeClient({swarm, setupDB: true, log: true});
+       //  const {configsObject} = await generateSwarmJsonsAndSetState(3);
+       //  swarm = new SwarmState(configsObject);
+       //
+       // await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 3});
+       //
+       //  this.client = await initializeClient({swarm, setupDB: true, log: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
