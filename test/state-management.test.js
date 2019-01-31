@@ -17,10 +17,13 @@ const {times} = require('lodash/fp');
 describe('swarm starter tests', async () => {
     it('should start and restart a daemon', async () => {
         const swarm = await startSwarm({numberOfDaemons: 3});
+
         expect(swarm.daemons).to.have.length(3);
         expect(swarm.daemons[0].isRunning()).to.be.true;
+
         await swarm.daemons[0].stop();
         expect(swarm.daemons[0].isRunning()).to.be.false;
+
         await swarm.daemons[0].restart();
         expect(swarm.daemons[0].isRunning()).to.be.true;
 
