@@ -2,7 +2,7 @@ const {times, invoke, pipe, curry, pick} = require('lodash/fp');
 const {writeDaemonFile, writeJsonFile, removeDaemonDirectory, getDaemonOutputDir, copyToDaemonDir} = require('./FileService');
 const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
-const { spawn } = require('child_process');
+const {spawn} = require('child_process');
 const {resolve: resolvePath} = require('path');
 
 exports.startSwarm = async ({numberOfDaemons}) => {
@@ -10,7 +10,7 @@ exports.startSwarm = async ({numberOfDaemons}) => {
     daemonConfigs.forEach(copyDaemonBinary);
     const daemons = await Promise.all(daemonConfigs.map(startDaemon));
     return {
-        stop: () => daemons.forEach(invoke('stop')),
+        stop: () => Promise.all(daemons.map(invoke('stop'))),
         daemons: daemons
     }
 };
@@ -26,16 +26,24 @@ const startDaemon = async daemonConfig => {
         isRunning,
         stop: stopDaemon,
         restart: async () => {
-            stopDaemon();
+            await stopDaemon();
             await spawnDaemon();
         }
     };
 
-    function stopDaemon() {
-        console.log('stopping daemon', daemonConfig.listener_port);
-        invoke('kill', getDaemon());
-        setDaemon(undefined);
-        setRunning(false);
+    async function stopDaemon() {
+            console.log('stopping daemon', daemonConfig.listener_port);
+            invoke('kill', getDaemon());
+            setDaemon(undefined);
+            await waitForDaemonToDie();
+    }
+
+    function waitForDaemonToDie() {
+        return new Promise(resolve => {
+            (function waiter() {
+                isRunning() === true ? setTimeout(waiter, 100) : resolve();
+            }())
+        });
     }
 
     async function spawnDaemon() {
@@ -48,7 +56,12 @@ const startDaemon = async daemonConfig => {
             console.log('Daemon exit: ', code)
         });
 
-        await new Promise(resolve => {setTimeout(() => {daemonStarted(); resolve()}, 1000)});
+        await new Promise(resolve => {
+            setTimeout(() => {
+                daemonStarted();
+                resolve()
+            }, 1000)
+        });
 
         function daemonStarted() {
             setRunning(true);
@@ -138,7 +151,6 @@ const counter = ({start, step = 1}) => {
     let count = start - 1;
     return () => count += step
 };
-
 
 
 

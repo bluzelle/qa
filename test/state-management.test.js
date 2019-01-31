@@ -27,6 +27,7 @@ describe('swarm starter tests', async () => {
         await swarm.daemons[0].restart();
         expect(swarm.daemons[0].isRunning()).to.be.true;
 
+
         swarm.stop();
     })
 });
