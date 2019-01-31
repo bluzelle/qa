@@ -5,13 +5,12 @@ const {IO} = require('monet');
 const { spawn } = require('child_process');
 const {resolve: resolvePath} = require('path');
 
-
-//setTimeout(() => exports.startSwarm({numberOfDaemons: 3}));
+const daemons = [];
 
 exports.startSwarm = async ({numberOfDaemons}) => {
     const daemonConfigs = writeSwarmConfig({numberOfDaemons});
     daemonConfigs.forEach(copyDaemonBinary);
-    const daemons = await Promise.all(daemonConfigs.map(startDaemon));
+    await Promise.all(daemonConfigs.map(startDaemon));
     return {
         stop: () => daemons.forEach(invoke('stop')),
         daemons: daemons
@@ -20,16 +19,22 @@ exports.startSwarm = async ({numberOfDaemons}) => {
 
 const startDaemon = daemonConfig => new Promise((resolve, reject) => {
     const [isRunning, setRunning] = useState(false);
+    const [getDaemon, setDaemon] = useState();
     console.log('starting daemon:', daemonConfig.listener_port);
-    const daemon = spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig), stdio: 'ignore'});
 
+    spawnDaemon();
 
-    setTimeout(() => resolve({
+    daemons.push({
         ...daemonConfig,
         isRunning,
-        stop: () => console.log('stopping daemon') || daemon.kill()
-    }
-), 10000);
+        stop: stopDaemon,
+        restart: () => {
+            stopDaemon();
+            spawnDaemon();
+        }
+    });
+
+    setTimeout(() => setRunning(true) && resolve(), 10000);
 
     // daemon.stdout.on('data', (buf) => {
     //     const out = buf.toString();
@@ -44,11 +49,23 @@ const startDaemon = daemonConfig => new Promise((resolve, reject) => {
     // daemon.stderr.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}: ERROR:`, buf.toString()));
 
 
-    daemon.on('close', (code) => {
+
+    getDaemon().on('close', (code) => {
         setRunning(false);
         console.log('Daemon exit: ', code)
     });
 
+    function stopDaemon() {
+        console.log('stopping daemon', daemonConfig.listener_port);
+        getDaemon() && getDaemon().kill();
+        setDaemon(undefined);
+        setRunning(false);
+    }
+
+    function spawnDaemon() {
+        setDaemon(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig), stdio: 'ignore'}));
+        setRunning(true);
+    }
 });
 
 const useState = (initialValue) => {
