@@ -33,21 +33,20 @@ describe.only('state management', () => {
 
     afterEach('delete database for external swarm', async function () {
         await this.client.deleteDB();
+        await this.swarm.stop();
     });
 
-    beforeEach('stand up swarm and client', async function (done) {
+    beforeEach('stand up swarm and client', async function () {
         this.timeout(30000);
 
-        console.log('****', startSwarm({numberOfDaemons: 3}));
-
-        setTimeout(() => done, 5000)
+        this.swarm = await startSwarm({numberOfDaemons: 3});
 
        //  const {configsObject} = await generateSwarmJsonsAndSetState(3);
        //  swarm = new SwarmState(configsObject);
        //
        // await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', partialSpawn: 3});
        //
-       //  this.client = await initializeClient({swarm, setupDB: true, log: true});
+         this.client = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
@@ -57,7 +56,7 @@ describe.only('state management', () => {
     context('new peer joining swarm', function () {
 
         it.only('create keys', async function () {
-            const NUM_OF_KEYS = 20;
+            const NUM_OF_KEYS = 10;
 
             const createKey = idx => this.client.create(`batch${idx}`, 'value');
 

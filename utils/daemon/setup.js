@@ -20,7 +20,7 @@ exports.startSwarm = async ({numOfNodes}) => {
 exports.initializeClient = async ({log, swarm, setupDB, uuid = '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem = 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='} = {}) => {
 
     const api = bluzelle({
-        entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+        entry: `ws://${harnessConfigs.address}:${swarm.daemons[0].listener_port}`,
         uuid: uuid,
         private_pem: pem,
         log: log

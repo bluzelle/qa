@@ -8,35 +8,55 @@ const {resolve: resolvePath} = require('path');
 
 //setTimeout(() => exports.startSwarm({numberOfDaemons: 3}));
 
-exports.startSwarm = ({numberOfDaemons}) => {
+exports.startSwarm = async ({numberOfDaemons}) => {
     const daemonConfigs = writeSwarmConfig({numberOfDaemons});
     daemonConfigs.forEach(copyDaemonBinary);
-    const daemons = daemonConfigs.map(startDaemon);
+    const daemons = await Promise.all(daemonConfigs.map(startDaemon));
     return {
         stop: () => daemons.forEach(invoke('stop')),
         daemons: daemons
     }
 };
 
-const startDaemon = daemonConfig => {
+const startDaemon = daemonConfig => new Promise((resolve, reject) => {
+    const [isRunning, setRunning] = useState(false);
     console.log('starting daemon:', daemonConfig.listener_port);
-    const daemon = spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)});
+    const daemon = spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig), stdio: 'ignore'});
 
-    daemon.stdout.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}:`, buf.toString()));
 
-    daemon.stderr.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}:`, buf.toString()));
+    setTimeout(() => resolve({
+        ...daemonConfig,
+        isRunning,
+        stop: () => console.log('stopping daemon') || daemon.kill()
+    }
+), 10000);
 
-    let running = true;
+    // daemon.stdout.on('data', (buf) => {
+    //     const out = buf.toString();
+    //     isRunning() && out.includes('Running node with ID') && (setRunning(true) && resolve());
+    //     console.log(`daemon-${daemonConfig.listener_port}:`, out);
+    // });
+    //
+    // daemon.stdout.on('readable', (...args) => {
+    //     console.log('***** readable', args, daemon.stdout.readableLength)
+    // });
+    //
+    // daemon.stderr.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}: ERROR:`, buf.toString()));
+
 
     daemon.on('close', (code) => {
-        running = false;
+        setRunning(false);
         console.log('Daemon exit: ', code)
     });
 
-    return {
-        ...daemonConfig,
-        isRunning: () => running
-    }
+});
+
+const useState = (initialValue) => {
+    let value = initialValue;
+    return [
+        () => value,
+        (newValue) => value = newValue
+    ]
 };
 
 const copyDaemonBinary = (daemonConfig) => copyToDaemonDir(daemonConfig, resolvePath(__dirname, '../daemon-build/output/swarm'), 'swarm').run();

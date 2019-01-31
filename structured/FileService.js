@@ -13,7 +13,7 @@ exports.readDaemonFile = (daemonConfig, filename) =>
     IO(() => readJsonSync(`${getDaemonOutputDir(daemonConfig)}/${filename}`));
 
 exports.removeDaemonDirectory = () =>
-    IO(() => removeSync('./output'));
+    IO(() => removeSync(resolvePath(__dirname, './output')));
 
 exports.copyToDaemonDir = (daemonConfig, source, destination) =>
     IO(() => copySync(source, `${getDaemonOutputDir(daemonConfig)}/${destination}`));
