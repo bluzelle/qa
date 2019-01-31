@@ -3,6 +3,9 @@ const {spawnDaemon, initializeClient, spawnSwarm, teardown, createKeys} = requir
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 const PromiseMap = require('bluebird').map;
+const {expect} = require('chai');
+
+
 
 const {startSwarm} = require('../structured/daemonManager');
 
@@ -11,7 +14,22 @@ let numOfNodes = harnessConfigs.numOfNodes;
 const {times} = require('lodash/fp');
 
 
-describe.only('state management', () => {
+describe('swarm starter tests', async () => {
+    it('should start and restart a daemon', async () => {
+        const swarm = await startSwarm({numberOfDaemons: 3});
+        expect(swarm.daemons).to.have.length(3);
+        expect(swarm.daemons[0].isRunning()).to.be.true;
+        await swarm.daemons[0].stop();
+        expect(swarm.daemons[0].isRunning()).to.be.false;
+        await swarm.daemons[0].restart();
+        expect(swarm.daemons[0].isRunning()).to.be.true;
+
+        swarm.stop();
+    })
+});
+
+
+describe('state management', () => {
 
     // beforeEach('initialize client and connect to external swarm', async function () {
     //
@@ -55,7 +73,7 @@ describe.only('state management', () => {
 
     context('new peer joining swarm', function () {
 
-        it.only('create keys', async function () {
+        it('create keys', async function () {
             const NUM_OF_KEYS = 10;
 
             const createKey = idx => this.client.create(`batch${idx}`, 'value');

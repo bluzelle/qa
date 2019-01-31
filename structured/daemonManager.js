@@ -5,68 +5,71 @@ const {IO} = require('monet');
 const { spawn } = require('child_process');
 const {resolve: resolvePath} = require('path');
 
-const daemons = [];
-
 exports.startSwarm = async ({numberOfDaemons}) => {
     const daemonConfigs = writeSwarmConfig({numberOfDaemons});
     daemonConfigs.forEach(copyDaemonBinary);
-    await Promise.all(daemonConfigs.map(startDaemon));
+    const daemons = await Promise.all(daemonConfigs.map(startDaemon));
     return {
         stop: () => daemons.forEach(invoke('stop')),
         daemons: daemons
     }
 };
 
-const startDaemon = daemonConfig => new Promise((resolve, reject) => {
+const startDaemon = async daemonConfig => {
     const [isRunning, setRunning] = useState(false);
     const [getDaemon, setDaemon] = useState();
-    console.log('starting daemon:', daemonConfig.listener_port);
 
-    spawnDaemon();
+    await spawnDaemon();
 
-    daemons.push({
+    return {
         ...daemonConfig,
         isRunning,
         stop: stopDaemon,
-        restart: () => {
+        restart: async () => {
             stopDaemon();
-            spawnDaemon();
+            await spawnDaemon();
         }
-    });
-
-    setTimeout(() => setRunning(true) && resolve(), 10000);
-
-    // daemon.stdout.on('data', (buf) => {
-    //     const out = buf.toString();
-    //     isRunning() && out.includes('Running node with ID') && (setRunning(true) && resolve());
-    //     console.log(`daemon-${daemonConfig.listener_port}:`, out);
-    // });
-    //
-    // daemon.stdout.on('readable', (...args) => {
-    //     console.log('***** readable', args, daemon.stdout.readableLength)
-    // });
-    //
-    // daemon.stderr.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}: ERROR:`, buf.toString()));
-
-
-
-    getDaemon().on('close', (code) => {
-        setRunning(false);
-        console.log('Daemon exit: ', code)
-    });
+    };
 
     function stopDaemon() {
         console.log('stopping daemon', daemonConfig.listener_port);
-        getDaemon() && getDaemon().kill();
+        invoke('kill', getDaemon());
         setDaemon(undefined);
         setRunning(false);
     }
 
-    function spawnDaemon() {
+    async function spawnDaemon() {
+        console.log('starting daemon:', daemonConfig.listener_port);
+
         setDaemon(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig), stdio: 'ignore'}));
-        setRunning(true);
+
+        getDaemon().on('close', (code) => {
+            setRunning(false);
+            console.log('Daemon exit: ', code)
+        });
+
+        await new Promise(resolve => {setTimeout(() => {daemonStarted(); resolve()}, 1000)});
+
+        function daemonStarted() {
+            setRunning(true);
+            console.log('daemon started:', daemonConfig.listener_port);
+        }
+
+
+        // daemon.stdout.on('data', (buf) => {
+        //     const out = buf.toString();
+        //     isRunning() && out.includes('Running node with ID') && (setRunning(true) && resolve());
+        //     console.log(`daemon-${daemonConfig.listener_port}:`, out);
+        // });
+        //
+        // daemon.stdout.on('readable', (...args) => {
+        //     console.log('***** readable', args, daemon.stdout.readableLength)
+        // });
+        //
+        // daemon.stderr.on('data', (buf) => console.log(`daemon-${daemonConfig.listener_port}: ERROR:`, buf.toString()));
+
     }
-});
+};
 
 const useState = (initialValue) => {
     let value = initialValue;
