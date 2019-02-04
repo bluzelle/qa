@@ -142,7 +142,8 @@ describe('daemon startup', () => {
         });
     });
 
-    context('optional arguments in config file', () => {
+    // displaying maximum size in startup banner disabled, see KEP-490
+    context.skip('optional arguments in config file', () => {
 
         context('max storage', () => {
 
