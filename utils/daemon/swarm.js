@@ -2,6 +2,8 @@
 * Class used to manage generated daemons' information and state.
 * */
 
+const {execSync} = require('child_process');
+
 module.exports = class SwarmState {
 
     constructor (configsObject) {
@@ -46,9 +48,18 @@ module.exports = class SwarmState {
         return this._nodes[this._nodes.length - 1]
     }
 
+    killNode(idx) {
+        execSync(`kill $(ps aux | grep '[b]luzelle${idx}'| awk '{print $2}')`);
+        this.declareDeadNode(`daemon${idx}`)
+    }
+
     declareDeadNode(daemon) {
         if (nodeExistsInLiveNodes.call(this, daemon)) {
             this._liveNodes.splice(this._liveNodes.indexOf(daemon),1);
+        }
+
+        if (this.primary === daemon) {
+            this.primary === null;
         }
 
         if (this[daemon].stream){
