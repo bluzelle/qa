@@ -9,7 +9,7 @@ let swarm = {};
 
 const configUtils = {
 
-    generateSwarmJsonsAndSetState: async (numOfConfigs) => {
+    generateSwarmJsonsAndSetState: async (numOfConfigs, preserveConfigCounter = false) => {
         /*
         * Main function to setup required configs for daemons in swarm. Each daemon's jsons, logs, and state are in a
         * separate directory at ./daemon-build/output/daemon*
@@ -17,9 +17,12 @@ const configUtils = {
 
         numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
 
-        configUtils.resetDaemonConfigCounter();
+        if (!preserveConfigCounter) {
+            console.log('resetting')
+            configUtils.resetDaemonConfigCounter();
+        }
 
-        const pathList = createDirectories(numOfConfigs);
+        const pathList = configUtils.createDirectories(numOfConfigs);
 
         const configsObject = await configUtils.generateConfigs({numOfConfigs, pathList});
 
@@ -147,39 +150,37 @@ const configUtils = {
         }
 
         return fileContent
+    },
+
+    createDirectories: (numOfDirectories, start = 0) => {
+
+        const BASE_DIR_NAME = 'daemon';
+
+        const pathList = [];
+
+        for (let i = start; i < start + parseInt(numOfDirectories); i++) {
+
+            const path = './daemon-build/output/' + BASE_DIR_NAME + i;
+            pathList.push(path);
+
+            try {
+                fs.mkdirSync(path);
+            } catch (err) {
+                if (err.message.includes('EEXIST: file already exists')) {
+                    // do nothing
+                } else {
+                    throw err;
+                }
+            }
+        };
+
+        pathList.map((path) => execSync(`cp ./daemon-build/output/swarm ${path}/swarm`));
+
+        return pathList;
     }
 };
 
 module.exports = configUtils;
-
-const createDirectories = (numOfDirectories) => {
-
-    const BASE_DIR_NAME = 'daemon';
-
-    const pathList = [];
-
-    for (let i = 0; i < parseInt(numOfDirectories); i++) {
-
-        const path = './daemon-build/output/' + BASE_DIR_NAME + i;
-        pathList.push(path);
-
-        try {
-            fs.mkdirSync(path);
-        } catch (err) {
-            if (err.message.includes('EEXIST: file already exists')) {
-                // do nothing
-            } else {
-                throw err;
-            }
-        }
-    };
-
-    pathList.map((path) => execSync(`cp ./daemon-build/output/swarm ${path}/swarm`));
-
-    return pathList;
-};
-
-
 
 const configCounter = {
     counter: -1,

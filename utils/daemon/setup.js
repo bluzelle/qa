@@ -10,12 +10,12 @@ const SwarmState = require('./swarm');
 
 const startSwarm = async ({numOfNodes}) => {
 
-    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+    let [configsObject, peersList] = await generateSwarmJsonsAndSetState(numOfNodes);
     const swarm = new SwarmState(configsObject);
 
     await spawnSwarm(swarm);
 
-    return swarm;
+    return [swarm, peersList];
 };
 
 const initializeClient = async ({log, swarm, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
@@ -70,6 +70,11 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
     const nodeNames = swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]);
 
     const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
+
+    const MINIMUM_NODES = Math.floor(nodesToSpawn.length * (1 - failureAllowed));
+
+    // todo: refactor to use spawnDaemon
+    //  handle etherscan.io hangs by retrying
 
     try {
         await Promise.all(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
@@ -175,6 +180,10 @@ const clearDaemonState = () => {
 
 const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject) => {
     let daemon = 'daemon' + index;
+
+    if (!(typeof(swarm[daemon]) === 'object')) {
+        swarm[daemon] = {};
+    }
 
     swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
 

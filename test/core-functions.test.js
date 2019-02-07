@@ -10,7 +10,7 @@ describe('core functionality', () => {
 
     before('stand up swarm and client', async function () {
         this.timeout(30000);
-        swarm = await startSwarm({numOfNodes});
+        [swarm] = await startSwarm({numOfNodes});
         clientsObj.api = await initializeClient({swarm, setupDB: true});
     });
 
