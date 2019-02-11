@@ -18,7 +18,6 @@ const configUtils = {
         numOfConfigs = typeof numOfConfigs === 'number' ? numOfConfigs : parseInt(numOfConfigs);
 
         if (!preserveConfigCounter) {
-            console.log('resetting')
             configUtils.resetDaemonConfigCounter();
         }
 
