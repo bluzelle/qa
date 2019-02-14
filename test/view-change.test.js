@@ -22,26 +22,42 @@ describe('view change', function () {
                 teardown.call(this.currentTest, process.env.DEBUG_FAILS);
             });
 
-            it('new primary should take over', async function () {
+            it.only('new primary should take over', async function () {
 
-                await new Promise((resolve, reject) => {
+                await poll(new Promise((resolve, reject) => {
 
-                    const timer = setTimeout(reject, 20000);
+                    Object.values(this.multiclients)[0].status()
+                        .then(res => {
 
-                    const id = setInterval(() => {
+                            const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
 
-                        Object.values(this.multiclients)[0].status()
-                            .then(res => {
+                            setTimeout(resolve, 3000)
+                            // console.log(parsedStatusJson.primary.name);
+                            //
+                            // if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                            //     resolve();
+                            // }
+                        });
+                }), 1000, 20000)
 
-                                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-
-                                if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                    clearInterval(id);
-                                    resolve();
-                                }
-                            });
-                    }, 1000)
-                });
+                // await new Promise((resolve, reject) => {
+                //
+                //     const timer = setTimeout(reject, 20000);
+                //
+                //     const id = setInterval(() => {
+                //
+                //         Object.values(this.multiclients)[0].status()
+                //             .then(res => {
+                //
+                //                 const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+                //
+                //                 if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                //                     clearInterval(id);
+                //                     resolve();
+                //                 }
+                //             });
+                //     }, 1000)
+                // });
             });
 
             it('new primary should be next pubkey sorted lexicographically', async function () {
@@ -121,6 +137,22 @@ describe('view change', function () {
             });
 
             it('no new primary should be accepted', async function () {
+                //
+                // await poll(() => new Promise((res, rej) => {
+                //
+                // }), 1000, 20000);
+                //
+                //
+                // Object.values(this.multiclients)[0].status()
+                //     .then(res => {
+                //
+                //         const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+                //
+                //         if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                //             clearInterval(id);
+                //             reject();
+                //         }
+                //     });
 
                 await new Promise((resolve, reject) => {
 
@@ -196,4 +228,46 @@ function broadcastToTriggerDaemonFailureDetector(primaryIdx, numOfNodesToBroadca
 
 function setApi() {
     return Object.values(this.multiclients)[0];
+}
+
+function poll (promise, interval, timeout) {
+
+    return new Promise((res, rej) => {
+
+        setTimeout(() => rej(new Error('Polling timed out.')), timeout);
+
+        const id = setInterval(async () => {
+
+            const stateFullPromise = await makeQuerablePromise(promise);
+
+            console.log(stateFullPromise)
+
+            if(stateFullPromise.isFulfilled()) {
+
+                console.log('promise resolved')
+
+                clearInterval(id);
+                res();
+            }
+
+        }, interval);
+    })
+};
+
+function makeQuerablePromise(promise) {
+
+    // Don't create a wrapper for promises that can already be queried.
+    if (promise.isResolved) return promise;
+
+    var isResolved = false;
+    var isRejected = false;
+
+    // Observe the promise, saving the fulfillment in a closure scope.
+    var result = promise.then(
+        function(v) { isResolved = true; return v; },
+        function(e) { isRejected = true; throw e; });
+    result.isFulfilled = function() { return isResolved || isRejected; };
+    result.isResolved = function() { return isResolved; };
+    result.isRejected = function() { return isRejected; };
+    return result;
 }
