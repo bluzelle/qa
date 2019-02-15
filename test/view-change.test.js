@@ -2,6 +2,8 @@ const assert = require('assert');
 const common = require('./common');
 const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
 const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
+const PollUntil = require('poll-until-promise');
+
 
 let numOfNodes = harnessConfigs.numOfNodes;
 
@@ -9,118 +11,70 @@ const clientsObj = {};
 
 describe('view change', function () {
 
-    context('primary dies', function() {
+    context('primary dies', function () {
 
-        context('all nodes have failure detector triggered', function () {
+        [{
+            name: 'all nodes have failure detector triggered',
+            numOfNodesToBroadcastTo: numOfNodes
+        },
+        {
+            name: 'f+1 nodes have failure detector triggered',
+            numOfNodesToBroadcastTo: Math.floor(numOfNodes / 3) + 1
+        }].forEach((test) => {
 
-            before(async function () {
-                this.timeout(30000);
-                await setup.call(this, numOfNodes)
-            });
+            context(test.name, function () {
 
-            after('remove configs and peerslist and clear harness state', function () {
-                teardown.call(this.currentTest, process.env.DEBUG_FAILS);
-            });
-
-            it.only('new primary should take over', async function () {
-
-                await poll(new Promise((resolve, reject) => {
-
-                    Object.values(this.multiclients)[0].status()
-                        .then(res => {
-
-                            const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-
-                            setTimeout(resolve, 3000)
-                            // console.log(parsedStatusJson.primary.name);
-                            //
-                            // if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                            //     resolve();
-                            // }
-                        });
-                }), 1000, 20000)
-
-                // await new Promise((resolve, reject) => {
-                //
-                //     const timer = setTimeout(reject, 20000);
-                //
-                //     const id = setInterval(() => {
-                //
-                //         Object.values(this.multiclients)[0].status()
-                //             .then(res => {
-                //
-                //                 const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-                //
-                //                 if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                //                     clearInterval(id);
-                //                     resolve();
-                //                 }
-                //             });
-                //     }, 1000)
-                // });
-            });
-
-            it('new primary should be next pubkey sorted lexicographically', async function () {
-
-                const res = await Object.values(this.multiclients)[0].status();
-                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-
-                assert(parsedStatusJson.primary.name === this.swarm.nodes[2][1])
-            });
-
-            common.crudFunctionalityTests(clientsObj);
-
-            common.miscFunctionalityTests(clientsObj);
-
-        });
-
-        context('f+1 nodes have failure detector triggered', function () {
-
-            const NUM_OF_NODES_TO_BROADCAST_TO = Math.floor(numOfNodes / 3) + 1;
-
-            before(async function () {
-                this.timeout(30000);
-                await setup.call(this, NUM_OF_NODES_TO_BROADCAST_TO)
-            });
-
-            after('remove configs and peerslist and clear harness state', function () {
-                teardown.call(this.currentTest, process.env.DEBUG_FAILS);
-            });
-
-            it('new primary should take over', async function () {
-
-                await new Promise((resolve, reject) => {
-
-                    const timer = setTimeout(reject, 20000);
-
-                    const id = setInterval(() => {
-
-                        Object.values(this.multiclients)[0].status()
-                            .then(res => {
-
-                                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-
-                                if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                    clearInterval(id);
-                                    resolve();
-                                }
-                            });
-                    }, 1000)
+                before(async function () {
+                    this.timeout(30000);
+                    await setup.call(this, test.numOfNodesToBroadcastTo)
                 });
+
+                after('remove configs and peerslist and clear harness state', function () {
+                    teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+                });
+
+                it('new primary should take over', async function () {
+                    this.timeout(20000);
+
+                    const pollPrimary = new PollUntil();
+
+                    await new Promise((resolve, reject) => {
+
+                        pollPrimary
+                            .stopAfter(20000)
+                            .tryEvery(2000)
+                            .execute(() => new Promise((res, rej) => {
+
+                                clientsObj.api.status().then(val => {
+
+                                    const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
+
+                                    if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                                        return res(true);
+                                    } else {
+                                        return rej();
+                                    }
+                                })
+
+                            }))
+                            .then(() => resolve())
+                            .catch(err => reject(err));
+                    })
+                });
+
+                it('new primary should be next pubkey sorted lexicographically', async function () {
+
+                    const res = await clientsObj.api.status();
+                    const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+
+                    assert(parsedStatusJson.primary.name === this.swarm.nodes[2][1])
+                });
+
+                common.crudFunctionalityTests(clientsObj);
+
+                common.miscFunctionalityTests(clientsObj);
+
             });
-
-            it('new primary should be next pubkey sorted lexicographically', async function () {
-
-                const res = await Object.values(this.multiclients)[0].status();
-                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-
-                assert(parsedStatusJson.primary.name === this.swarm.nodes[2][1])
-            });
-
-            common.crudFunctionalityTests(clientsObj);
-
-            common.miscFunctionalityTests(clientsObj);
-
         });
 
         context('f nodes have failure detector triggered', function () {
@@ -137,40 +91,32 @@ describe('view change', function () {
             });
 
             it('no new primary should be accepted', async function () {
-                //
-                // await poll(() => new Promise((res, rej) => {
-                //
-                // }), 1000, 20000);
-                //
-                //
-                // Object.values(this.multiclients)[0].status()
-                //     .then(res => {
-                //
-                //         const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
-                //
-                //         if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                //             clearInterval(id);
-                //             reject();
-                //         }
-                //     });
+
+                const pollPrimary = new PollUntil;
 
                 await new Promise((resolve, reject) => {
 
-                    const timer = setTimeout(resolve, 10000);
+                    const timer = setTimeout(() => {
+                        return resolve();
+                    }, 15000);
 
-                    const id = setInterval(() => {
+                    pollPrimary
+                        .stopAfter(15000)
+                        .tryEvery(2000)
+                        .execute(() => new Promise((res, rej) => {
 
-                        Object.values(this.multiclients)[0].status()
-                            .then(res => {
+                            clientsObj.api.status().then(val => {
 
-                                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+                                const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
                                 if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                    clearInterval(id);
-                                    reject();
+                                    return rej(true);
                                 }
-                            });
-                    }, 1000)
+                            })
+
+                        }))
+                        .then(() => resolve())
+                        .catch(err => reject(err));
                 });
             });
 
@@ -228,46 +174,4 @@ function broadcastToTriggerDaemonFailureDetector(primaryIdx, numOfNodesToBroadca
 
 function setApi() {
     return Object.values(this.multiclients)[0];
-}
-
-function poll (promise, interval, timeout) {
-
-    return new Promise((res, rej) => {
-
-        setTimeout(() => rej(new Error('Polling timed out.')), timeout);
-
-        const id = setInterval(async () => {
-
-            const stateFullPromise = await makeQuerablePromise(promise);
-
-            console.log(stateFullPromise)
-
-            if(stateFullPromise.isFulfilled()) {
-
-                console.log('promise resolved')
-
-                clearInterval(id);
-                res();
-            }
-
-        }, interval);
-    })
-};
-
-function makeQuerablePromise(promise) {
-
-    // Don't create a wrapper for promises that can already be queried.
-    if (promise.isResolved) return promise;
-
-    var isResolved = false;
-    var isRejected = false;
-
-    // Observe the promise, saving the fulfillment in a closure scope.
-    var result = promise.then(
-        function(v) { isResolved = true; return v; },
-        function(e) { isRejected = true; throw e; });
-    result.isFulfilled = function() { return isResolved || isRejected; };
-    result.isResolved = function() { return isResolved; };
-    result.isRejected = function() { return isRejected; };
-    return result;
 }

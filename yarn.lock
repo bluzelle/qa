@@ -214,6 +214,11 @@ pathval@^1.0.0:
   resolved "https://registry.yarnpkg.com/pathval/-/pathval-1.1.0.tgz#b942e6d4bde653005ef6b71361def8727d0645e0"
   integrity sha1-uULm1L3mUwBe9rcTYd74cn0GReA=
 
+poll-until-promise@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/poll-until-promise/-/poll-until-promise-1.3.1.tgz#11203ed2a6dd230239e1295d2751c15f9aa3b7c9"
+  integrity sha512-iH00mkQTQI2lnRFWQM4ul9anLtq+JJYV2mJJ7DLZwwZMBeNH+qSTGfixxCz1kWd/B56CsWs9MEVC2hSYfY323A==
+
 split@^1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/split/-/split-1.0.1.tgz#605bd9be303aa59fb35f9229fbea0ddec9ea07d9"
