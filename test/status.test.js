@@ -1,43 +1,103 @@
 const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
-const assert = require('assert');
+const chai = require('chai');
+const expect = chai.expect;
+chai.use(require('chai-json-schema'));
 
-let clientsObj = {};
-let swarm;
-let numOfNodes = 3;
+
+const numOfNodes = harnessConfigs.numOfNodes;
 
 describe('status', () => {
 
-    beforeEach('stand up swarm and client', async function () {
+    before('stand up swarm and client', async function () {
         this.timeout(30000);
-        swarm = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm, setupDB: true});
+        this.swarm = await startSwarm({numOfNodes});
+        this.api = await initializeClient({swarm: this.swarm, setupDB: true});
     });
 
-    afterEach('remove configs and peerslist and clear harness state', function () {
+    after('remove configs and peerslist and clear harness state', function () {
         teardown.call(this.currentTest, process.env.DEBUG_FAILS);
     });
 
-    it('should be able to get status', async () => {
-        const res = await clientsObj.api.status();
+    it('should be able to get status', async function () {
+        await this.api.status();
+    });
 
-        assert(res.swarmVersion);
-        assert(res.swarmGitCommit);
-        assert(res.uptime);
-        assert(res.moduleStatusJson);
+    it('response should confirm to schema', async function () {
 
-        const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+        const res = await this.api.status();
 
-        assert(parsedStatusJson.is_primary);
-        assert(parsedStatusJson.latest_checkpoint);
-        assert(parsedStatusJson.next_issued_sequence_number >= 1);
-        assert(parsedStatusJson.outstanding_operations_count >= 1);
-        assert(parsedStatusJson.peer_index.length >= 2);
-        assert(parsedStatusJson.primary.host);
-        assert(parsedStatusJson.primary.host_port);
-        assert(parsedStatusJson.primary.http_port);
-        assert(parsedStatusJson.primary.name);
-        assert(parsedStatusJson.primary.uuid);
-        assert(parsedStatusJson.unstable_checkpoints_count >= 0);
-        assert(parsedStatusJson.view >= 1);
+        expect(res).to.be.jsonSchema(statusSchema);
+
+        const moduleStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+
+        expect(moduleStatusJson).to.be.jsonSchema(moduleStatusJsonSchema);
     });
 });
+
+const statusSchema = {
+    properties: {
+        swarmVersion: {
+            type: 'string'
+        },
+        swarmGitCommit: {
+            type: 'string'
+        },
+        uptime: {
+            type: 'string'
+        },
+        moduleStatusJson: {
+            type: 'string'
+        }
+    }
+};
+
+const moduleStatusJsonSchema = {
+    properties: {
+        is_primary: {
+            type: 'boolean'
+        },
+        latest_checkpoint: {
+            properties: {
+                hash: {
+                    type: 'string'
+                },
+                sequence_number: {
+                    type: 'number'
+                }
+            }
+        },
+        next_issued_sequence_number: {
+            type: 'number',
+            minimum: 0
+        },
+        outstanding_operations_count: {
+            type: 'number',
+            minimum: 0
+        },
+        peer_index: {
+            type: 'array',
+            minimum: 2
+        },
+        primary: {
+            properties: {
+                host: {
+                    type: 'string'
+                },
+                host_port: {
+                    type: 'number'
+                },
+                uuid: {
+                    type: 'string'
+                }
+            }
+        },
+        unstable_checkpoints_count: {
+            type: 'number',
+            minimum: 0
+        },
+        view: {
+            type: 'number',
+            minimum: 0
+        }
+    }
+};
