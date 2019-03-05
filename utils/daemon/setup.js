@@ -70,8 +70,10 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
 
     const nodeNames = swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]);
 
+    const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
+
     try {
-        await Promise.all(nodeNames.map((daemon) => new Promise((res, rej) => {
+        await Promise.all(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
             const daemonTimeout = setTimeout(() => {
                 rej(new Error(`${daemon} stdout: \n ${buffer}`))
