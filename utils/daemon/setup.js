@@ -24,7 +24,8 @@ const initializeClient = async ({log, swarm, setupDB, uuid = harnessConfigs.clie
         entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
         uuid: uuid,
         private_pem: pem,
-        log: log
+        log: log,
+        p2p_latency_bound: 100
     });
 
     if (setupDB) {
@@ -59,7 +60,7 @@ const teardown = function (logFailures, maintainState) {
  * @param {maintainState} Optional. Boolean. Persist Daemon state rather than purge state and start a fresh swarm
  * @param {failureAllowed} Optional. Default 0.2. The % of nodes allowed to fail to start up erroring out
 */
-const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0.2}) => {
+const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0}) => {
 
 
     if (!maintainState) {
@@ -69,12 +70,8 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
 
     const nodeNames = swarm.nodes.map(pubKeyAndNamePair => pubKeyAndNamePair[1]);
 
-    const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
-
-    const MINIMUM_NODES = Math.floor(nodesToSpawn.length * (1 - failureAllowed));
-
     try {
-        await PromiseSome(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
+        await Promise.all(nodeNames.map((daemon) => new Promise((res, rej) => {
 
             const daemonTimeout = setTimeout(() => {
                 rej(new Error(`${daemon} stdout: \n ${buffer}`))
@@ -98,7 +95,7 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
                 swarm.declareDeadNode(daemon)
             });
 
-        })), MINIMUM_NODES);
+        })));
 
     } catch (err) {
 
@@ -107,7 +104,7 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
                 console.log(`Daemon failed to startup in time. \n ${e}`)
             });
         } else {
-            throw new Error(`Minimum swarm failed to start \n ${err}`)
+            throw new Error(`Swarm failed to start \n ${err}`)
         }
     }
 
@@ -137,11 +134,10 @@ const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainStat
     }
 };
 
-const createKeys = async (clientsObj, numOfKeys = 10, start = 0) => {
-
-    const arrayOfKeys = Array.from(Array(numOfKeys), (_,i) => i + start);
-
-    await Promise.all(arrayOfKeys.map(v => clientsObj.api.create('batch' + v, 'value')));
+const createKeys = async (clientsObj, numOfKeys = 10, base = 'batch', start = 0) => {
+    for (let j = start; j < numOfKeys; j ++) {
+        await clientsObj.api.create(`${base}${j}`, 'value')
+    }
 };
 
 const despawnSwarm = () => {
