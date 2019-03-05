@@ -104,6 +104,46 @@ describe('view change', function () {
 
     });
 
+    context('primary dies while operations are in flight', function() {
+
+        // todo: add tests increasing number of keys in flight when KEP-1226 is resolved
+
+        before(async function () {
+            this.timeout(30000);
+
+            this.swarm = await startSwarm({numOfNodes});
+            this.api = await initializeClient({swarm: this.swarm, setupDB: true});
+
+            this.keysInFlight = 30;
+
+            for (let i = 0; i < this.keysInFlight; i ++) {
+                this.api.create(`bananas-${i}`, 'value');
+            }
+
+            killPrimary.call(this);
+
+            await this.api.create('trigger', 'broadcast');
+
+            clientsObj.api = this.api
+        });
+
+        after('remove configs and peerslist and clear harness state', function () {
+            teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
+        });
+
+        it('should be able to fetch full keys list', async function () {
+
+            const keysCommitted = (await this.api.keys()).length;
+
+            assert(keysCommitted === this.keysInFlight + 1);
+        });
+
+        common.crudFunctionalityTests(clientsObj);
+
+        common.miscFunctionalityTests(clientsObj);
+
+    });
+
     context('no client requests following primary death to trigger failure detector and view change', function () {
 
         before(async function () {
@@ -165,8 +205,6 @@ describe('view change', function () {
 
     });
 });
-
-// todo: Add tests around operations in execution while primary dies (requires client timeout and broadcast functionality)
 
 function killPrimary() {
     const primary = this.swarm.primary;
