@@ -110,9 +110,8 @@ describe('state management', () => {
             await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
 
             this.unstartedDaemonIdxs = getUnstartedDaemonIdxs(this.swarm, 2);
-            for (let i = 0; i < this.unstartedDaemonIdxs.length; i++ ) {
-                await spawnDaemon(this.swarm, this.unstartedDaemonIdxs[i]);
-            };
+
+            await Promise.all(this.unstartedDaemonIdxs.map((idx) => spawnDaemon(this.swarm, idx)));
 
         });
 
