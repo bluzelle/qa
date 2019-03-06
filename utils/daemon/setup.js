@@ -59,7 +59,7 @@ const teardown = function (logFailures, maintainState) {
  * @param {partialSpawn} Optional. Integer. Spawn a subset of nodes in list passed in Swarm class object instead of full set
  * @param {maintainState} Optional. Boolean. Persist Daemon state rather than purge state and start a fresh swarm
 */
-const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, maintainState}) => {
+const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, maintainState} = {}) => {
 
 
     if (!maintainState) {
