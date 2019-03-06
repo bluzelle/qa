@@ -13,7 +13,7 @@ const startSwarm = async ({numOfNodes}) => {
     let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
     const swarm = new SwarmState(configsObject);
 
-    await spawnSwarm(swarm, {consensusAlgorithm: 'pbft'});
+    await spawnSwarm(swarm);
 
     return swarm;
 };
@@ -58,9 +58,8 @@ const teardown = function (logFailures, maintainState) {
  * @param {consensusAlgorithm} 'raft' or 'pbft' Configures spawnSwarm to expect Raft leader election or PBFT primary expectation
  * @param {partialSpawn} Optional. Integer. Spawn a subset of nodes in list passed in Swarm class object instead of full set
  * @param {maintainState} Optional. Boolean. Persist Daemon state rather than purge state and start a fresh swarm
- * @param {failureAllowed} Optional. Default 0.2. The % of nodes allowed to fail to start up erroring out
 */
-const spawnSwarm = async (swarm, {consensusAlgorithm, partialSpawn, maintainState, failureAllowed = 0}) => {
+const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, maintainState}) => {
 
 
     if (!maintainState) {

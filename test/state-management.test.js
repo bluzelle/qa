@@ -1,40 +1,32 @@
-const assert = require('assert');
 const {spawnDaemon, initializeClient, spawnSwarm, teardown, createKeys} = require('../utils/daemon/setup');
 const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
 const SwarmState = require('../utils/daemon/swarm');
 
-let clientsObj = {};
-let swarm;
-let numOfNodes = harnessConfigs.numOfNodes;
-const SWARM_CHECKPOINT_OPERATIONS_COUNT = 100;
+
+let numOfNodes = harnessConfigs.numOfNodes >= 5 ? harnessConfigs.numOfNodes : 5; // minimum of 5 node swarm required, if two peers unstarted
+const SWARM_CHECKPOINT_OPERATIONS_COUNT = 100; // number of operations before a checkpoint is created by daemon
 
 describe('state management', () => {
 
-    context('one new peer joining swarm', function () {
+    context('one peer joining swarm', function () {
 
-        beforeEach('stand up swarm and client', async function () {
+        beforeEach('stand up swarm and client, load db without creating checkpoint, start new peer', async function () {
             this.timeout(30000);
 
             let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
-            swarm = new SwarmState(configsObject);
+            this.swarm = new SwarmState(configsObject);
+            await spawnSwarm(this.swarm, {partialSpawn: numOfNodes - 1});
 
-            await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', failureAllowed: 0 ,partialSpawn: numOfNodes - 1});
+            this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
 
-            clientsObj.api = await initializeClient({swarm, setupDB: true, log: false});
+            await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
+
+            const unstartedDaemonIdxs = getUnstartedDaemonIdxs(this.swarm, 1);
+            this.newPeerName = `daemon${unstartedDaemonIdxs[0]}`;
+            await spawnDaemon(this.swarm, unstartedDaemonIdxs[0]);
+
         });
 
-        beforeEach('load database with keys', async function () {
-
-            const arrayOfKeys = [...Array(SWARM_CHECKPOINT_OPERATIONS_COUNT - 5).keys()];
-            await processArray(arrayOfKeys);
-        });
-
-        beforeEach('start new peer', async function () {
-
-            this.newDaemonName = swarm.lastNode[1];
-            this.newDaemonIdx = this.newDaemonName[this.newDaemonName.length - 1];
-            await spawnDaemon(swarm, this.newDaemonIdx);
-        });
 
         afterEach('remove configs and peerslist and clear harness state', function () {
             teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
@@ -44,7 +36,7 @@ describe('state management', () => {
 
             await new Promise((res, rej) => {
 
-                swarm[this.newDaemonName].stream.stdout.on('data', (data) => {
+                this.swarm[this.newPeerName].stream.stdout.on('data', (data) => {
                     if (data.toString().includes('Executing request header')) {
                         rej(new Error('Unexpected "Executing request header" string matched in new daemon output'));
                     }
@@ -59,13 +51,13 @@ describe('state management', () => {
             beforeEach('create keys until checkpoint is reached', async function () {
 
                 const createKeyInterval = setInterval(async () => {
-                    await clientsObj.api.create(`${Math.random()}`, 'value');
+                    await this.api.create(`${Math.random()}`, 'value');
                 }, 500);
 
 
                 await new Promise(res => {
 
-                    swarm[swarm.primary].stream.stdout.on('data', (data) => {
+                    this.swarm[this.swarm.primary].stream.stdout.on('data', (data) => {
                         if (data.toString().includes('Reached checkpoint')) {
                             clearInterval(createKeyInterval);
                             res();
@@ -79,7 +71,7 @@ describe('state management', () => {
 
                 await new Promise(res => {
 
-                    swarm[this.newDaemonName].stream.stdout.on('data', (data) => {
+                    this.swarm[this.newPeerName].stream.stdout.on('data', (data) => {
                         if (data.toString().includes('Adopting checkpoint')) {
                             res();
                         }
@@ -91,13 +83,13 @@ describe('state management', () => {
 
                 await new Promise(res => {
 
-                    swarm[this.newDaemonName].stream.stdout.on('data', (data) => {
+                    this.swarm[this.newPeerName].stream.stdout.on('data', (data) => {
                         if (data.toString().includes('Executing request header')) {
                             res();
                         }
                     });
 
-                    clientsObj.api.create('thisShouldGetExecuted', 'value');
+                    this.api.create('thisShouldGetExecuted', 'value');
                 });
             });
         });
@@ -106,35 +98,24 @@ describe('state management', () => {
 
     context('two peers joining swarm', function () {
 
-        beforeEach('stand up swarm and client', async function () {
+        beforeEach('stand up swarm and client, load db without creating checkpoint, start new peers', async function () {
             this.timeout(30000);
 
-            let [configsObject] = await generateSwarmJsonsAndSetState(5);
-            swarm = new SwarmState(configsObject);
+            let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+            this.swarm = new SwarmState(configsObject);
+            await spawnSwarm(this.swarm, {partialSpawn: numOfNodes - 2});
 
-            await spawnSwarm(swarm, {consensusAlgorithm: 'pbft', failureAllowed: 0, partialSpawn: 3});
+            this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
 
-            clientsObj.api = await initializeClient({swarm, setupDB: true, log: false});
+            await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
+
+            this.unstartedDaemonIdxs = getUnstartedDaemonIdxs(this.swarm, 2);
+            for (let i = 0; i < this.unstartedDaemonIdxs.length; i++ ) {
+                await spawnDaemon(this.swarm, this.unstartedDaemonIdxs[i]);
+            };
+
         });
 
-        beforeEach('load database with keys', async function () {
-
-            const arrayOfKeys = [...Array(SWARM_CHECKPOINT_OPERATIONS_COUNT - 5).keys()];
-            await processArray(arrayOfKeys);
-        });
-
-        beforeEach('start new peers', async function () {
-
-            const swarmNodes = swarm.nodes;
-            this.firstNewPeerName = swarmNodes[swarmNodes.length - 1][1];
-            this.secondNewPeerName = swarmNodes[swarmNodes.length - 2][1];
-
-            this.firstNewPeerIdx = this.firstNewPeerName[this.firstNewPeerName.length - 1];
-            this.secondNewPeerIdx = this.secondNewPeerName[this.secondNewPeerName.length - 1];
-
-            await spawnDaemon(swarm, this.firstNewPeerIdx);
-            await spawnDaemon(swarm, this.secondNewPeerIdx);
-        });
 
         afterEach('remove configs and peerslist and clear harness state', function () {
             teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
@@ -144,16 +125,14 @@ describe('state management', () => {
 
             await new Promise((res, rej) => {
 
-                swarm[this.firstNewPeerName].stream.stdout.on('data', (data) => {
-                    if (data.toString().includes('Executing request header')) {
-                        rej(new Error('Unexpected "Executing request header" string matched in new daemon output'));
-                    }
-                });
+                this.unstartedDaemonIdxs.forEach((idx) => {
 
-                swarm[this.secondNewPeerName].stream.stdout.on('data', (data) => {
-                    if (data.toString().includes('Executing request header')) {
-                        rej(new Error('Unexpected "Executing request header" string matched in new daemon output'));
-                    }
+                    this.swarm[`daemon${idx}`].stream.stdout.on('data', (data) => {
+                        if (data.toString().includes('Executing request header')) {
+                            rej(new Error('Unexpected "Executing request header" string matched in new daemon output'));
+                        }
+                    });
+
                 });
 
                 setTimeout(res, 3000);
@@ -165,12 +144,12 @@ describe('state management', () => {
             beforeEach('create keys until checkpoint is reached', async function () {
 
                 const createKeyInterval = setInterval(async () => {
-                    await clientsObj.api.create(`${Math.random()}`, 'value');
+                    await this.api.create(`${Math.random()}`, 'value');
                 }, 500);
 
                 await new Promise(res => {
 
-                    swarm[swarm.primary].stream.stdout.on('data', (data) => {
+                    this.swarm[this.swarm.primary].stream.stdout.on('data', (data) => {
                         if (data.toString().includes('Reached checkpoint')) {
                             clearInterval(createKeyInterval);
                             res();
@@ -179,54 +158,36 @@ describe('state management', () => {
                 })
             });
 
-            it('should adopt checkpoint when available', async function () {
+            it('new daemons should adopt checkpoint when available', async function () {
 
-                const firstPeerAdopts = new Promise(res => {
+                await Promise.all(
+                    this.unstartedDaemonIdxs.map((idx) => new Promise((res) => {
 
-                    swarm[this.firstNewPeerName].stream.stdout.on('data', (data) => {
-                        if (data.toString().includes('Adopting checkpoint')) {
-                            res();
-                        }
-                    });
-                });
+                        this.swarm[`daemon${idx}`].stream.stdout.on('data', (data) => {
+                            if (data.toString().includes('Adopting checkpoint')) {
+                                res();
+                            }
+                        });
 
-                const secondPeerAdopts = new Promise(res => {
-
-                    swarm[this.secondNewPeerName].stream.stdout.on('data', (data) => {
-                        if (data.toString().includes('Adopting checkpoint')) {
-                            res();
-                        }
-                    });
-                });
-
-                await Promise.all([firstPeerAdopts, secondPeerAdopts])
+                    }))
+                );
             });
 
-            it('should be able to execute requests after checkpoint sync', async function () {
+            it('new daemons should be able to execute requests after checkpoint sync', async function () {
 
-                const firstPeerExecutes = new Promise(res => {
+                const matchExecutingStringPromises = this.unstartedDaemonIdxs.map((idx) => new Promise((res) => {
 
-                    swarm[this.firstNewPeerName].stream.stdout.on('data', (data) => {
+                    this.swarm[`daemon${idx}`].stream.stdout.on('data', (data) => {
                         if (data.toString().includes('Executing request header')) {
                             res();
                         }
                     });
 
-                });
+                }));
 
-                const secondPeerExecutes = new Promise(res => {
+                this.api.create('thisShouldGetExecuted', 'value');
 
-                    swarm[this.secondNewPeerName].stream.stdout.on('data', (data) => {
-                        if (data.toString().includes('Executing request header')) {
-                            res();
-                        }
-                    });
-
-                });
-
-                clientsObj.api.create('thisShouldGetExecuted', 'value');
-
-                await Promise.all([firstPeerExecutes, secondPeerExecutes]);
+                await Promise.all(matchExecutingStringPromises);
             });
 
         });
@@ -236,9 +197,11 @@ describe('state management', () => {
 
 });
 
+const getUnstartedDaemonIdxs = function (swarm, numberOfUnstartedDaemons) {
+    const idxs = [];
+    const nodes = swarm.nodes;
+    const pubKeyAndNamePairs = nodes.splice(nodes.length - numberOfUnstartedDaemons, nodes.length);
+    pubKeyAndNamePairs.forEach(([key, name]) => idxs.push(name[name.length - 1]));
 
-async function processArray(array) {
-    for (const item of array) {
-        await clientsObj.api.create(`batch-${item}`, 'value');
-    }
-}
+    return idxs;
+};
