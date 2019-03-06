@@ -71,8 +71,6 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
 
     const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
 
-    const MINIMUM_NODES = Math.floor(nodesToSpawn.length * (1 - failureAllowed));
-
     // todo: refactor to use spawnDaemon
     //  handle etherscan.io hangs by retrying
 

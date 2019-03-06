@@ -30,7 +30,7 @@ describe('view change', function () {
             before(async function () {
                 this.timeout(100000);
 
-                this.swarm = await startSwarm({numOfNodes});
+                [this.swarm] = await startSwarm({numOfNodes});
                 this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
                 if (ctx.numOfKeys > 0) {
@@ -111,7 +111,7 @@ describe('view change', function () {
         before(async function () {
             this.timeout(30000);
 
-            this.swarm = await startSwarm({numOfNodes});
+            [this.swarm] = await startSwarm({numOfNodes});
             this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
             this.keysInFlight = 30;
@@ -149,7 +149,7 @@ describe('view change', function () {
         before(async function () {
             this.timeout(30000);
 
-            this.swarm = await startSwarm({numOfNodes});
+            [this.swarm] = await startSwarm({numOfNodes});
             this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
             killPrimary.call(this);
