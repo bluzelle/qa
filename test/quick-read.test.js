@@ -13,9 +13,6 @@ describe('quick read', () => {
         swarm = await startSwarm({numOfNodes});
         clientsObj.api = await initializeClient({swarm, setupDB: true});
 
-
-        await clientsObj.api.useFastestConnection();
-
         await clientsObj.api.create('hello', 'world');
     });
 
