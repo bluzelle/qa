@@ -198,10 +198,7 @@ describe('state management', () => {
 });
 
 const getUnstartedDaemonIdxs = function (swarm, numberOfUnstartedDaemons) {
-    const idxs = [];
     const nodes = swarm.nodes;
     const pubKeyAndNamePairs = nodes.splice(nodes.length - numberOfUnstartedDaemons, nodes.length);
-    pubKeyAndNamePairs.forEach(([key, name]) => idxs.push(name[name.length - 1]));
-
-    return idxs;
+    return pubKeyAndNamePairs.map(([key, name]) => name[name.length -1]);
 };
