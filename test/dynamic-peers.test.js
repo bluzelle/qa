@@ -12,7 +12,7 @@ const clientsObj = {};
 const numOfNodes = harnessConfigs.numOfNodes;
 
 
-describe('dynamic peering', () => {
+describe.only('dynamic peering', () => {
 
     [{
         name: 'add peer with no state',
@@ -38,7 +38,7 @@ describe('dynamic peering', () => {
 
                         [this.swarm, peersList] = await startSwarm({numOfNodes});
 
-                        this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: true});
+                        this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
 
                         clientsObj.api = this.api;
 
@@ -76,19 +76,21 @@ describe('dynamic peering', () => {
                     });
 
                     it('should increment swarm view number by 1', async function () {
-                        this.timeout(40000);
+                        this.timeout(60000);
 
                         const pollView = new PollUntil();
 
                         await new Promise((resolve, reject) => {
                             pollView
-                                .stopAfter(40000)
+                                .stopAfter(60000)
                                 .tryEvery(2000)
                                 .execute(() => new Promise((res, rej) => {
 
                                     this.api.status().then(val => {
 
                                         const response = JSON.parse(val.moduleStatusJson).module[0].status;
+
+                                        console.log(response.view);
 
                                         if (response.view === 2) {
                                             return res(true)
@@ -110,6 +112,11 @@ describe('dynamic peering', () => {
                         const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
 
                         parsedStatusJson.peer_index.should.contain.an.item.with.property('uuid', this.swarm[`daemon${this.newPeerIdx}`].uuid)
+                    });
+
+                    it('daemons should not log rejected message', async function () {
+
+
                     });
 
                     if (ctx.numOfKeys > 0) {
