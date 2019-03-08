@@ -67,6 +67,36 @@ module.exports = class SwarmState {
         }
     }
 
+    addMultipleFailureListeners (array) {
+        array.forEach(([msg, times]) => {
+            this.addFailureListener(msg, times)
+        })
+    }
+
+    addFailureListener (msg, times) {
+        const daemonObjects = Object.entries(this).filter(prop => prop[0].includes('daemon'));
+
+        daemonObjects.forEach(([key, value]) => {
+
+            let count = 0;
+            if (value.stream !== null)  {
+
+                value.stream.stdout.on('data', (buffer) => {
+
+                    let data = buffer.toString();
+
+                    if (data.includes(msg)) {
+
+                        if (++count >= times) {
+                            throw new Error(`"${msg}" was logged >= ${times} times in ${key}. \n ${data}`);
+                        }
+                    };
+                });
+            }
+        });
+    };
+
+
     load(configsObject) {
 
         const _temp = [];

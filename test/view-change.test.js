@@ -13,22 +13,26 @@ describe('view change', function () {
 
     [{
         name: 'primary dies with no pre-existing state',
-        numOfKeys: 0
+        numOfKeys: 0,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 50 keys loaded',
-        numOfKeys: 50
+        numOfKeys: 50,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 100 keys loaded',
-        numOfKeys: 100
+        numOfKeys: 100,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 500 keys loaded',
-        numOfKeys: 500
+        numOfKeys: 500,
+        hookTimeout: 100000
     }].forEach((ctx) => {
 
         context(ctx.name, function () {
 
             before(async function () {
-                this.timeout(100000);
+                this.timeout(ctx.hookTimeout);
 
                 [this.swarm] = await startSwarm({numOfNodes});
                 this.api = await initializeClient({swarm: this.swarm, setupDB: true});
@@ -37,11 +41,17 @@ describe('view change', function () {
                     await createKeys({api: this.api}, ctx.numOfKeys)
                 }
 
-                killPrimary.call(this);
+                // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
+                const failures = [
+                    ['Dropping message because local view is invalid', 5],
+                    [' [fatal] ', 1]
+                ];
+                this.swarm.addMultipleFailureListeners(failures);
 
+                killPrimary.call(this);
                 await this.api.create('trigger', 'broadcast');
 
-                clientsObj.api = this.api
+                clientsObj.api = this.api;
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
@@ -120,6 +130,13 @@ describe('view change', function () {
                 this.api.create(`bananas-${i}`, 'value');
             }
 
+            // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
+            const failures = [
+                ['Dropping message because local view is invalid', 5],
+                [' [fatal] ', 1]
+            ];
+            this.swarm.addMultipleFailureListeners(failures);
+
             killPrimary.call(this);
 
             await this.api.create('trigger', 'broadcast');
@@ -154,7 +171,7 @@ describe('view change', function () {
 
             killPrimary.call(this);
 
-            clientsObj.api = this.api
+            clientsObj.api = this.api;
         });
 
         after('remove configs and peerslist and clear harness state', function () {

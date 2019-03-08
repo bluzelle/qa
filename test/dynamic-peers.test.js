@@ -12,14 +12,24 @@ const clientsObj = {};
 const numOfNodes = harnessConfigs.numOfNodes;
 
 
-describe.only('dynamic peering', () => {
+describe('dynamic peering', () => {
 
     [{
         name: 'add peer with no state',
-        numOfKeys: 0
+        numOfKeys: 0,
+        hookTimeout: 30000
     }, {
-        name: 'add peer with loaded db',
-        numOfKeys: 50
+        name: 'add peer with 50 keys loaded',
+        numOfKeys: 50,
+        hookTimeout: 30000
+    }, {
+        name: 'add peer with 100 keys loaded',
+        numOfKeys: 100,
+        hookTimeout: 30000
+    }, {
+        name: 'add peer with 500 keys loaded',
+        numOfKeys: 500,
+        hookTimeout: 100000
     }].forEach((ctx) => {
 
         context(ctx.name, function() {
@@ -34,33 +44,33 @@ describe.only('dynamic peering', () => {
                 context(test.name, function() {
 
                     before('stand up swarm and client', async function () {
-                        this.timeout(30000);
+                        this.timeout(ctx.hookTimeout);
 
                         [this.swarm, peersList] = await startSwarm({numOfNodes});
-
                         this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
-
                         clientsObj.api = this.api;
 
                         if (ctx.numOfKeys > 0) {
                             await createKeys(clientsObj, ctx.numOfKeys)
                         }
 
+                        // Add new peer to harness and swarm todo: refactor into swarm class after swarm class refactor
                         const {daemonDirPath, data} = await generateNewPeer(numOfNodes);
-
                         this.newPeerIdx = data.index;
-
-                        addPeerToSwarmObj.call(this, data);
-
+                        addPeerToSwarmObj(this.swarm, data);
                         const culledPeersList = peersList.slice(0, test.numOfNodesToBootstrap);
-
                         await writePeersList(culledPeersList, test.numOfNodesToBootstrap, daemonDirPath);
-
                         await spawnDaemon(this.swarm, this.newPeerIdx);
+
+                        // Ensure daemons don't get stuck in invalid local state
+                        const failures = [
+                            ['Dropping message because local view is invalid', 5],
+                        ];
+                        this.swarm.addMultipleFailureListeners(failures);
                     });
 
                     after('remove configs and peerslist and clear harness state', function () {
-                        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+                        teardown.call(this.currentTest, true, true);
                     });
 
                     it('should successfully join swarm', async function () {
@@ -90,8 +100,6 @@ describe.only('dynamic peering', () => {
 
                                         const response = JSON.parse(val.moduleStatusJson).module[0].status;
 
-                                        console.log(response.view);
-
                                         if (response.view === 2) {
                                             return res(true)
                                         } else {
@@ -112,11 +120,6 @@ describe.only('dynamic peering', () => {
                         const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
 
                         parsedStatusJson.peer_index.should.contain.an.item.with.property('uuid', this.swarm[`daemon${this.newPeerIdx}`].uuid)
-                    });
-
-                    it('daemons should not log rejected message', async function () {
-
-
                     });
 
                     if (ctx.numOfKeys > 0) {
@@ -153,8 +156,8 @@ async function generateNewPeer(numOfExistingPeers) {
     return {daemonDirPath, data};
 }
 
-function addPeerToSwarmObj(data) {
-    this.swarm[`daemon${data.index}`] =
+function addPeerToSwarmObj(swarm, data) {
+    swarm[`daemon${data.index}`] =
         {
             uuid: data.uuid,
             port: data.content.listener_port,

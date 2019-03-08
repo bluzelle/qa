@@ -78,17 +78,18 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
         await Promise.all(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
             const daemonTimeout = setTimeout(() => {
-                rej(new Error(`${daemon} stdout: \n ${buffer}`))
+                rej(new Error(`${daemon} stdout: \n ${output}`))
             }, 15000);
 
-            let buffer = '';
+            let output = '';
 
             swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
-            swarm[daemon].stream.stdout.on('data', (data) => {
-                buffer += data.toString();
+            swarm[daemon].stream.stdout.on('data', (buffer) => {
+                let data = buffer.toString();
+                output += data;
 
-                if (data.toString().includes('Running node with ID:')) {
+                if (data.includes('Running node with ID:')) {
                     clearInterval(daemonTimeout);
                     swarm.pushLiveNodes(daemon);
                     res();
