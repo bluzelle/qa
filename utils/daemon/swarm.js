@@ -88,7 +88,7 @@ module.exports = class SwarmState {
                     if (data.includes(msg)) {
 
                         if (++count >= times) {
-                            throw new Error(`"${msg}" was logged >= ${times} times in ${key}. \n ${data}`);
+                            console.log(`"${msg}" was logged >= ${times} times in ${key}. \n ${data}`);
                         }
                     };
                 });
