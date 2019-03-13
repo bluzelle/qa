@@ -1,7 +1,6 @@
 const assert = require('assert');
 const common = require('./common');
 const {startSwarm, initializeClient, teardown, createKeys} = require('../utils/daemon/setup');
-const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const PollUntil = require('poll-until-promise');
 
 
@@ -59,32 +58,26 @@ describe('view change', function () {
             });
 
             it('new primary should take over', async function () {
-                this.timeout(20000);
-
                 const pollPrimary = new PollUntil();
 
-                await new Promise((resolve, reject) => {
+                await pollPrimary
+                    .stopAfter(30000)
+                    .tryEvery(1000)
+                    .execute(() => new Promise((res, rej) => {
 
-                    pollPrimary
-                        .stopAfter(20000)
-                        .tryEvery(2000)
-                        .execute(() => new Promise((res, rej) => {
+                        clientsObj.api.status()
+                            .then(val => {
 
-                            clientsObj.api.status().then(val => {
+                            const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
-                                const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
-
-                                if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                    return res(true);
-                                } else {
-                                    return rej();
-                                }
-                            })
-
-                        }))
-                        .then(() => resolve())
-                        .catch(err => reject(err));
-                })
+                            if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                                return res(true);
+                            } else {
+                                rej(false);
+                            }
+                        })
+                            .catch(e => console.log(e));
+                    }))
             });
 
             it('new primary should be next pubkey sorted lexicographically', async function () {
