@@ -2,6 +2,7 @@ const assert = require('assert');
 const common = require('./common');
 const {startSwarm, initializeClient, teardown, createKeys} = require('../utils/daemon/setup');
 const PollUntil = require('poll-until-promise');
+const delay = require('delay');
 
 
 let numOfNodes = harnessConfigs.numOfNodes;
@@ -68,14 +69,14 @@ describe('view change', function () {
                         clientsObj.api.status()
                             .then(val => {
 
-                            const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
+                                const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
-                            if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                return res(true);
-                            } else {
-                                rej(false);
-                            }
-                        })
+                                if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                                    return res(true);
+                                } else {
+                                    rej(false);
+                                }
+                            })
                             .catch(e => console.log(e));
                     }))
             });
@@ -107,7 +108,7 @@ describe('view change', function () {
 
     });
 
-    context('primary dies while operations are in flight', function() {
+    context('primary dies while operations are in flight', function () {
 
         // todo: add tests increasing number of keys in flight when KEP-1226 is resolved
 
@@ -119,7 +120,7 @@ describe('view change', function () {
 
             this.keysInFlight = 30;
 
-            for (let i = 0; i < this.keysInFlight; i ++) {
+            for (let i = 0; i < this.keysInFlight; i++) {
                 this.api.create(`bananas-${i}`, 'value');
             }
 
@@ -173,32 +174,20 @@ describe('view change', function () {
 
         it('no new primary should be accepted', async function () {
 
-            const pollPrimary = new PollUntil;
+            const results = [];
 
-            await new Promise((resolve, reject) => {
+            for (let i = 0; i < 10; i++ ) {
+                await delay(1000);
 
-                const timer = setTimeout(() => {
-                    return resolve();
-                }, 15000);
+                const resp = await clientsObj.api.status();
+                const primaryReported = JSON.parse(resp.moduleStatusJson).module[0].status.primary.name;
 
-                pollPrimary
-                    .stopAfter(15000)
-                    .tryEvery(2000)
-                    .execute(() => new Promise((res, rej) => {
+                results.push(primaryReported)
+            }
 
-                        clientsObj.api.status().then(val => {
+            const valuesAreTheSame = (arr) => arr.every((val, i, arr) => val === arr[0]);
 
-                            const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
-
-                            if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                return rej(true);
-                            }
-                        })
-
-                    }))
-                    .then(() => resolve())
-                    .catch(err => reject(err));
-            });
+            assert(valuesAreTheSame(results));
         });
 
         it('backup should report no primary', async function () {

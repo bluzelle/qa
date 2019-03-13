@@ -32,7 +32,7 @@ describe('dynamic peering', () => {
         hookTimeout: 100000
     }].forEach((ctx) => {
 
-        context(ctx.name, function() {
+        context(ctx.name, function () {
             [{
                 name: 'new peer bootstrapped with full peers list',
                 numOfNodesToBootstrap: numOfNodes
@@ -41,7 +41,7 @@ describe('dynamic peering', () => {
                 numOfNodesToBootstrap: 1
             }].forEach((test) => {
 
-                context(test.name, function() {
+                context(test.name, function () {
 
                     before('stand up swarm and client', async function () {
                         this.timeout(ctx.hookTimeout);
@@ -90,27 +90,23 @@ describe('dynamic peering', () => {
 
                         const pollView = new PollUntil();
 
-                        await new Promise((resolve, reject) => {
-                            pollView
-                                .stopAfter(60000)
-                                .tryEvery(2000)
-                                .execute(() => new Promise((res, rej) => {
+                        await pollView
+                            .stopAfter(60000)
+                            .tryEvery(2000)
+                            .execute(() => new Promise((res, rej) => {
 
-                                    this.api.status().then(val => {
+                                this.api.status().then(val => {
 
-                                        const response = JSON.parse(val.moduleStatusJson).module[0].status;
+                                    const response = JSON.parse(val.moduleStatusJson).module[0].status;
 
-                                        if (response.view === 2) {
-                                            return res(true)
-                                        } else {
-                                            return rej()
-                                        }
-                                    });
-                                }))
-                                .then(() => resolve())
-                                .catch(err => console.log(err) || reject(''))
+                                    if (response.view === 2) {
+                                        return res(true)
+                                    } else {
+                                        rej(false)
+                                    }
+                                });
+                            }))
 
-                        });
                     });
 
                     it('should be included in status response', async function () {
