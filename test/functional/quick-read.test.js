@@ -1,5 +1,5 @@
 const assert = require('assert');
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 let clientsObj = {};
 let swarm;

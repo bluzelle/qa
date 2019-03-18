@@ -1,7 +1,7 @@
 const {exec, spawn} = require('child_process');
 
-const {despawnSwarm, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
+const {despawnSwarm, clearDaemonStateAndConfigs} = require('../../utils/daemon/setup');
+const {editFile, generateSwarmJsonsAndSetState} = require('../../utils/daemon/configs');
 
 
 describe('daemon startup', () => {

@@ -1,4 +1,4 @@
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const chai = require('chai');
 const expect = chai.expect;
 chai.use(require('chai-json-schema'));

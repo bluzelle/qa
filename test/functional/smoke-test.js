@@ -1,12 +1,12 @@
-const common = require('./common');
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+const common = require('../common');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 let clientsObj = {};
 let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 
 
-describe('core functionality', () => {
+describe('smoke test', () => {
 
     before('stand up swarm and client', async function () {
         this.timeout(30000);
