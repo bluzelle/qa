@@ -1,6 +1,6 @@
-const {spawnDaemon, initializeClient, spawnSwarm, teardown, createKeys} = require('../utils/daemon/setup');
-const {generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
-const SwarmState = require('../utils/daemon/swarm');
+const {spawnDaemon, initializeClient, spawnSwarm, teardown, createKeys} = require('../../utils/daemon/setup');
+const {generateSwarmJsonsAndSetState} = require('../../utils/daemon/configs');
+const SwarmState = require('../../utils/daemon/swarm');
 
 
 let numOfNodes = harnessConfigs.numOfNodes >= 5 ? harnessConfigs.numOfNodes : 5; // minimum of 5 node swarm required, if two peers unstarted

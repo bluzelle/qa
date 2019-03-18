@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
-const {generateKey} = require('../utils/daemon/crypto');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
+const {generateKey} = require('../../utils/daemon/crypto');
 
 let clientsObj = {};
 let swarm;

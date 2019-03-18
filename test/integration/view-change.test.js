@@ -1,6 +1,6 @@
 const assert = require('assert');
-const common = require('./common');
-const {startSwarm, initializeClient, teardown, createKeys} = require('../utils/daemon/setup');
+const common = require('../common');
+const {startSwarm, initializeClient, teardown, createKeys} = require('../../utils/daemon/setup');
 const PollUntil = require('poll-until-promise');
 const delay = require('delay');
 

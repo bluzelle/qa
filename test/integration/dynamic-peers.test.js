@@ -1,7 +1,7 @@
 const assert = require('assert');
-const common = require('./common');
-const {startSwarm, initializeClient, teardown, spawnDaemon, createKeys} = require('../utils/daemon/setup');
-const {createDirectories, generateConfigs, generatePeersList} = require('../utils/daemon/configs');
+const common = require('../common');
+const {startSwarm, initializeClient, teardown, spawnDaemon, createKeys} = require('../../utils/daemon/setup');
+const {createDirectories, generateConfigs, generatePeersList} = require('../../utils/daemon/configs');
 const fsPromises = require('fs').promises;
 const PollUntil = require('poll-until-promise');
 const chai = require('chai');

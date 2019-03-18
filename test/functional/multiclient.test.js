@@ -1,7 +1,7 @@
 const assert = require('assert');
 const {expect} = require('chai');
-const common = require('./common');
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+const common = require('../common');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 
 let clientsObj = {};

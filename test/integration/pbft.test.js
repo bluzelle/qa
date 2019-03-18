@@ -1,8 +1,8 @@
 const {execSync} = require('child_process');
 const assert = require('assert');
-const {startSwarm, initializeClient, teardown} = require('../utils/daemon/setup');
+const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
-const common = require('./common');
+const common = require('../common');
 
 
 let clientsObj = {};
