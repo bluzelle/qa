@@ -20,6 +20,17 @@ exports.crudFunctionalityTests = clientsObj => {
         expect(await clientsObj.api.read('read-test-key')).to.be.equal('abc');
     });
 
+    it('should be able to quickread', async () => {
+
+        try {
+            await clientsObj.api.create('quickread-test-key', 'abc');
+        } catch (err) {
+            throw new Error(`Failed to create \n ${err}`);
+        }
+
+        expect(await clientsObj.api.quickread('quickread-test-key')).to.be.equal('abc');
+    });
+
     it('should be able to update', async () => {
 
         try {
