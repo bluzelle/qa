@@ -1,7 +1,3 @@
-const {expect} = require('chai');
-const assert = require('assert');
-
-
 exports.crudFunctionalityTests = clientsObj => {
 
     it('should be able to create', async () => {
@@ -78,7 +74,7 @@ exports.miscFunctionalityTests = clientsObj => {
             throw new Error(`Failed to "has" \n ${err}`);
         }
 
-        assert(result);
+        expect(result).to.be.true;
     });
 
 
@@ -98,7 +94,7 @@ exports.miscFunctionalityTests = clientsObj => {
             throw new Error(`Failed to "keys"\n ${err}`);
         }
 
-        assert(result.length > 0);
+        expect(result).to.have.lengthOf.greaterThan(0);
     });
 
     it('should be able to get size', async () => {
@@ -117,7 +113,7 @@ exports.miscFunctionalityTests = clientsObj => {
             throw new Error(`Failed to get size \n ${err}`);
         }
 
-        assert(result > 0);
+        expect(result).to.be.greaterThan(0);
     });
 
 };

@@ -1,6 +1,13 @@
 // load env variables from qa/.env if it exists
 require('dotenv').config();
 
+global.chai = require('chai');
+global.expect = chai.expect;
+chai.use(require('chai-as-promised'));
+chai.use(require('chai-json-schema'));
+chai.use(require('chai-things'));
+chai.should();
+
 global.harnessConfigs = {
     address: process.env.ADDRESS ? process.env.ADDRESS : 'localhost',
     port: process.env.PORT ? parseInt(process.env.PORT) : 50000,

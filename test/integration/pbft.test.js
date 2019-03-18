@@ -1,12 +1,9 @@
 const {execSync} = require('child_process');
-const assert = require('assert');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
-
 const common = require('../common');
 
 
 let clientsObj = {};
-let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 
 const killNodes = (num, swarmObj) => {
@@ -20,12 +17,11 @@ const killNodes = (num, swarmObj) => {
 };
 
 
-describe('pbft', () => {
+describe('pbft', function () {
 
     beforeEach('stand up swarm and client', async function () {
-        this.timeout(30000);
-        [swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm, setupDB: true});
+        [this.swarm] = await startSwarm({numOfNodes});
+        clientsObj.api = await initializeClient({swarm: this.swarm, setupDB: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
@@ -33,41 +29,41 @@ describe('pbft', () => {
     });
 
 
-    context('start up', () => {
+    context('start up', function () {
 
-        it('primary is set', () => {
-            assert(swarm.primary !== undefined);
+        it('primary is set', function () {
+            expect(this.swarm.primary).to.not.be.equal(undefined);
         });
 
-        context('test', () => {
+        context('test', function () {
             common.crudFunctionalityTests(clientsObj)
         })
     });
 
-    context.skip('with >2/3 nodes alive', () => {
+    context.skip('with >2/3 nodes alive', function () {
 
-        beforeEach('kill < 1/3 of nodes', () => {
+        beforeEach('kill < 1/3 of nodes', function () {
 
             console.log(execSync('ps aux | grep swarm').toString());
 
-            const numOfNodesToKill = Math.floor(swarm.backups.length * 1/3);
-            killNodes(numOfNodesToKill, swarm);
+            const numOfNodesToKill = Math.floor(this.swarm.backups.length * 1/3);
+            killNodes(numOfNodesToKill, this.swarm);
 
         });
 
-        it('swarm should be operational', () => {
+        it('swarm should be operational', function () {
             common.crudFunctionalityTests(clientsObj)
         });
     });
 
-    context.skip('with <2/3 nodes alive', () => {
+    context.skip('with <2/3 nodes alive', function () {
 
-        beforeEach('kill > 1/3 of nodes', () => {
-            const numOfNodesToKill = Math.ceil(swarm.backups.length * 1/3);
-            killNodes(numOfNodesToKill, swarm)
+        beforeEach('kill > 1/3 of nodes', function () {
+            const numOfNodesToKill = Math.ceil(this.swarm.backups.length * 1/3);
+            killNodes(numOfNodesToKill, this.swarm)
         });
 
-        it('swarm should NOT be operational', () => {
+        it('swarm should NOT be operational', function () {
             common.createShouldTimeout(clientsObj)
         });
     });

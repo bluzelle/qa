@@ -1,18 +1,15 @@
-const assert = require('assert');
 const fs = require('fs');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const {generateKey} = require('../../utils/daemon/crypto');
 
-let clientsObj = {};
-let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 let keyPairs;
 const tempPath = ('./tmp');
 
 
-describe('permissions', () => {
+describe('permissions', function () {
 
-    before('generate temp directory and load keyPairs', () => {
+    before('generate temp directory and load keyPairs', function () {
 
         try {
             fs.mkdirSync(tempPath);
@@ -35,24 +32,24 @@ describe('permissions', () => {
 
     before('stand up swarm and client', async function () {
         this.timeout(30000);
-        [swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm, setupDB: true, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='});
-        await clientsObj.api.create('updateKey', 'value--1');
+        [this.swarm] = await startSwarm({numOfNodes});
+        this.api = await initializeClient({swarm: this.swarm, setupDB: true, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='});
+        await this.api.create('updateKey', 'value--1');
     });
 
     after('remove configs and peerslist and clear harness state', function () {
         teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
     });
 
-    it('can retrieve writers list', async () => {
+    it('can retrieve writers list', async function () {
 
-        const res = await clientsObj.api.getWriters();
+        const res = await this.api.getWriters();
 
-        assert(res.owner);
-        assert(res.writers.length === 0);
+        expect(res).to.have.property('owner');
+        expect(res.writers).to.have.lengthOf(0);
     });
 
-    it('can add writers', async () => {
+    it('can add writers', async function () {
 
         const pubKeys = [];
 
@@ -60,10 +57,10 @@ describe('permissions', () => {
             pubKeys.push(keyPairs[key].pubKey);
         }
 
-        await clientsObj.api.addWriters(pubKeys);
-        const res = await clientsObj.api.getWriters();
+        await this.api.addWriters(pubKeys);
+        const res = await this.api.getWriters();
 
-        assert(compareArrays(res.writers, pubKeys));
+        expect(compareArrays(res.writers, pubKeys)).to.be.true;
     });
 
     const privKeys = [];
@@ -74,23 +71,23 @@ describe('permissions', () => {
 
     for (let i = 0; i < 10; i++ ) {
 
-        it(`added writer can CRU - ${i}`, async () => {
+        it(`added writer can CRU - ${i}`, async function () {
 
-            let client = await initializeClient({swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
+            let client = await initializeClient({swarm: this.swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
 
 
             await client.create(`newWriter-${i}`, `initialValue`);
             await client.update(`newWriter-${i}`, `value-${i}`);
             const res = await client.read(`newWriter-${i}`);
-            assert(res === `value-${i}`);
+            expect(res).to.be.equal(`value-${i}`);
         });
     }
 
     for (let i = 0; i < 10; i++ ) {
 
-        it(`added writer can delete - ${i}`, async () => {
+        it(`added writer can delete - ${i}`, async function () {
 
-            let client = await initializeClient({swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
+            let client = await initializeClient({swarm: this.swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
 
             await client.delete(`newWriter-${i}`);
         });

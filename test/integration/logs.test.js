@@ -1,4 +1,3 @@
-const {expect} = require('chai');
 const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");

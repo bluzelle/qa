@@ -1,7 +1,6 @@
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const {execSync} = require('child_process');
-const assert = require('assert');
 
 const crypto = require('./crypto');
 
