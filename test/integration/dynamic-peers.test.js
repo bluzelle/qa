@@ -1,12 +1,8 @@
-const assert = require('assert');
 const common = require('../common');
 const {startSwarm, initializeClient, teardown, spawnDaemon, createKeys} = require('../../utils/daemon/setup');
 const {createDirectories, generateConfigs, generatePeersList} = require('../../utils/daemon/configs');
 const fsPromises = require('fs').promises;
 const PollUntil = require('poll-until-promise');
-const chai = require('chai');
-chai.should();
-chai.use(require('chai-things'));
 
 const clientsObj = {};
 const numOfNodes = harnessConfigs.numOfNodes;
@@ -121,11 +117,11 @@ describe('dynamic peering', () => {
                     if (ctx.numOfKeys > 0) {
 
                         it('should be able to fetch full keys list', async function () {
-                            assert((await clientsObj.api.keys()).length === ctx.numOfKeys);
+                            expect((await clientsObj.api.keys()).length).to.be.equal(ctx.numOfKeys);
                         });
 
                         it('should be able to read last key before pre-primary failure', async function () {
-                            assert((await clientsObj.api.read(`batch${ctx.numOfKeys - 1}`)) === 'value')
+                            expect(await clientsObj.api.read(`batch${ctx.numOfKeys - 1}`)).to.be.equal('value')
                         })
                     }
 

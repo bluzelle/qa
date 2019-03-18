@@ -1,11 +1,6 @@
-const assert = require('assert');
 const {startSwarm, initializeClient, teardown, createKeys} = require('../../utils/daemon/setup');
 const common = require('../common');
-const chai = require("chai");
-const chaiAsPromised = require("chai-as-promised");
-const expect = chai.expect;
-chai.use(chaiAsPromised);
-chai.should();
+
 
 const numOfNodes = harnessConfigs.numOfNodes;
 const clientObj = {};
@@ -31,13 +26,7 @@ describe('database management', function () {
             noDbTests();
 
             it('should be able to createDB', async function () {
-
-                try {
-                    await this.api.createDB();
-                } catch (err) {
-                    throw new Error(`Failed to createDB \n ${err}`)
-                }
-
+                await this.api.createDB();
             });
         });
 
@@ -50,11 +39,11 @@ describe('database management', function () {
             context('with keys in db', function () {
 
                 beforeEach('load db', async function () {
-
                     await createKeys({api: this.api}, 10);
                 });
 
                 context('basic functionality tests', function() {
+
                     common.crudFunctionalityTests(clientObj);
                     common.miscFunctionalityTests(clientObj);
 
@@ -64,11 +53,7 @@ describe('database management', function () {
                 context('should throw errors', function () {
 
                     it('when attempting to createDB', async function () {
-
-                        const EXPECTED_ERROR = 'DATABASE_EXISTS';
-
-                        await this.api.createDB().should.be.rejectedWith(EXPECTED_ERROR);
-
+                        await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
                     });
                 });
             });
@@ -76,27 +61,11 @@ describe('database management', function () {
             context('with empty db', function () {
 
                 it('should be able to hasDB', async function () {
-
-                    let res;
-
-                    try {
-                        res = await this.api.hasDB();
-                    } catch (err) {
-                        throw new Error(`Failed to hasDB \n ${err}`)
-                    }
-
-                    assert(res === true);
-
+                    expect(await this.api.hasDB()).to.be.true;
                 });
 
                 it('should be able to deleteDB', async function () {
-
-                    try {
-                        await this.api.deleteDB();
-                    } catch (err) {
-                        throw new Error(`Failed to deleteDB \n ${err}`)
-                    }
-
+                    await this.api.deleteDB();
                 });
 
                 keysAndSizeShouldReturnZero();
@@ -105,11 +74,7 @@ describe('database management', function () {
                 context('should throw errors', function () {
 
                     it('when attempting to createDB', async function () {
-
-                        const EXPECTED_ERROR = 'DATABASE_EXISTS';
-
-                        await this.api.createDB().should.be.rejectedWith(EXPECTED_ERROR);
-
+                        await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
                     });
                 });
 
@@ -123,15 +88,8 @@ describe('database management', function () {
 
                 noDbTests();
 
-
                 it('should be able to createDB', async function () {
-
-                    try {
-                        await this.api.createDB();
-                    } catch (err) {
-                        throw new Error(`Failed to createDB \n ${err}`)
-                    }
-
+                    await this.api.createDB();
                 });
 
             });
@@ -160,17 +118,13 @@ describe('database management', function () {
         context('after creating DB', function() {
 
             before('createDB', async function () {
-
-                try {
-                    await this.api.createDB();
-                } catch (err) {
-                    throw new Error(`Failed to createDB \n ${err}`)
-                }
+                await this.api.createDB();
             });
 
             keysAndSizeShouldReturnZero();
 
             context('basic functionality tests', function() {
+
                 common.crudFunctionalityTests(clientObj);
                 common.miscFunctionalityTests(clientObj);
 
@@ -180,40 +134,36 @@ describe('database management', function () {
             context('after deleting DB', function() {
 
                 before('deleteDB', async function () {
-
                     await this.api.deleteDB();
                 });
 
                 noDbTests();
-
             });
         });
     });
 });
 
 function keysAndSizeShouldReturnZero() {
+
     context('db should measure empty', function () {
 
         it('keys list should be equal to 0', async function () {
-
-            (await this.api.keys()).length.should.equal(0);
+            (await this.api.keys()).should.have.lengthOf(0);
         });
 
         it('size should be equal to 0', async function () {
-
             (await this.api.size()).should.equal(0);
         });
     });
 }
 
 function keysAndSizeShouldReturnGreaterThanZero(numberOfKeys) {
-    it('should be able to get keys list', async function () {
 
-        (await this.api.keys()).length.should.equal(numberOfKeys);
+    it('should be able to get keys list', async function () {
+        (await this.api.keys()).should.have.lengthOf(numberOfKeys);
     });
 
     it('should be able to get size', async function () {
-
         expect(await this.api.size()).to.be.above(0);
     });
 }
@@ -221,31 +171,17 @@ function keysAndSizeShouldReturnGreaterThanZero(numberOfKeys) {
 function noDbTests() {
 
     it('should be able to hasDB', async function () {
-
-        let res;
-
-        try {
-            res = await this.api.hasDB();
-        } catch (err) {
-            throw new Error(`Failed to hasDB \n ${err}`)
-        }
-
-        assert(res === false);
-
+        expect(await this.api.hasDB()).to.be.false;
     });
 
     it('size should be equal to 0', async function () {
-
         (await this.api.size()).should.equal(0);
     });
 
     context('should throw errors', function () {
 
         it('when attempting to deleteDB', async function () {
-
-            const EXPECTED_ERROR = 'DATABASE_NOT_FOUND';
-
-            await this.api.deleteDB().should.be.rejectedWith(EXPECTED_ERROR)
+            await this.api.deleteDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
         });
 
         noDbExpectedFailureTests();
@@ -266,9 +202,7 @@ function noDbExpectedFailureTests() {
     CRUDQ.forEach(test => {
 
         it(`when attempting to ${test.cmd}`, async function () {
-
             await this.api[test.cmd]('hello', 'world').should.be.rejectedWith(test.expectedError);
-
         });
     });
 };

@@ -1,19 +1,16 @@
-const assert = require('assert');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
-let clientsObj = {};
-let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 
 
-describe('quick read', () => {
+describe('quick read', function () {
 
     beforeEach('stand up swarm and client', async function () {
         this.timeout(30000);
-        [swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm, setupDB: true});
+        [this.swarm] = await startSwarm({numOfNodes});
+        this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
-        await clientsObj.api.create('hello', 'world');
+        await this.api.create('hello', 'world');
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
@@ -21,23 +18,23 @@ describe('quick read', () => {
     });
 
 
-    it('should be functional', async () => {
-        assert(await clientsObj.api.quickread('hello') === 'world');
+    it('should be functional', async function () {
+        expect(await this.api.quickread('hello')).to.equal('world');
     });
 
-    it('should be faster than normal read', async () => {
+    it('should be faster than normal read', async function () {
 
         const quickReadStartTime = new Date();
-        await clientsObj.api.quickread('hello');
+        await this.api.quickread('hello');
         const quickReadEndTime = new Date();
         const quickReadDuration = quickReadEndTime - quickReadStartTime;
 
 
         const normalReadStartTime = new Date();
-        await clientsObj.api.read('hello');
+        await this.api.read('hello');
         const normalReadEndTime = new Date();
         const normalReadDuration = normalReadEndTime - normalReadStartTime;
 
-        assert(quickReadDuration < normalReadDuration);
+        expect(quickReadDuration).to.be.lessThan(normalReadDuration);
     });
 });
