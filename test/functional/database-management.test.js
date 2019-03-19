@@ -5,10 +5,9 @@ const common = require('../common');
 const numOfNodes = harnessConfigs.numOfNodes;
 const clientObj = {};
 
-
 describe('database management', function () {
 
-    context('with a new swarm per test', function() {
+    context('with a new swarm per test', function () {
 
         beforeEach('stand up swarm and client', async function () {
             [swarm] = await startSwarm({numOfNodes});
@@ -42,7 +41,7 @@ describe('database management', function () {
                     await createKeys({api: this.api}, 10);
                 });
 
-                context('basic functionality tests', function() {
+                context('basic functionality tests', function () {
 
                     common.crudFunctionalityTests(clientObj);
                     common.miscFunctionalityTests(clientObj);
@@ -77,7 +76,6 @@ describe('database management', function () {
                         await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
                     });
                 });
-
             });
 
             context('with deleted DB', function () {
@@ -91,31 +89,17 @@ describe('database management', function () {
                 it('should be able to createDB', async function () {
                     await this.api.createDB();
                 });
-
             });
-
         });
-
     });
 
-    context('with a persisted swarm', function () {
+    (process.env.TEST_REMOTE_SWARM ? context.only : context)('with a persisted swarm', function () {
 
-
-        before('stand up swarm and client', async function () {
-            [swarm] = await startSwarm({numOfNodes});
-            this.api = await initializeClient({swarm});
-
-            clientObj.api = this.api;
-        });
-
-        after('remove configs and peerslist and clear harness state', function () {
-            teardown.call(this.currentTest, process.env.DEBUG_FAILS);
-        });
+        (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
 
         noDbTests();
 
-
-        context('after creating DB', function() {
+        context('after creating DB', function () {
 
             before('createDB', async function () {
                 await this.api.createDB();
@@ -123,15 +107,19 @@ describe('database management', function () {
 
             keysAndSizeShouldReturnZero();
 
-            context('basic functionality tests', function() {
+            context('basic functionality tests', function () {
+
+                before('add api to clientsObj', function () {
+                    clientObj.api = this.api;
+                });
 
                 common.crudFunctionalityTests(clientObj);
                 common.miscFunctionalityTests(clientObj);
 
-                keysAndSizeShouldReturnGreaterThanZero(6);
+                keysAndSizeShouldReturnGreaterThanZero(7); // common tests create 7 keys
             });
 
-            context('after deleting DB', function() {
+            context('after deleting DB', function () {
 
                 before('deleteDB', async function () {
                     await this.api.deleteDB();
@@ -142,6 +130,34 @@ describe('database management', function () {
         });
     });
 });
+
+function localSwarmHooks() {
+    before('stand up swarm and client', async function () {
+        [swarm] = await startSwarm({numOfNodes});
+        this.api = await initializeClient({swarm});
+
+        clientObj.api = this.api;
+    });
+
+    after('remove configs and peerslist and clear harness state', function () {
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+    });
+}
+
+function remoteSwarmHook() {
+    before('initialize client and setup db', async function () {
+        this.api = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+            uuid: harnessConfigs.clientUuid,
+            private_pem: harnessConfigs.clientPem,
+            log: false
+        });
+
+        if (await this.api.hasDB()) {
+            await this.api.deleteDB();
+        }
+    });
+}
 
 function keysAndSizeShouldReturnZero() {
 

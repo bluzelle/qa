@@ -1,19 +1,11 @@
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
-
 const numOfNodes = harnessConfigs.numOfNodes;
 
-describe('status', () => {
 
-    before('stand up swarm and client', async function () {
-        this.timeout(30000);
-        [this.swarm] = await startSwarm({numOfNodes});
-        this.api = await initializeClient({swarm: this.swarm, setupDB: true});
-    });
+(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('status', function () {
 
-    after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
-    });
+    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
 
     it('should be able to get status', async function () {
         await this.api.status();
@@ -30,6 +22,35 @@ describe('status', () => {
         expect(moduleStatusJson).to.be.jsonSchema(moduleStatusJsonSchema);
     });
 });
+
+function localSwarmHooks() {
+    before('stand up swarm and client', async function () {
+        this.timeout(30000);
+        [this.swarm] = await startSwarm({numOfNodes});
+        this.api = await initializeClient({swarm: this.swarm, setupDB: true});
+    });
+
+    after('remove configs and peerslist and clear harness state', function () {
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+    });
+}
+
+function remoteSwarmHook() {
+    before('initialize client and setup db', async function () {
+        this.api = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+            uuid: harnessConfigs.clientUuid,
+            private_pem: harnessConfigs.clientPem,
+            log: false
+        });
+
+        if (await this.api.hasDB()) {
+            await this.api.deleteDB();
+        }
+
+        await this.api.createDB();
+    });
+};
 
 const statusSchema = {
     properties: {
