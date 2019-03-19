@@ -2,7 +2,6 @@ const common = require('../common');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 let clientsObj = {};
-let swarm;
 let numOfNodes = harnessConfigs.numOfNodes;
 
 
@@ -10,8 +9,8 @@ describe('smoke test', () => {
 
     before('stand up swarm and client', async function () {
         this.timeout(30000);
-        [swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm, setupDB: true});
+        [this.swarm] = await startSwarm({numOfNodes});
+        clientsObj.api = await initializeClient({swarm: this.swarm, setupDB: true});
     });
 
     after('remove configs and peerslist and clear harness state', function () {

@@ -1,13 +1,16 @@
 const fs = require('fs');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const {generateKey} = require('../../utils/daemon/crypto');
+const common = require('../common')
 
 let numOfNodes = harnessConfigs.numOfNodes;
-let keyPairs;
 const tempPath = ('./tmp');
+const numOfNewWriters = 5;
+const clientsObj = {};
 
+(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('permissions', function () {
 
-describe('permissions', function () {
+    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
 
     before('generate temp directory and load keyPairs', function () {
 
@@ -21,24 +24,37 @@ describe('permissions', function () {
             }
         }
 
-        keyPairs = [...Array(10).keys()].map(() => generateKey(tempPath)).reduce((results, ele, idx) => {
+        this.keyPairs = [...Array(numOfNewWriters).keys()].map(() => generateKey(tempPath)).reduce((results, [pubKey, privKey], idx) => {
             results[`pair${idx}`] = {
-                pubKey: ele[0],
-                privKey: ele[1],
+                pubKey: pubKey,
+                privKey: privKey,
             };
             return results
         }, {});
+
+        this.clients = [];
+
+        Object.entries(this.keyPairs).map(([name, pair]) => {
+            this.clients.push(
+                bluzelle({
+                    entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+                    uuid: harnessConfigs.clientUuid,
+                    private_pem: pair.privKey,
+                    log: false
+                })
+            )
+        });
+
+        this.clientGeneratedPubKeys = this.clients.reduce((acc, client) => {
+
+            acc.push(client.publicKey());
+
+            return acc;
+        }, []);
     });
 
-    before('stand up swarm and client', async function () {
-        this.timeout(30000);
-        [this.swarm] = await startSwarm({numOfNodes});
-        this.api = await initializeClient({swarm: this.swarm, setupDB: true, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='});
+    before('create key', async function () {
         await this.api.create('updateKey', 'value--1');
-    });
-
-    after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
     });
 
     it('can retrieve writers list', async function () {
@@ -49,51 +65,69 @@ describe('permissions', function () {
         expect(res.writers).to.have.lengthOf(0);
     });
 
-    it('can add writers', async function () {
+    it(`can add writers (${numOfNewWriters})`, async function () {
 
-        const pubKeys = [];
-
-        for (let key in keyPairs) {
-            pubKeys.push(keyPairs[key].pubKey);
-        }
-
-        await this.api.addWriters(pubKeys);
+        await this.api.addWriters(this.clientGeneratedPubKeys);
         const res = await this.api.getWriters();
 
-        expect(compareArrays(res.writers, pubKeys)).to.be.true;
+        expect(res.writers).to.have.deep.members(this.clientGeneratedPubKeys);
     });
 
-    const privKeys = [];
+    for (let i = 0; i < numOfNewWriters; i++) {
 
-    for (let key in keyPairs) {
-        privKeys.push(keyPairs[key].privKey)
-    }
+        context(`writer-${i}`,function() {
 
-    for (let i = 0; i < 10; i++ ) {
+            it(`should be able to interact with the same key (CRU)`, async function () {
 
-        it(`added writer can CRU - ${i}`, async function () {
+                await this.clients[i].create(`newWriter-${i}`, `initialValue`);
+                await this.clients[i].update(`newWriter-${i}`, `value-${i}`);
+                const res = await this.clients[i].read(`newWriter-${i}`);
 
-            let client = await initializeClient({swarm: this.swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
+                expect(res).to.be.equal(`value-${i}`);
+            });
 
+            it(`should be able to interact with the same key (D)`, async function () {
 
-            await client.create(`newWriter-${i}`, `initialValue`);
-            await client.update(`newWriter-${i}`, `value-${i}`);
-            const res = await client.read(`newWriter-${i}`);
-            expect(res).to.be.equal(`value-${i}`);
+                await this.clients[i].delete(`newWriter-${i}`);
+            });
+
+            it('** set clientsObj **', function () {
+                clientsObj.api = this.clients[i];
+            });
+
+            common.crudFunctionalityTests(clientsObj);
+            common.miscFunctionalityTests(clientsObj);
         });
     }
-
-    for (let i = 0; i < 10; i++ ) {
-
-        it(`added writer can delete - ${i}`, async function () {
-
-            let client = await initializeClient({swarm: this.swarm, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: privKeys[i]});
-
-            await client.delete(`newWriter-${i}`);
-        });
-    }
-
 });
 
-const compareArrays = (array1, array2) =>
-    array1.length === array2.length && array1.sort().every((value, index) => value === array2.sort()[index]);
+function localSwarmHooks() {
+    before('stand up swarm and client', async function () {
+        [this.swarm] = await startSwarm({numOfNodes});
+        this.api = await initializeClient({
+            swarm: this.swarm,
+            setupDB: true
+        });
+    });
+
+    after('remove configs and peerslist and clear harness state', function () {
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
+    });
+};
+
+function remoteSwarmHook() {
+    before('initialize client and setup db', async function () {
+        this.api = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+            uuid: harnessConfigs.clientUuid,
+            private_pem: harnessConfigs.clientPem,
+            log: false
+        });
+
+        if (await this.api.hasDB()) {
+            await this.api.deleteDB();
+        }
+
+        await this.api.createDB();
+    });
+};
