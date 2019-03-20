@@ -1,4 +1,4 @@
-exports.crudFunctionalityTests = clientsObj => {
+exports.crudFunctionality = clientsObj => {
 
     const random = Math.random().toString().slice(0,10);
 
@@ -69,7 +69,7 @@ exports.crudFunctionalityTests = clientsObj => {
     })
 };
 
-exports.miscFunctionalityTests = clientsObj => {
+exports.miscFunctionality = clientsObj => {
 
     const random = Math.random().toString().slice(0,10);
 

@@ -1,4 +1,4 @@
-const common = require('../common');
+const sharedTests = require('../shared/tests');
 const {startSwarm, initializeClient, teardown, spawnDaemon, createKeys} = require('../../utils/daemon/setup');
 const {createDirectories, generateConfigs, generatePeersList} = require('../../utils/daemon/configs');
 const fsPromises = require('fs').promises;
@@ -125,9 +125,9 @@ describe('dynamic peering', () => {
                         })
                     }
 
-                    common.crudFunctionalityTests(clientsObj);
+                    sharedTests.crudFunctionality(clientsObj);
 
-                    common.miscFunctionalityTests(clientsObj);
+                    sharedTests.miscFunctionality(clientsObj);
 
                 });
 

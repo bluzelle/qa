@@ -1,5 +1,5 @@
 const {startSwarm, initializeClient, teardown, createKeys} = require('../../utils/daemon/setup');
-const common = require('../common');
+const sharedTests = require('../shared/tests');
 
 
 const numOfNodes = harnessConfigs.numOfNodes;
@@ -43,8 +43,8 @@ describe('database management', function () {
 
                 context('basic functionality tests', function () {
 
-                    common.crudFunctionalityTests(clientObj);
-                    common.miscFunctionalityTests(clientObj);
+                    sharedTests.crudFunctionality(clientObj);
+                    sharedTests.miscFunctionality(clientObj);
 
                     keysAndSizeShouldReturnGreaterThanZero(10);
                 });
@@ -113,10 +113,10 @@ describe('database management', function () {
                     clientObj.api = this.api;
                 });
 
-                common.crudFunctionalityTests(clientObj);
-                common.miscFunctionalityTests(clientObj);
+                sharedTests.crudFunctionality(clientObj);
+                sharedTests.miscFunctionality(clientObj);
 
-                keysAndSizeShouldReturnGreaterThanZero(7); // common tests create 7 keys
+                keysAndSizeShouldReturnGreaterThanZero(7); // sharedTests tests create 7 keys
             });
 
             context('after deleting DB', function () {

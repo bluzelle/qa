@@ -1,5 +1,5 @@
 const assert = require('assert');
-const common = require('../common');
+const sharedTests = require('../shared/tests');
 const {startSwarm, initializeClient, teardown, createKeys} = require('../../utils/daemon/setup');
 const PollUntil = require('poll-until-promise');
 const delay = require('delay');
@@ -100,9 +100,9 @@ describe('view change', function () {
                 })
             }
 
-            common.crudFunctionalityTests(clientsObj);
+            sharedTests.crudFunctionality(clientsObj);
 
-            common.miscFunctionalityTests(clientsObj);
+            sharedTests.miscFunctionality(clientsObj);
 
         });
 
@@ -149,9 +149,9 @@ describe('view change', function () {
             assert(keysCommitted === this.keysInFlight + 1);
         });
 
-        common.crudFunctionalityTests(clientsObj);
+        sharedTests.crudFunctionality(clientsObj);
 
-        common.miscFunctionalityTests(clientsObj);
+        sharedTests.miscFunctionality(clientsObj);
 
     });
 
