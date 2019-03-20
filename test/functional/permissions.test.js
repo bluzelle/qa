@@ -2,13 +2,16 @@ const fs = require('fs');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const {generateKey} = require('../../utils/daemon/crypto');
 const sharedTests = require('../shared/tests');
+const {remoteSwarmHook} = require('../shared/hooks');
 
-let numOfNodes = harnessConfigs.numOfNodes;
-const tempPath = ('./tmp');
-const numOfNewWriters = 5;
-const clientsObj = {};
+
+const numOfNodes = harnessConfigs.numOfNodes;
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('permissions', function () {
+
+    const tempPath = ('./tmp');
+    const numOfNewWriters = 5;
+    const clientsObj = {};
 
     (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
@@ -75,7 +78,7 @@ const clientsObj = {};
 
     for (let i = 0; i < numOfNewWriters; i++) {
 
-        context(`writer-${i}`,function() {
+        context(`writer-${i}`, function () {
 
             it(`should be able to interact with the same key (CRU)`, async function () {
 
@@ -112,22 +115,5 @@ function localSwarmHooks() {
 
     after('remove configs and peerslist and clear harness state', function () {
         teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
-    });
-};
-
-function remoteSwarmHook() {
-    before('initialize client and setup db', async function () {
-        this.api = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            uuid: harnessConfigs.clientUuid,
-            private_pem: harnessConfigs.clientPem,
-            log: false
-        });
-
-        if (await this.api.hasDB()) {
-            await this.api.deleteDB();
-        }
-
-        await this.api.createDB();
     });
 };
