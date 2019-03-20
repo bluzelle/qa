@@ -1,6 +1,6 @@
 const {execSync} = require('child_process');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
-const common = require('../common');
+const sharedTests = require('../shared/tests');
 
 
 let clientsObj = {};
@@ -36,7 +36,7 @@ describe('pbft', function () {
         });
 
         context('test', function () {
-            common.crudFunctionalityTests(clientsObj)
+            sharedTests.crudFunctionality(clientsObj)
         })
     });
 
@@ -52,7 +52,7 @@ describe('pbft', function () {
         });
 
         it('swarm should be operational', function () {
-            common.crudFunctionalityTests(clientsObj)
+            sharedTests.crudFunctionality(clientsObj)
         });
     });
 
@@ -64,7 +64,7 @@ describe('pbft', function () {
         });
 
         it('swarm should NOT be operational', function () {
-            common.createShouldTimeout(clientsObj)
+            sharedTests.createShouldTimeout(clientsObj)
         });
     });
 });

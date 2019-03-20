@@ -1,7 +1,7 @@
 const fs = require('fs');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const {generateKey} = require('../../utils/daemon/crypto');
-const common = require('../common')
+const sharedTests = require('../shared/tests');
 
 let numOfNodes = harnessConfigs.numOfNodes;
 const tempPath = ('./tmp');
@@ -91,12 +91,12 @@ const clientsObj = {};
                 await this.clients[i].delete(`newWriter-${i}`);
             });
 
-            it('** set clientsObj **', function () {
+            before('set api to clientsObj', function () {
                 clientsObj.api = this.clients[i];
             });
 
-            common.crudFunctionalityTests(clientsObj);
-            common.miscFunctionalityTests(clientsObj);
+            sharedTests.crudFunctionality(clientsObj);
+            sharedTests.miscFunctionality(clientsObj);
         });
     }
 });

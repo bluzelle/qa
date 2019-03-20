@@ -1,4 +1,4 @@
-const common = require('../common');
+const sharedTests = require('../shared/tests');
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 let clientsObj = {};
@@ -17,8 +17,8 @@ describe('smoke test', () => {
         teardown.call(this.currentTest, process.env.DEBUG_FAILS);
     });
 
-    common.crudFunctionalityTests(clientsObj);
+    sharedTests.crudFunctionality(clientsObj);
 
-    common.miscFunctionalityTests(clientsObj);
+    sharedTests.miscFunctionality(clientsObj);
 
 });
