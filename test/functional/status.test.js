@@ -3,9 +3,9 @@ const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/set
 const numOfNodes = harnessConfigs.numOfNodes;
 
 
-(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('status', function () {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('status', function () {
 
-    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
     it('should be able to get status', async function () {
         await this.api.status();

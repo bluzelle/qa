@@ -12,9 +12,9 @@ const CLIENT_2 = {
     pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='
 };
 
-(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('multi-client', function () {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('multi-client', function () {
 
-    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
     context('distinct uuids', function () {
 
