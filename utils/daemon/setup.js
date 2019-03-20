@@ -1,9 +1,7 @@
 const {exec, execSync, spawn} = require('child_process');
 const split = require('split');
-const PromiseSome = require('bluebird').some;
 const {writeFileSync} = require('fs');
 
-const {bluzelle} = require('../../bluzelle-js/lib/bluzelle-node');
 const {generateSwarmJsonsAndSetState} = require('./configs');
 const SwarmState = require('./swarm');
 

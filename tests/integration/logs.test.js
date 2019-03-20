@@ -1,11 +1,10 @@
-const {expect} = require('chai');
 const {exec, execSync, spawn} = require('child_process');
 const {includes} = require('lodash');
 const waitUntil = require("async-wait-until");
 
-const {despawnSwarm, clearDaemonState, clearDaemonStateAndConfigs} = require('../utils/daemon/setup');
-const {editFile, generateSwarmJsonsAndSetState} = require('../utils/daemon/configs');
-const {readDir} = require('../utils/daemon/logs');
+const {despawnSwarm, clearDaemonState, clearDaemonStateAndConfigs} = require('../../utils/daemon/setup');
+const {editFile, generateSwarmJsonsAndSetState} = require('../../utils/daemon/configs');
+const {readDir} = require('../../utils/daemon/logs');
 
 
 describe('logging', () => {
