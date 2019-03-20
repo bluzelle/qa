@@ -1,7 +1,7 @@
 const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 
 
-let numOfNodes = harnessConfigs.numOfNodes;
+const numOfNodes = harnessConfigs.numOfNodes;
 
 const CLIENT_1 = {
     uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',

@@ -1,20 +1,15 @@
 const sharedTests = require('../shared/tests');
-const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
-
-let clientsObj = {};
-let numOfNodes = harnessConfigs.numOfNodes;
+const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 
 
-describe('smoke test', () => {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('smoke test', function () {
 
-    before('stand up swarm and client', async function () {
-        this.timeout(30000);
-        [this.swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm: this.swarm, setupDB: true});
-    });
+    const clientsObj = {};
 
-    after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
+
+    before('set api to clientsObj', function () {
+        clientsObj.api = this.api;
     });
 
     sharedTests.crudFunctionality(clientsObj);
