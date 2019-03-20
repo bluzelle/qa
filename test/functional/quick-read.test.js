@@ -4,9 +4,9 @@ let numOfNodes = harnessConfigs.numOfNodes;
 
 
 
-(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('quick read', function () {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('quick read', function () {
 
-    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
     before('create a key', async function () {
         await this.api.create('hello', 'world');

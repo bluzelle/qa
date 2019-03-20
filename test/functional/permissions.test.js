@@ -8,9 +8,9 @@ const tempPath = ('./tmp');
 const numOfNewWriters = 5;
 const clientsObj = {};
 
-(process.env.TEST_REMOTE_SWARM ? describe.only : describe)('permissions', function () {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('permissions', function () {
 
-    (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
     before('generate temp directory and load keyPairs', function () {
 

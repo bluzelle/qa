@@ -93,9 +93,9 @@ describe('database management', function () {
         });
     });
 
-    (process.env.TEST_REMOTE_SWARM ? context.only : context)('with a persisted swarm', function () {
+    (harnessConfigs.testRemoteSwarm ? context.only : context)('with a persisted swarm', function () {
 
-        (process.env.TEST_REMOTE_SWARM ? remoteSwarmHook() : localSwarmHooks());
+        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
         noDbTests();
 
