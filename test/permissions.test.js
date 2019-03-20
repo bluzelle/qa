@@ -35,7 +35,7 @@ describe('permissions', () => {
 
     before('stand up swarm and client', async function () {
         this.timeout(30000);
-        swarm = await startSwarm({numOfNodes});
+        [swarm] = await startSwarm({numOfNodes});
         clientsObj.api = await initializeClient({swarm, setupDB: true, uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814', pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='});
         await clientsObj.api.create('updateKey', 'value--1');
     });

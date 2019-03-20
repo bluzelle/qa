@@ -1,8 +1,8 @@
 const assert = require('assert');
 const common = require('./common');
 const {startSwarm, initializeClient, teardown, createKeys} = require('../utils/daemon/setup');
-const {bluzelle} = require('../bluzelle-js/lib/bluzelle-node');
 const PollUntil = require('poll-until-promise');
+const delay = require('delay');
 
 
 let numOfNodes = harnessConfigs.numOfNodes;
@@ -13,35 +13,45 @@ describe('view change', function () {
 
     [{
         name: 'primary dies with no pre-existing state',
-        numOfKeys: 0
+        numOfKeys: 0,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 50 keys loaded',
-        numOfKeys: 50
+        numOfKeys: 50,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 100 keys loaded',
-        numOfKeys: 100
+        numOfKeys: 100,
+        hookTimeout: 30000
     }, {
         name: 'primary dies with 500 keys loaded',
-        numOfKeys: 500
+        numOfKeys: 500,
+        hookTimeout: 100000
     }].forEach((ctx) => {
 
         context(ctx.name, function () {
 
             before(async function () {
-                this.timeout(100000);
+                this.timeout(ctx.hookTimeout);
 
-                this.swarm = await startSwarm({numOfNodes});
+                [this.swarm] = await startSwarm({numOfNodes});
                 this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
                 if (ctx.numOfKeys > 0) {
                     await createKeys({api: this.api}, ctx.numOfKeys)
                 }
 
-                killPrimary.call(this);
+                // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
+                const failures = [
+                    ['Dropping message because local view is invalid', 5],
+                    [' [fatal] ', 1]
+                ];
+                this.swarm.addMultipleFailureListeners(failures);
 
+                killPrimary.call(this);
                 await this.api.create('trigger', 'broadcast');
 
-                clientsObj.api = this.api
+                clientsObj.api = this.api;
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
@@ -49,32 +59,26 @@ describe('view change', function () {
             });
 
             it('new primary should take over', async function () {
-                this.timeout(20000);
-
                 const pollPrimary = new PollUntil();
 
-                await new Promise((resolve, reject) => {
+                await pollPrimary
+                    .stopAfter(30000)
+                    .tryEvery(1000)
+                    .execute(() => new Promise((res, rej) => {
 
-                    pollPrimary
-                        .stopAfter(20000)
-                        .tryEvery(2000)
-                        .execute(() => new Promise((res, rej) => {
-
-                            clientsObj.api.status().then(val => {
+                        clientsObj.api.status()
+                            .then(val => {
 
                                 const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
                                 if (parsedStatusJson.primary.name !== this.swarm.primary) {
                                     return res(true);
                                 } else {
-                                    return rej();
+                                    rej(false);
                                 }
                             })
-
-                        }))
-                        .then(() => resolve())
-                        .catch(err => reject(err));
-                })
+                            .catch(e => console.log(e));
+                    }))
             });
 
             it('new primary should be next pubkey sorted lexicographically', async function () {
@@ -104,21 +108,28 @@ describe('view change', function () {
 
     });
 
-    context('primary dies while operations are in flight', function() {
+    context('primary dies while operations are in flight', function () {
 
         // todo: add tests increasing number of keys in flight when KEP-1226 is resolved
 
         before(async function () {
             this.timeout(30000);
 
-            this.swarm = await startSwarm({numOfNodes});
+            [this.swarm] = await startSwarm({numOfNodes});
             this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
             this.keysInFlight = 30;
 
-            for (let i = 0; i < this.keysInFlight; i ++) {
+            for (let i = 0; i < this.keysInFlight; i++) {
                 this.api.create(`bananas-${i}`, 'value');
             }
+
+            // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
+            const failures = [
+                ['Dropping message because local view is invalid', 5],
+                [' [fatal] ', 1]
+            ];
+            this.swarm.addMultipleFailureListeners(failures);
 
             killPrimary.call(this);
 
@@ -149,12 +160,12 @@ describe('view change', function () {
         before(async function () {
             this.timeout(30000);
 
-            this.swarm = await startSwarm({numOfNodes});
+            [this.swarm] = await startSwarm({numOfNodes});
             this.api = await initializeClient({swarm: this.swarm, setupDB: true});
 
             killPrimary.call(this);
 
-            clientsObj.api = this.api
+            clientsObj.api = this.api;
         });
 
         after('remove configs and peerslist and clear harness state', function () {
@@ -163,32 +174,20 @@ describe('view change', function () {
 
         it('no new primary should be accepted', async function () {
 
-            const pollPrimary = new PollUntil;
+            const results = [];
 
-            await new Promise((resolve, reject) => {
+            for (let i = 0; i < 10; i++ ) {
+                await delay(1000);
 
-                const timer = setTimeout(() => {
-                    return resolve();
-                }, 15000);
+                const resp = await clientsObj.api.status();
+                const primaryReported = JSON.parse(resp.moduleStatusJson).module[0].status.primary.name;
 
-                pollPrimary
-                    .stopAfter(15000)
-                    .tryEvery(2000)
-                    .execute(() => new Promise((res, rej) => {
+                results.push(primaryReported)
+            }
 
-                        clientsObj.api.status().then(val => {
+            const valuesAreTheSame = (arr) => arr.every((val, i, arr) => val === arr[0]);
 
-                            const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
-
-                            if (parsedStatusJson.primary.name !== this.swarm.primary) {
-                                return rej(true);
-                            }
-                        })
-
-                    }))
-                    .then(() => resolve())
-                    .catch(err => reject(err));
-            });
+            assert(valuesAreTheSame(results));
         });
 
         it('backup should report no primary', async function () {

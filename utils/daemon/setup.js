@@ -10,12 +10,12 @@ const SwarmState = require('./swarm');
 
 const startSwarm = async ({numOfNodes}) => {
 
-    let [configsObject] = await generateSwarmJsonsAndSetState(numOfNodes);
+    let [configsObject, peersList] = await generateSwarmJsonsAndSetState(numOfNodes);
     const swarm = new SwarmState(configsObject);
 
     await spawnSwarm(swarm);
 
-    return swarm;
+    return [swarm, peersList];
 };
 
 const initializeClient = async ({log, swarm, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
@@ -71,21 +71,25 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
 
     const nodesToSpawn = partialSpawn ? nodeNames.slice(0, partialSpawn) : nodeNames;
 
+    // todo: refactor to use spawnDaemon
+    //  handle etherscan.io hangs by retrying
+
     try {
         await Promise.all(nodesToSpawn.map((daemon) => new Promise((res, rej) => {
 
             const daemonTimeout = setTimeout(() => {
-                rej(new Error(`${daemon} stdout: \n ${buffer}`))
+                rej(new Error(`${daemon} stdout: \n ${output}`))
             }, 15000);
 
-            let buffer = '';
+            let output = '';
 
             swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
 
-            swarm[daemon].stream.stdout.on('data', (data) => {
-                buffer += data.toString();
+            swarm[daemon].stream.stdout.on('data', (buffer) => {
+                let data = buffer.toString();
+                output += data;
 
-                if (data.toString().includes('Running node with ID:')) {
+                if (data.includes('Running node with ID:')) {
                     clearInterval(daemonTimeout);
                     swarm.pushLiveNodes(daemon);
                     res();
@@ -175,6 +179,10 @@ const clearDaemonState = () => {
 
 const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject) => {
     let daemon = 'daemon' + index;
+
+    if (!(typeof(swarm[daemon]) === 'object')) {
+        swarm[daemon] = {};
+    }
 
     swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
 
