@@ -1,8 +1,7 @@
 const fs = require('fs');
-const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
 const {generateKey} = require('../../utils/daemon/crypto');
 const sharedTests = require('../shared/tests');
-const {remoteSwarmHook} = require('../shared/hooks');
+const {localSwarmHooks, remoteSwarmHook} = require('../shared/hooks');
 
 
 const numOfNodes = harnessConfigs.numOfNodes;
@@ -11,7 +10,6 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
     const tempPath = ('./tmp');
     const numOfNewWriters = 5;
-    const clientsObj = {};
 
     (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
@@ -62,7 +60,7 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
     it('can retrieve writers list', async function () {
 
-        const res = await this.api.getWriters();
+        const res = await this.api._getWriters();
 
         expect(res).to.have.property('owner');
         expect(res.writers).to.have.lengthOf(0);
@@ -70,8 +68,8 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
     it(`can add writers (${numOfNewWriters})`, async function () {
 
-        await this.api.addWriters(this.clientGeneratedPubKeys);
-        const res = await this.api.getWriters();
+        await this.api._addWriters(this.clientGeneratedPubKeys);
+        const res = await this.api._getWriters();
 
         expect(res.writers).to.have.deep.members(this.clientGeneratedPubKeys);
     });
@@ -80,40 +78,26 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
         context(`writer-${i}`, function () {
 
+            before('set api', function () {
+                this.api = this.clients[i];
+            });
+
             it(`should be able to interact with the same key (CRU)`, async function () {
 
-                await this.clients[i].create(`newWriter-${i}`, `initialValue`);
-                await this.clients[i].update(`newWriter-${i}`, `value-${i}`);
-                const res = await this.clients[i].read(`newWriter-${i}`);
+                await this.api.create(`newWriter-${i}`, `initialValue`);
+                await this.api.update(`newWriter-${i}`, `value-${i}`);
+                const res = await this.api.read(`newWriter-${i}`);
 
                 expect(res).to.be.equal(`value-${i}`);
             });
 
             it(`should be able to interact with the same key (D)`, async function () {
 
-                await this.clients[i].delete(`newWriter-${i}`);
+                await this.api.delete(`newWriter-${i}`);
             });
 
-            before('set api to clientsObj', function () {
-                clientsObj.api = this.clients[i];
-            });
-
-            sharedTests.crudFunctionality(clientsObj);
-            sharedTests.miscFunctionality(clientsObj);
+            sharedTests.crudFunctionality.apply(this);
+            sharedTests.miscFunctionality.apply(this);
         });
     }
 });
-
-function localSwarmHooks() {
-    before('stand up swarm and client', async function () {
-        [this.swarm] = await startSwarm({numOfNodes});
-        this.api = await initializeClient({
-            swarm: this.swarm,
-            setupDB: true
-        });
-    });
-
-    after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
-    });
-};

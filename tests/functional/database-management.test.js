@@ -7,15 +7,11 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
 describe('database management', function () {
 
-    const clientObj = {};
-
     context('with a new swarm per test', function () {
 
         beforeEach('stand up swarm and client', async function () {
             [swarm] = await startSwarm({numOfNodes});
             this.api = await initializeClient({swarm});
-
-            clientObj.api = this.api;
         });
 
         afterEach('remove configs and peerslist and clear harness state', function () {
@@ -45,8 +41,8 @@ describe('database management', function () {
 
                 context('basic functionality tests', function () {
 
-                    sharedTests.crudFunctionality(clientObj);
-                    sharedTests.miscFunctionality(clientObj);
+                    sharedTests.crudFunctionality.apply(this);
+                    sharedTests.miscFunctionality.apply(this);
 
                     keysAndSizeShouldReturnGreaterThanZero(10);
                 });
@@ -111,12 +107,8 @@ describe('database management', function () {
 
             context('basic functionality tests', function () {
 
-                before('add api to clientsObj', function () {
-                    clientObj.api = this.api;
-                });
-
-                sharedTests.crudFunctionality(clientObj);
-                sharedTests.miscFunctionality(clientObj);
+                sharedTests.crudFunctionality.apply(this);
+                sharedTests.miscFunctionality.apply(this);
 
                 keysAndSizeShouldReturnGreaterThanZero(7); // sharedTests tests create 7 keys
             });
@@ -142,7 +134,9 @@ function keysAndSizeShouldReturnZero() {
         });
 
         it('size should be equal to 0', async function () {
-            (await this.api.size()).should.equal(0);
+            const result = await this.api.size();
+            expect(result.bytes).to.equal(0);
+            expect(result.keys).to.equal(0);
         });
     });
 }
@@ -154,7 +148,10 @@ function keysAndSizeShouldReturnGreaterThanZero(numberOfKeys) {
     });
 
     it('should be able to get size', async function () {
-        expect(await this.api.size()).to.be.above(0);
+        const result = await this.api.size();
+
+        expect(result.bytes).to.be.greaterThan(0);
+        expect(result.keys).to.be.greaterThan(0);
     });
 }
 
@@ -164,8 +161,8 @@ function noDbTests() {
         expect(await this.api.hasDB()).to.be.false;
     });
 
-    it('size should be equal to 0', async function () {
-        (await this.api.size()).should.equal(0);
+    it('size should be rejected with DATABASE_NOT_FOUND', async function () {
+        await this.api.size().should.be.rejectedWith('DATABASE_NOT_FOUND');
     });
 
     context('should throw errors', function () {
@@ -179,20 +176,12 @@ function noDbTests() {
 }
 
 function noDbExpectedFailureTests() {
-    const CRUDQ =
-        [
-            {cmd: 'create', expectedError: 'DATABASE_NOT_FOUND'},
-            {cmd: 'read', expectedError: 'RECORD_NOT_FOUND'},
-            {cmd: 'update', expectedError: 'DATABASE_NOT_FOUND'},
-            {cmd: 'delete', expectedError: 'DATABASE_NOT_FOUND'},
-            {cmd: 'quickread', expectedError: 'RECORD_NOT_FOUND'},
-            {cmd: 'keys', expectedError: 'DATABASE_NOT_FOUND'}
-        ];
+    const cmds = ['create', 'read', 'update', 'delete', 'quickread', 'keys'];
 
-    CRUDQ.forEach(test => {
+    cmds.forEach(cmd => {
 
-        it(`when attempting to ${test.cmd}`, async function () {
-            await this.api[test.cmd]('hello', 'world').should.be.rejectedWith(test.expectedError);
+        it(`when attempting to ${cmd}, should be rejected with DATABASE_NOT_FOUND`, async function () {
+            await this.api[cmd]('hello', 'world').should.be.rejectedWith('DATABASE_NOT_FOUND');
         });
     });
 };

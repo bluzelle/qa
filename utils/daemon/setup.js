@@ -137,9 +137,9 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
     }
 };
 
-const createKeys = async (clientsObj, numOfKeys = 10, base = 'batch', start = 0) => {
+const createKeys = async (clientObj, numOfKeys = 10, base = 'batch', start = 0) => {
     for (let j = start; j < numOfKeys; j ++) {
-        await clientsObj.api.create(`${base}${j}`, 'value')
+        await clientObj.api.create(`${base}${j}`, 'value')
     }
 };
 
