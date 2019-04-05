@@ -1,19 +1,19 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
-const {crudFunctionality, miscFunctionality} = require('../shared/tests');
+const sharedTests = require('../shared/tests');
+const {times, random} = require('lodash');
+
 const delay = require('delay');
 
-(harnessConfigs.testRemoteSwarm ? describe.only : describe.only)('time to live', function () {
-
-    const clientObj = {};
+(harnessConfigs.testRemoteSwarm ? describe.only : describe)('time to live', function () {
 
     const TIME_TO_LIVE = 5;
     const DAEMON_PURGE_LOOP_TIMER = 5; // daemons check for ttl expiry every 5 seconds
 
     context('key created with expiry', function () {
 
-        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
-
         context('basic functionalities', function () {
+
+            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
             before('create key with ttl', async function () {
                 await this.api.create('salmon', 'fish', TIME_TO_LIVE);
@@ -42,91 +42,71 @@ const delay = require('delay');
             });
         });
 
-        context('should have expiry functionalities', function () {
+        const alterTtlTestCases = [{
+            cmdName: 'expire',
+            args: ['salmon'],
+            cmd: function (key, expire) { return this.api.expire(key, expire) }
+        }, {
+            cmdName: 'update',
+            args: ['salmon', 'fish'],
+            cmd: function (key, value, expire) { return this.api.update(key, value, expire) }
+        }];
 
-            const DELAY = 2000;
-
-            before('create key with ttl', async function () {
-                await this.api.create('salmon', 'fish', TIME_TO_LIVE);
-            });
-
-            it('should be able to set ttl', async function () {
-                await delay(DELAY);
-                expect(await this.api.ttl('salmon')).to.be.most(TIME_TO_LIVE - (DELAY / 1000));
-            });
-
-            it('should expire after expiry', function (done) {
-                delay(TIME_TO_LIVE * 1000 - DELAY).then(() => {
-                    this.api.read('salmon')
-                        .then(() => {
-                            console.log('Unexpected successful read')
-                        })
-                        .catch((err) => {
-                            if (err.message.includes('DELETE_PENDING') || err.message.includes('RECORD_NOT_FOUND')) {
-                                done()
-                            } else {
-                                console.log('Unexpected error message: ', err.message);
-                            }
-                        });
-                });
-            });
+        Object.defineProperty(alterTtlTestCases, 'name', {
+            value: function (obj) {return `should be able to alter ttl with ${obj.cmdName}()`},
+            enumberable: false
         });
 
-        context('should be able to set persisted / expiry numerous times', function () {
+        alterTtlTestCases.forEach((ctx) => {
 
-            before('create key with ttl', async function () {
-                await this.api.create('salmon', 'fish', TIME_TO_LIVE);
-            });
+            context(alterTtlTestCases.name(ctx), function () {
 
-            it('should be able to set persist', async function () {
-                await this.api.persist('salmon');
-                // expect this to return something indicating persistence
-                expect(await this.api.ttl('salmon'))
-            });
+                (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
-            it('should be able to set expiry', async function () {
-                await this.api.expire('salmon', TIME_TO_LIVE);
-                expect(await this.api.ttl('salmon')).to.be.equal(TIME_TO_LIVE);
-            });
+                const DELAY = 2000;
+                const LONGER_TIME_TO_LIVE = 7;
+                const SHORTER_TIME_TO_LIVE = 3;
 
-            it('should be able to set persist', async function () {
-                await this.api.persist('salmon');
-                // expect this to return something indicating persistence
-                expect(await this.api.ttl('salmon'))
-            });
+                before('create key with ttl', async function () {
+                    await this.api.create('salmon', 'fish', TIME_TO_LIVE);
+                });
 
-            it('should be able to set expiry', async function () {
-                await this.api.expire('salmon', TIME_TO_LIVE);
-                expect(await this.api.ttl('salmon')).to.be.equal(TIME_TO_LIVE);
-            });
+                it('should be able to fetch ttl', async function () {
+                    await delay(DELAY);
+                    expect(await this.api.ttl('salmon')).to.be.most(TIME_TO_LIVE - (DELAY / 1000));
+                });
 
-            it('read should be rejected after expiry', function (done) {
-                delay(TIME_TO_LIVE * 1000).then(() => {
-                    this.api.read('salmon')
-                        .then(() => {
-                            console.log('Unexpected successful read')
-                        })
-                        .catch((err) => {
-                            if (err.message.includes('DELETE_PENDING') || err.message.includes('RECORD_NOT_FOUND')) {
-                                done()
-                            } else {
-                                console.log('Unexpected error message: ', err.message);
-                            }
-                        });
+                it('should be able to extend ttl', async function () {
+                    await ctx.cmd.apply(this, [...ctx.args, LONGER_TIME_TO_LIVE]);
+                    expect(await this.api.ttl('salmon')).to.be.least(LONGER_TIME_TO_LIVE - 1);
+                });
+
+                it('should be able to shorten ttl', async function () {
+                    await ctx.cmd.apply(this, [...ctx.args, SHORTER_TIME_TO_LIVE]);
+                    expect(await this.api.ttl('salmon')).to.be.least(SHORTER_TIME_TO_LIVE - 1);
+                });
+
+                it('should expire after expiry', function (done) {
+                    delay(SHORTER_TIME_TO_LIVE * 1000).then(() => {
+                        this.api.read('salmon')
+                            .then(() => {
+                                console.log('Unexpected successful read')
+                            })
+                            .catch((err) => {
+                                if (err.message.includes('DELETE_PENDING') || err.message.includes('RECORD_NOT_FOUND')) {
+                                    done()
+                                } else {
+                                    console.log('Unexpected error message: ', err.message);
+                                }
+                            });
+                    });
                 });
             });
-
-            it('should return false for "has" after expiry', async function () {
-                expect(await this.api.has('salmon')).to.be.false;
-            });
-
-            it('should return empty array for keys after expiry', async function () {
-                await this.api.keys().should.be.empty;
-            })
-
         });
 
         context('expired key should be deleted', function () {
+
+            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
             before('create key with ttl', async function () {
                 await this.api.create('salmon', 'fish', TIME_TO_LIVE);
@@ -135,7 +115,6 @@ const delay = require('delay');
 
             it('has should return false', async function () {
                 (await this.api.has('salmon')).should.be.false;
-                // (await Promise.resolve(true)).should.be.false;
             });
 
             it('read should return "RECORD_NOT_FOUND"', async function () {
@@ -149,52 +128,79 @@ const delay = require('delay');
         });
     });
 
-    context.only('numerous keys with varying expiry', function () {
+    context('varying number of keys, expiry time, and value size', function () {
 
-        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({preserveSwarmState: true}));
-
-        const expiryCases = [{
-            numOfKeys: 50,
-            hookTimeout: 50000,
-            expiryMinDelay: 10,
-            expiryMultiplier: 20
-        }/*, {
+        const testCases = [{
             numOfKeys: 50,
             hookTimeout: 100000,
-            expiryMinDelay: 10,
-            expiryMultiplier: 60
+            expiryMinDelay: 20,
+            expiryMultiplier: 20,
+            valueSize: 1 * 1024
+        }, {
+            numOfKeys: 50,
+            hookTimeout: 100000,
+            expiryMinDelay: 20,
+            expiryMultiplier: 20,
+            valueSize: 55 * 1024
+        }, {
+            numOfKeys: 50,
+            hookTimeout: 100000,
+            expiryMinDelay: 20,
+            expiryMultiplier: 60,
+            valueSize: 1 * 1024
+        }, {
+            numOfKeys: 50,
+            hookTimeout: 100000,
+            expiryMinDelay: 20,
+            expiryMultiplier: 60,
+            valueSize: 55 * 1024
         }, {
             numOfKeys: 100,
             hookTimeout: 30000,
-            expiryMinDelay: 10,
-            expiryMultiplier: 20
+            expiryMinDelay: 20,
+            expiryMultiplier: 20,
+            valueSize: 1 * 1024
+        }, {
+            numOfKeys: 100,
+            hookTimeout: 30000,
+            expiryMinDelay: 20,
+            expiryMultiplier: 20,
+            valueSize: 55 * 1024
         }, {
             numOfKeys: 300,
             hookTimeout: 100000,
-            expiryMinDelay: 10,
-            expiryMultiplier: 20
-        }*/];
+            expiryMinDelay: 40,
+            expiryMultiplier: 20,
+            valueSize: 1 * 1024
+        }, {
+            numOfKeys: 300,
+            hookTimeout: 100000,
+            expiryMinDelay: 40,
+            expiryMultiplier: 20,
+            valueSize: 55 * 1024
+        }];
 
-        Object.defineProperty(expiryCases, 'name', {value: function (obj) {return `${obj.numOfKeys} keys with min expiry: ${obj.expiryMinDelay}, max expiry: ${obj.expiryMinDelay + obj.expiryMultiplier}`}, enumerable: false});
+        Object.defineProperty(testCases, 'name', {
+            value: function (obj) {return `${obj.numOfKeys} keys with min expiry: ${obj.expiryMinDelay}, max expiry: ${obj.expiryMinDelay + obj.expiryMultiplier}, value size: ${obj.valueSize}`},
+            enumerable: false
+        });
 
-        expiryCases.forEach((ctx) => {
+        testCases.forEach((ctx) => {
 
-            context(expiryCases.name(ctx), function () {
+            context(testCases.name(ctx), function () {
 
-                this.timeout(ctx.hookTimeout);
+                (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({preserveSwarmState: false}));
 
                 before('create keys', function () {
+                    this.timeout(ctx.hookTimeout);
+
                     this.expiryTimes = generateExpiryTimes(ctx.numOfKeys, ctx.expiryMinDelay, ctx.expiryMultiplier);
                     this.sortedExpiryTimes = this.expiryTimes.slice().sort((a, b) => a - b);
                     this.medianDelay = this.sortedExpiryTimes[this.sortedExpiryTimes.length / 2];
 
                     return this.expiryTimes.reduce((p, expiryTime, idx) =>
-                            p.then(() => this.api.create(`expiry-${idx}`, 'value', expiryTime)),
+                            p.then(() => this.api.create(`expiry-${idx}`, generateString(ctx.valueSize), expiryTime)),
                         Promise.resolve());
-                });
-
-                before('set client to to clientObj', function () {
-                    clientObj.api = this.api;
                 });
 
                 it('should be able to list all keys', async function () {
@@ -202,24 +208,24 @@ const delay = require('delay');
                 });
 
                 it('half the keys should expire', async function () {
-                    // console.log('sorted expiryTimes', this.sortedExpiryTimes);
-                    console.log('waitng medianDelay + DAEMON_PURGE_LOOP_TIMER = ', this.medianDelay + DAEMON_PURGE_LOOP_TIMER);
+                    this.timeout(ctx.hookTimeout);
+
                     await delay((this.medianDelay) * 1000);
-                    await delay((DAEMON_PURGE_LOOP_TIMER) * 1000);
                     (await this.api.keys()).should.have.lengthOf.at.most(ctx.numOfKeys / 2);
                 });
 
                 it('all the keys should expire', async function () {
+                    this.timeout(ctx.hookTimeout);
+
                     const highestDelay = this.sortedExpiryTimes[this.sortedExpiryTimes.length - 1];
-                    console.log('waiting an extra: ', highestDelay - this.medianDelay);
                     await delay((highestDelay - this.medianDelay) * 1000);
 
                     (await this.api.keys()).should.have.lengthOf(0);
                 });
 
-                crudFunctionality(clientObj);
+                sharedTests.crudFunctionality.apply(this);
 
-                miscFunctionality(clientObj);
+                sharedTests.miscFunctionality.apply(this);
             });
         });
     });
@@ -240,22 +246,34 @@ const delay = require('delay');
             await this.api.persist('salmon')
         });
 
-        it('should be able to "persist" a persisted key', async function () {
-            await this.api.persist('salmon')
-        });
-
         it('should be able to "ttl"', async function () {
-            await this.api.ttl('salmon');
-            // expect ttl to show persisted
+            await this.api.ttl('salmon').should.be.rejectedWith('TTL_RECORD_NOT_FOUND');
         });
 
-        it('should be able to set expire', async function () {
-            await this.api.expire('salmon', TIME_TO_LIVE)
+        it('should be able to update expiry with update()', async function () {
+            await this.api.update('salmon', 'fish', TIME_TO_LIVE + 10);
+            (await this.api.ttl('salmon')).should.be.at.least(TIME_TO_LIVE + 9);
         });
 
-        it('should be able to "ttl"', async function () {
-            await this.api.ttl('salmon');
-            // expect ttl to show new ttl
+        it('should be able to set expiry with expire()', async function () {
+            await this.api.expire('salmon', TIME_TO_LIVE);
+            (await this.api.ttl('salmon')).should.be.at.most(TIME_TO_LIVE);
+        });
+
+        it('read should be rejected after expiry', function (done) {
+            delay(TIME_TO_LIVE * 1000).then(() => {
+                this.api.read('salmon')
+                    .then(() => {
+                        console.log('Unexpected successful read')
+                    })
+                    .catch((err) => {
+                        if (err.message.includes('DELETE_PENDING') || err.message.includes('RECORD_NOT_FOUND')) {
+                            done()
+                        } else {
+                            console.log('Unexpected error message: ', err.message);
+                        }
+                    });
+            });
         });
     });
 
@@ -263,4 +281,8 @@ const delay = require('delay');
 
 function generateExpiryTimes(numOfKeys, min = 10, mutiplier = 30) {
     return Array.from({length: numOfKeys}, () => Math.floor((Math.random() * mutiplier) + min))
-}
+};
+
+function generateString(length) {
+    return times(length, () => String.fromCharCode(random(64, 90))).join('');
+};
