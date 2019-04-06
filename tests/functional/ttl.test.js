@@ -44,12 +44,10 @@ const delay = require('delay');
 
         const alterTtlTestCases = [{
             cmdName: 'expire',
-            args: ['salmon'],
-            cmd: function (key, expire) { return this.api.expire(key, expire) }
+            args: ['salmon']
         }, {
             cmdName: 'update',
-            args: ['salmon', 'fish'],
-            cmd: function (key, value, expire) { return this.api.update(key, value, expire) }
+            args: ['salmon', 'fish']
         }];
 
         Object.defineProperty(alterTtlTestCases, 'name', {
@@ -77,12 +75,12 @@ const delay = require('delay');
                 });
 
                 it('should be able to extend ttl', async function () {
-                    await ctx.cmd.apply(this, [...ctx.args, LONGER_TIME_TO_LIVE]);
+                    await this.api[ctx.cmdName](...ctx.args, LONGER_TIME_TO_LIVE);
                     expect(await this.api.ttl('salmon')).to.be.least(LONGER_TIME_TO_LIVE - 1);
                 });
 
                 it('should be able to shorten ttl', async function () {
-                    await ctx.cmd.apply(this, [...ctx.args, SHORTER_TIME_TO_LIVE]);
+                    await this.api[ctx.cmdName](...ctx.args, SHORTER_TIME_TO_LIVE);
                     expect(await this.api.ttl('salmon')).to.be.least(SHORTER_TIME_TO_LIVE - 1);
                 });
 
