@@ -3,7 +3,6 @@ const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/set
 const sharedTests = require('../shared/tests');
 
 
-let clientsObj = {};
 let numOfNodes = harnessConfigs.numOfNodes;
 
 const killNodes = (num, swarmObj) => {
@@ -21,7 +20,7 @@ describe('pbft', function () {
 
     beforeEach('stand up swarm and client', async function () {
         [this.swarm] = await startSwarm({numOfNodes});
-        clientsObj.api = await initializeClient({swarm: this.swarm, setupDB: true});
+        this.api = await initializeClient({swarm: this.swarm, setupDB: true});
     });
 
     afterEach('remove configs and peerslist and clear harness state', function () {
@@ -36,7 +35,7 @@ describe('pbft', function () {
         });
 
         context('test', function () {
-            sharedTests.crudFunctionality(clientsObj)
+            sharedTests.crudFunctionality.apply(this)
         })
     });
 
@@ -52,7 +51,7 @@ describe('pbft', function () {
         });
 
         it('swarm should be operational', function () {
-            sharedTests.crudFunctionality(clientsObj)
+            sharedTests.crudFunctionality.apply(this)
         });
     });
 
@@ -64,7 +63,7 @@ describe('pbft', function () {
         });
 
         it('swarm should NOT be operational', function () {
-            sharedTests.createShouldTimeout(clientsObj)
+            sharedTests.createShouldTimeout.apply(this)
         });
     });
 });

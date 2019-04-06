@@ -20,13 +20,13 @@ exports.remoteSwarmHook = function ({createDB = true} = {}) {
     });
 };
 
-exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfigs.numOfNodes} = {}) {
+exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false} = {}) {
     before('stand up swarm and client', async function () {
         [this.swarm] = await startSwarm({numOfNodes});
         this.api = await initializeClient({swarm: this.swarm, setupDB: createDB});
     });
 
     after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+        teardown.call(this.currentTest, process.env.DEBUG_FAILS, preserveSwarmState);
     });
 };

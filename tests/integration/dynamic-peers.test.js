@@ -4,7 +4,6 @@ const {createDirectories, generateConfigs, generatePeersList} = require('../../u
 const fsPromises = require('fs').promises;
 const PollUntil = require('poll-until-promise');
 
-const clientsObj = {};
 const numOfNodes = harnessConfigs.numOfNodes;
 
 
@@ -44,10 +43,9 @@ describe('dynamic peering', () => {
 
                         [this.swarm, peersList] = await startSwarm({numOfNodes});
                         this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
-                        clientsObj.api = this.api;
 
                         if (ctx.numOfKeys > 0) {
-                            await createKeys(clientsObj, ctx.numOfKeys)
+                            await createKeys({api: this.api}, ctx.numOfKeys)
                         }
 
                         // Add new peer to harness and swarm todo: refactor into swarm class after swarm class refactor
@@ -117,17 +115,17 @@ describe('dynamic peering', () => {
                     if (ctx.numOfKeys > 0) {
 
                         it('should be able to fetch full keys list', async function () {
-                            expect((await clientsObj.api.keys()).length).to.be.equal(ctx.numOfKeys);
+                            expect((await this.api.keys()).length).to.be.equal(ctx.numOfKeys);
                         });
 
                         it('should be able to read last key before pre-primary failure', async function () {
-                            expect(await clientsObj.api.read(`batch${ctx.numOfKeys - 1}`)).to.be.equal('value')
+                            expect(await this.api.read(`batch${ctx.numOfKeys - 1}`)).to.be.equal('value')
                         })
                     }
 
-                    sharedTests.crudFunctionality(clientsObj);
+                    sharedTests.crudFunctionality.apply(this);
 
-                    sharedTests.miscFunctionality(clientsObj);
+                    sharedTests.miscFunctionality.apply(this);
 
                 });
 
