@@ -1,7 +1,6 @@
 const {exec, execSync, spawn} = require('child_process');
 const split = require('split');
 const {writeFileSync} = require('fs');
-
 const {generateSwarmJsonsAndSetState} = require('./configs');
 const SwarmState = require('./swarm');
 
@@ -81,7 +80,7 @@ const spawnSwarm = async (swarm, {consensusAlgorithm = 'pbft', partialSpawn, mai
 
             let output = '';
 
-            swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${swarm[daemon].index}.json`, `daemon${swarm[daemon].index}`], {cwd: './scripts'});
+            swarm[daemon].stream = spawn(`./swarm`,  ['-c', `bluzelle${swarm[daemon].index}.json`], {cwd: `./daemon-build/output/daemon${swarm[daemon].index}`});
 
             swarm[daemon].stream.stdout.on('data', (buffer) => {
                 let data = buffer.toString();
@@ -182,7 +181,7 @@ const spawnDaemon = (swarm, index, {debug} = {}) => new Promise((resolve, reject
         swarm[daemon] = {};
     }
 
-    swarm[daemon].stream = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle${index}.json`, `daemon${index}`], {cwd: './scripts'});
+    swarm[daemon].stream = spawn(`./swarm`,  ['-c', `bluzelle${index}.json`], {cwd: `./daemon-build/output/daemon${index}`});
 
     swarm[daemon].stream.stdout.on('data', (data) => {
 

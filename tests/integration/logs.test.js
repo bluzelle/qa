@@ -36,9 +36,7 @@ describe('logging', () => {
         });
 
         beforeEach('start daemon', () => {
-            // https://stackoverflow.com/questions/11337041/force-line-buffering-of-stdout-when-piping-to-tee/11349234#11349234
-            // force daemon stdout to output more frequently
-            node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json', 'daemon0'], {cwd: './scripts'});
+            node = spawn(`./swarm`,  ['-c', `bluzelle0.json`], {cwd: `./daemon-build/output/daemon0`});
 
             node.stdout.on('data', data => {
                 output += data.toString();
@@ -89,7 +87,7 @@ describe('logging', () => {
         });
 
         beforeEach('start daemon', () => {
-            node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', 'bluzelle0.json', 'daemon0'], {cwd: './scripts'});
+            node = spawn(`./swarm`,  ['-c', `bluzelle0.json`], {cwd: `./daemon-build/output/daemon0`});
 
             chunk = 0;
 
@@ -109,17 +107,15 @@ describe('logging', () => {
             expect(logs[0]).to.have.string('.log')
         });
 
-        it('should not output to stdout', async () => {
-            await new Promise((resolve, reject) => {
+        it('should not output to stdout', (done) => {
 
-                setTimeout(() => {
-                    if (chunk > 0 && chunk <= 2) {
-                        resolve()
-                    } else {
-                        reject(new Error(`Received: ${chunk} chunks of data, expected: 1 `))
-                    }
-                }, 2000)
-            });
+            setTimeout(() => {
+                if (chunk === 0) {
+                    done()
+                } else {
+                    throw new Error(`Received: ${chunk} chunks of data, expected: 0 `)
+                }
+            }, 2000)
         });
     });
 

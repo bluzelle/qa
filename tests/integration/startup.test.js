@@ -178,7 +178,7 @@ describe('daemon startup', () => {
 
 const spawnAndRead = (matchStr) => new Promise((resolve) => {
 
-    let node = spawn('script', ['-q', '/dev/null', './run-daemon.sh', `bluzelle0.json`, `daemon0`], {cwd: './scripts'});
+    let node = spawn(`./swarm`,  ['-c', `bluzelle0.json`], {cwd: `./daemon-build/output/daemon0`});
 
     node.stdout.on('data', (data) => {
 
