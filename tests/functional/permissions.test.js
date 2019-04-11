@@ -6,7 +6,9 @@ const {localSwarmHooks, remoteSwarmHook} = require('../shared/hooks');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 
-(harnessConfigs.testRemoteSwarm ? describe.only : describe)('permissions', function () {
+// permissioning is deprecated
+
+(harnessConfigs.testRemoteSwarm ? describe.skip : describe.skip)('permissions', function () {
 
     const tempPath = ('./tmp');
     const numOfNewWriters = 5;

@@ -9,6 +9,9 @@ qa.iml
 # symlink pointing to daemon build
 daemon-build
 
+# swarm state
+/utils/output
+
 .DS_Store
 node_modules
 yarn-error.log

@@ -18,7 +18,7 @@ const startSwarm = async ({numOfNodes}) => {
 const initializeClient = async ({log, swarm, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
 
     const api = bluzelle({
-        entry: `ws://${harnessConfigs.address}:${swarm[swarm.primary].port}`,
+        entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
         uuid: uuid,
         private_pem: pem,
         log: log,

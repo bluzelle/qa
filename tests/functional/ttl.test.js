@@ -154,13 +154,13 @@ const delay = require('delay');
             valueSize: 55 * 1024
         }, {
             numOfKeys: 100,
-            hookTimeout: 30000,
+            hookTimeout: 100000,
             expiryMinDelay: 20,
             expiryMultiplier: 20,
             valueSize: 1 * 1024
         }, {
             numOfKeys: 100,
-            hookTimeout: 30000,
+            hookTimeout: 100000,
             expiryMinDelay: 20,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
