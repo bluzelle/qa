@@ -23,13 +23,6 @@ exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfig
     before('start swarm and client, create db', async function () {
         this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
         await this.swarm.start();
-        // await this.swarm.startPartial(3);
-
-        this.swarm.addDaemon();
-
-        // await this.swarm.start();
-
-        await this.swarm.startUnstarted();
 
         this.api = bluzelle({
             entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
@@ -45,5 +38,6 @@ exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfig
 
     after('remove configs and peerslist and clear harness state', async function () {
         await this.swarm.stop();
+        this.swarm.removeSwarmState();
     });
 };

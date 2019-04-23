@@ -17,14 +17,14 @@ exports.generateSwarm = ({numberOfDaemons}) => {
     setDaemons(getDaemonConfigs().map(generateDaemon));
 
     return {
-        start: async () => await Promise.all(getDaemons().map(invoke('start'))),
+        start: () => Promise.all(getDaemons().map(invoke('start'))),
         stop: () => Promise.all(getDaemons().map(invoke('stop'))),
-        startPartial: async (numberOfDaemonsToStart) =>
-            await Promise.all(take(numberOfDaemonsToStart, getDaemons())
+        startPartial: (numberOfDaemonsToStart) =>
+            Promise.all(take(numberOfDaemonsToStart, getDaemons())
                 .map(invoke('start'))
             ),
-        startUnstarted: async () =>
-            await Promise.all(getDaemons()
+        startUnstarted: () =>
+            Promise.all(getDaemons()
                 .filter(isNotRunning)
                 .map(invoke('start'))
             ),
@@ -63,7 +63,6 @@ const generateDaemon = daemonConfig => {
     };
 
     async function stopDaemon() {
-        console.log('stopping daemon', daemonConfig.listener_port);
         invoke('kill', getDaemon());
         setDaemon(undefined);
         await waitForDaemonToDie();
@@ -78,8 +77,6 @@ const generateDaemon = daemonConfig => {
     }
 
     async function spawnDaemon() {
-        console.log('starting daemon:', daemonConfig.listener_port);
-
         setDaemon(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
         await new Promise(resolve => {
@@ -89,11 +86,11 @@ const generateDaemon = daemonConfig => {
             });
         });
 
-        console.log(`daemon started: ${daemonConfig.listener_port}`);
-
         getDaemon().on('close', (code) => {
             setRunning(false);
-            console.log('Daemon exit: ', code)
+            if (code !== 0) {
+                throw new Error(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
+            }
         });
     }
 };
