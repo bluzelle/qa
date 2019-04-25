@@ -28,12 +28,12 @@ exports.generateSwarm = ({numberOfDaemons}) => {
                 .filter(isNotRunning)
                 .map(invoke('start'))
             ),
-        addDaemon: addDaemon,
+        addDaemon: generateAndSetNewDaemon,
         removeSwarmState: () => removeDaemonDirectory().run(),
         getDaemons: getDaemons
     };
 
-    function addDaemon() {
+    function generateAndSetNewDaemon() {
         setDaemonConfigs([...getDaemonConfigs(), ...generateSwarmConfig({
             numberOfDaemons: 1,
             nextConfigCount: daemonCounter()
@@ -89,7 +89,7 @@ const generateDaemon = daemonConfig => {
         getDaemon().on('close', (code) => {
             setRunning(false);
             if (code !== 0) {
-                throw new Error(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
+                console.log(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
             }
         });
     }
