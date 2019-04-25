@@ -7,7 +7,6 @@ module.exports = {
     "bootstrap_file" : "./peers.json",
     "debug_logging" : true,
     "log_to_stdout" : true,
-    "use_pbft" : true,
     "public_key_file" : "./public-key.pem",
     "private_key_file" : "./private-key.pem",
     "crypto_enabled_outgoing" : true,
