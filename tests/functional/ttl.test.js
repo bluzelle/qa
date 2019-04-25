@@ -164,7 +164,7 @@ const delay = require('delay');
             expiryMinDelay: 20,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }, {
+        }/*, {
             numOfKeys: 300,
             hookTimeout: 100000,
             expiryMinDelay: 40,
@@ -176,7 +176,7 @@ const delay = require('delay');
             expiryMinDelay: 40,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }];
+        }*/];
 
         Object.defineProperty(testCases, 'name', {
             value: function (obj) {return `${obj.numOfKeys} keys with min expiry: ${obj.expiryMinDelay}, max expiry: ${obj.expiryMinDelay + obj.expiryMultiplier}, value size: ${obj.valueSize}`},
