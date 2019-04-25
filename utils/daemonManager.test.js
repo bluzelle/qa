@@ -94,5 +94,14 @@ describe('daemonManager', function () {
         const randomDaemon = random(numberOfDaemons - 1, 0);
         await this.swarm.getDaemons()[randomDaemon].restart()
     });
+
+    it('should be able to read daemon stream', async function () {
+        await this.swarm.start();
+
+        this.swarm.getDaemons()[0].getProcess().stdout.on('data', (buf) => {
+            const out = buf.toString();
+            out.should.have.lengthOf.greaterThan(0);
+        });
+    });
 });
 

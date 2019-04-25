@@ -49,7 +49,7 @@ exports.generateSwarm = ({numberOfDaemons}) => {
 
 const generateDaemon = daemonConfig => {
     const [isRunning, setRunning] = useState(false);
-    const [getDaemon, setDaemon] = useState();
+    const [getDaemonProcess, setDaemonProcess] = useState();
 
     return {
         ...daemonConfig,
@@ -59,12 +59,13 @@ const generateDaemon = daemonConfig => {
         restart: async () => {
             await stopDaemon();
             await spawnDaemon();
-        }
+        },
+        getProcess: getDaemonProcess
     };
 
     async function stopDaemon() {
-        invoke('kill', getDaemon());
-        setDaemon(undefined);
+        invoke('kill', getDaemonProcess());
+        setDaemonProcess(undefined);
         await waitForDaemonToDie();
     }
 
@@ -77,16 +78,16 @@ const generateDaemon = daemonConfig => {
     }
 
     async function spawnDaemon() {
-        setDaemon(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
+        setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
         await new Promise(resolve => {
-            getDaemon().stdout.on('data', (buf) => {
+            getDaemonProcess().stdout.on('data', (buf) => {
                 const out = buf.toString();
                 out.includes('Running node with ID') && (setRunning(true) && resolve());
             });
         });
 
-        getDaemon().on('close', (code) => {
+        getDaemonProcess().on('close', (code) => {
             setRunning(false);
             if (code !== 0) {
                 console.log(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
