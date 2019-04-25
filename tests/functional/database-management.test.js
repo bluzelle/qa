@@ -12,6 +12,7 @@ describe('database management', function () {
 
         beforeEach('stand up swarm and client', async function () {
             this.swarm = await generateSwarm({numberOfDaemons: numOfNodes});
+            await this.swarm.start();
             this.api = await initializeClient({swarm: this.swarm, setupDB: false});
         });
 

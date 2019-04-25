@@ -134,7 +134,8 @@ const CLIENTS = {
 
 function localSwarmHooks() {
     before('stand up swarm and client', async function () {
-        this.swarm = await generateSwarm({numberOfDaemons: numOfNodes});
+        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+        await this.swarm.start();
 
         this.api1 = bluzelle({
             entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
