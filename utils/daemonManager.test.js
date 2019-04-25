@@ -95,12 +95,14 @@ describe('daemonManager', function () {
         await this.swarm.getDaemons()[randomDaemon].restart()
     });
 
-    it('should be able to read daemon stream', async function () {
+    it('should be able to read daemon streams', async function () {
         await this.swarm.start();
 
-        this.swarm.getDaemons()[0].getProcess().stdout.on('data', (buf) => {
-            const out = buf.toString();
-            out.should.have.lengthOf.greaterThan(0);
+        this.swarm.getDaemons().forEach(daemon => {
+            daemon.getProcess().stdout.on('data', (buf) => {
+                const out = buf.toString();
+                out.should.have.lengthOf.greaterThan(0);
+            });
         });
     });
 });
