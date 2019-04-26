@@ -42,7 +42,7 @@ describe('dynamic peering', function () {
 
                         this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
                         await this.swarm.start();
-                        this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
+                        this.api = await initializeClient({setupDB: true, log: false});
 
                         if (ctx.numOfKeys > 0) {
                             await createKeys({api: this.api}, ctx.numOfKeys)

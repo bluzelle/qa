@@ -15,7 +15,7 @@ const startSwarm = async ({numOfNodes}) => {
     return [swarm, peersList];
 };
 
-const initializeClient = async ({log, swarm, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
+const initializeClient = async ({log, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
 
     const api = bluzelle({
         entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
@@ -142,6 +142,8 @@ const createKeys = async (clientObj, numOfKeys = 10, base = 'batch', start = 0) 
     }
 };
 
+const queryPrimary = async (clientObj) => JSON.parse((await clientObj.api.status()).moduleStatusJson).module[0].status.primary;
+
 const despawnSwarm = () => {
     try {
         execSync('pkill -9 swarm');
@@ -225,5 +227,6 @@ module.exports = {
     spawnDaemon,
     clearDaemonStateAndConfigs,
     clearDaemonState,
-    createKeys
+    createKeys,
+    queryPrimary
 };

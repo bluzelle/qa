@@ -1,5 +1,6 @@
 const {generateSwarm} = require('./daemonManager');
 const {random, last} = require('lodash/fp');
+const {orderBy} = require('lodash');
 
 const chai = require('chai');
 chai.use(require('chai-as-promised'));
@@ -104,6 +105,14 @@ describe('daemonManager', function () {
                 out.should.have.lengthOf.greaterThan(0);
             });
         });
+    });
+
+    it('should be able to setPrimary() and getPrimary()', async function () {
+        await this.swarm.start();
+        const publicKey = this.swarm.getDaemons()[0].publicKey;
+        this.swarm.setPrimary(publicKey);
+
+        this.swarm.getPrimary().publicKey.should.equal(publicKey);
     });
 });
 

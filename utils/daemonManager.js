@@ -1,4 +1,4 @@
-const {times, invoke, pipe, curry, pick, last, take} = require('lodash/fp');
+const {times, invoke, pipe, curry, pick, last, take, find} = require('lodash/fp');
 const {writeDaemonFile, writeJsonFile, removeDaemonDirectory, getDaemonOutputDir, copyToDaemonDir} = require('./FileService');
 const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
@@ -8,6 +8,7 @@ const {resolve: resolvePath} = require('path');
 exports.generateSwarm = ({numberOfDaemons}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
     const [getDaemons, setDaemons] = useState();
+    const [getPrimary, setPrimary] = useState();
     const daemonCounter = counter({start: numberOfDaemons});
     setDaemonConfigs(generateSwarmConfig({numberOfDaemons}));
     const peersList = generatePeersList(getDaemonConfigs());
@@ -30,7 +31,9 @@ exports.generateSwarm = ({numberOfDaemons}) => {
             ),
         addDaemon: generateAndSetNewDaemon,
         removeSwarmState: () => removeDaemonDirectory().run(),
-        getDaemons: getDaemons
+        getDaemons: getDaemons,
+        getPrimary: getPrimary,
+        setPrimary: (publicKey) => setPrimary(find(daemon => daemon.publicKey === publicKey, getDaemons()))
     };
 
     function generateAndSetNewDaemon() {
