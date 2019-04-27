@@ -1,12 +1,15 @@
 const sharedTests = require('../shared/tests');
-const {startSwarm, initializeClient, teardown, createKeys} = require('../../utils/daemon/setup');
+const {orderBy} = require('lodash');
+const {initializeClient, createKeys, queryPrimary} = require('../../utils/daemon/setup');
+const {generateSwarm} = require('../../utils/daemonManager');
+
 const PollUntil = require('poll-until-promise');
 
 let numOfNodes = harnessConfigs.numOfNodes;
 
 describe('view change', function () {
 
-    [{
+    const primaryDeathTests = [{
         name: 'primary dies with no pre-existing state',
         numOfKeys: 0,
         hookTimeout: 30000
@@ -22,33 +25,38 @@ describe('view change', function () {
         name: 'primary dies with 500 keys loaded',
         numOfKeys: 500,
         hookTimeout: 100000
-    }].forEach((ctx) => {
+    }];
 
-        context(ctx.name, function () {
+    Object.defineProperty(primaryDeathTests, 'name', {
+        value: function (obj) {return `primary dies with ${obj.numOfKeys} keys in db`}
+    });
+
+    primaryDeathTests.forEach((ctx) => {
+
+        context(primaryDeathTests.name(ctx), function () {
 
             before(async function () {
                 this.timeout(ctx.hookTimeout);
 
-                [this.swarm] = await startSwarm({numOfNodes});
-                this.api = await initializeClient({swarm: this.swarm, setupDB: true});
+                this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+                await this.swarm.start();
+
+                this.api = await initializeClient({setupDB: true});
 
                 if (ctx.numOfKeys > 0) {
                     await createKeys({api: this.api}, ctx.numOfKeys)
                 }
 
-                // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
-                const failures = [
-                    ['Dropping message because local view is invalid', 10],
-                    [' [fatal] ', 1]
-                ];
-                this.swarm.addMultipleFailureListeners(failures);
+                this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
-                killPrimary.call(this);
+                await this.swarm.getPrimary().stop();
+
                 await this.api.create('trigger', 'broadcast');
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
-                teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
+                await this.swarm.stop();
+                this.swarm.removeSwarmState();
             });
 
             it('new primary should take over', async function () {
@@ -64,7 +72,7 @@ describe('view change', function () {
 
                                 const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
-                                if (parsedStatusJson.primary.name !== this.swarm.primary) {
+                                if (parsedStatusJson.primary.uuid !== this.swarm.getPrimary().publicKey) {
                                     return res(true);
                                 } else {
                                     rej(false);
@@ -76,10 +84,11 @@ describe('view change', function () {
 
             it('new primary should be next pubkey sorted lexicographically', async function () {
 
-                const res = await this.api.status();
-                const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
+                const sortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
 
-                parsedStatusJson.primary.name.should.equal(this.swarm.nodes[2][1])
+                const swarmStatusPrimary = JSON.parse((await this.api.status()).moduleStatusJson).module[0].status.primary;
+
+                swarmStatusPrimary.uuid.should.equal(sortedDaemons[2].publicKey)
             });
 
             if (ctx.numOfKeys > 0) {
@@ -99,71 +108,81 @@ describe('view change', function () {
         });
     });
 
-    context('primary dies while operations are in flight', function () {
 
-        // todo: add tests increasing number of keys in flight when KEP-1226 is resolved
+    const keysInFlightTests = [{
+        keysInFlight: 50,
+        hookTimeout: 20000
+    }, {
+        keysInFlight: 100,
+        hookTimeout: 40000
+    }, {
+        keysInFlight: 110,
+        hookTimeout: 60000
+    }];
 
-        before(async function () {
-            this.timeout(30000);
+    Object.defineProperty(keysInFlightTests, 'name', {
+        value: function (obj) {return `primary dies while ${obj.keysInFlight} keys are in flight`}
+    });
 
-            [this.swarm] = await startSwarm({numOfNodes});
-            this.api = await initializeClient({swarm: this.swarm, setupDB: true});
+    keysInFlightTests.forEach(ctx => {
 
-            this.keysInFlight = 30;
+        context(keysInFlightTests.name(ctx), function () {
 
-            for (let i = 0; i < this.keysInFlight; i++) {
-                this.api.create(`bananas-${i}`, 'value');
-            }
+            before(async function () {
+                this.timeout(30000);
 
-            // Ensure daemons don't get stuck in invalid local state and don't post fatal errors
-            const failures = [
-                ['Dropping message because local view is invalid', 5],
-                [' [fatal] ', 1]
-            ];
-            this.swarm.addMultipleFailureListeners(failures);
+                this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+                await this.swarm.start();
 
-            killPrimary.call(this);
+                this.api = await initializeClient({setupDB: true});
 
-            await this.api.create('trigger', 'broadcast');
-        });
+                this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
-        after('remove configs and peerslist and clear harness state', function () {
-            teardown.call(this.currentTest, process.env.DEBUG_FAILS, true);
-        });
 
-        it('should be able to fetch full keys list', async function () {
+                this.keysInFlight = 30;
 
-            const TRIGGER_KEY = 1;
+                for (let i = 0; i < this.keysInFlight; i++) {
+                    this.api.create(`bananas-${i}`, 'value');
+                }
 
-            const pollKeys = new PollUntil();
+                await this.swarm.getPrimary().stop();
 
-            await pollKeys
-                .stopAfter(30000)
-                .tryEvery(1000)
-                .execute(() => new Promise((res, rej) => {
+                await this.api.create('trigger', 'broadcast');
+            });
 
-                    this.api.keys()
-                        .then(val => {
+            after('remove configs and peerslist and clear harness state', async function () {
+                await this.swarm.stop();
+                this.swarm.removeSwarmState();
+            });
 
-                            if (val.length === this.keysInFlight + TRIGGER_KEY) {
-                                return res(true);
-                            } else {
-                                rej(false);
-                            }
-                        })
-                        .catch(e => console.log(e));
-                }))
-        });
+            it('should be able to fetch full keys list', async function () {
 
-        sharedTests.crudFunctionality.apply(this);
+                const TRIGGER_KEY = 1;
 
-        sharedTests.miscFunctionality.apply(this);
+                const pollKeys = new PollUntil();
 
+                await pollKeys
+                    .stopAfter(30000)
+                    .tryEvery(1000)
+                    .execute(() => new Promise((res, rej) => {
+
+                        this.api.keys()
+                            .then(val => {
+
+                                if (val.length === this.keysInFlight + TRIGGER_KEY) {
+                                    return res(true);
+                                } else {
+                                    rej(false);
+                                }
+                            })
+                            .catch(e => console.log(e));
+                    }))
+            });
+
+            sharedTests.crudFunctionality.apply(this);
+
+            sharedTests.miscFunctionality.apply(this);
+
+        })
     });
 });
-
-function killPrimary() {
-    const primary = this.swarm.primary;
-    this.deadPrimaryIdx = primary[primary.length - 1];
-    this.swarm.killNode(this.deadPrimaryIdx);
-}

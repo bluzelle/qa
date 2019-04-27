@@ -95,9 +95,6 @@ describe('state management', function () {
             await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
-            // // fetch primary uuid from status() and set in harness state
-            // const primaryUuid = JSON.parse((await this.api.status()).moduleStatusJson).module[0].status.primary.uuid;
-            // this.swarm.setPrimary(primaryUuid);
 
             await this.swarm.startUnstarted();
         });
