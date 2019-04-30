@@ -1,5 +1,4 @@
 const fs = require('fs');
-const {generateKey} = require('../../utils/daemon/crypto');
 const sharedTests = require('../shared/tests');
 const {localSwarmHooks, remoteSwarmHook} = require('../shared/hooks');
 
