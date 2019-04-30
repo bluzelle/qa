@@ -33,7 +33,7 @@ before_script:
   - curl -0 ${ARTIFACTORY_REPO}${LATEST_BLUZELLE_SWARMDB_TARBALL} | tar -zx --strip-components=1
   - echo ${LATEST_BLUZELLE_SWARMDB_TARBALL}
   - cd ../
-  - npm run link-daemon ../daemon-binary
+  - npm run link-daemon ./daemon-binary
 
 script:
   - yarn test
