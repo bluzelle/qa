@@ -3,17 +3,18 @@
 # check argument received
 if [ -z "$1" ]
   then
-    echo "No argument received. Please pass in path to swarmDB build originating from root of QA."
+    echo "No argument received. Please pass in relative path to swarmDB binary originating from root of QA."
     echo "
-    Example:
+    # Example:
+    # If you're building swarmDB from source:
+    #
+    # ├── qa
+    # └── swarmDB
+    #     └── build
+    #         └── output
+    #             └── swarm executable
 
-    ├── qa
-    └── swarmDB
-        └── build
-            └── output
-                └── swarm
-
-    $ yarn link-daemon ../swarmDB/build
+    $ yarn link-daemon ../swarmDB/build/output
     "
     exit 1
 fi
@@ -33,10 +34,10 @@ if [ -d ./daemon-build ]; then
 fi
 
 # check if swarm executable exists at path
-if [ -f ./$1/output/swarm ]; then
+if [ -f ./$1/swarm ]; then
    ln -s $1 daemon-build
-   echo "Daemon successfully linked. Harness will be testing against $1"
+   echo "Daemon successfully linked. Tests will be ran against $1"
 else
-   echo "Error linking Daemon. Please ensure a swarm executable resides in $1/output/"
+   echo "Error linking Daemon. Please ensure a swarm executable resides in $1/"
    exit 1
 fi

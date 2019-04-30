@@ -107,7 +107,7 @@ const useState = (initialValue) => {
     ]
 };
 
-const copyDaemonBinary = (daemonConfig) => copyToDaemonDir(daemonConfig, resolvePath(__dirname, '../daemon-build/output/swarm'), 'swarm').run();
+const copyDaemonBinary = (daemonConfig) => copyToDaemonDir(daemonConfig, resolvePath(__dirname, '../daemon-build/swarm'), 'swarm').run();
 
 const generateSwarmConfig = ({numberOfDaemons, nextConfigCount = 0}) => {
     const assignListenerPort = counter({start: 50000 + nextConfigCount});

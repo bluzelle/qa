@@ -38,4 +38,4 @@ before_script:
   - cd ../../
 
 script:
-  - yarn test-daemon
+  - yarn test
