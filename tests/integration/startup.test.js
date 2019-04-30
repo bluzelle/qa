@@ -1,189 +1,152 @@
 const {exec, spawn} = require('child_process');
+const {readDaemonFile, writeDaemonFile, getDaemonOutputDir} = require('../../utils/FileService');
+const {generateSwarm} = require('../../utils/daemonManager');
 
-const {despawnSwarm, clearDaemonStateAndConfigs} = require('../../utils/daemon/setup');
-const {editFile, generateSwarmJsonsAndSetState} = require('../../utils/daemon/configs');
 
+describe('daemon startup', function () {
 
-describe('daemon startup', () => {
+    const DAEMON_OBJ = {
+        listener_port: 50000,
+        directory_name: 'daemon-50000',
+        config_name: 'bluzelle-50000.json'
+    };
 
-    beforeEach('generate configs and set harness state', async () =>
-        await generateSwarmJsonsAndSetState(1));
-
-    afterEach('remove configs and peerslist', () => {
-        clearDaemonStateAndConfigs();
+    beforeEach('generate configs and set harness state', function () {
+        this.swarm = generateSwarm({numberOfDaemons: 1});
     });
 
-    describe('cmd line', () => {
+    afterEach('remove configs and peerslist and clear harness state', async function () {
+        await this.swarm.stop();
+        this.swarm.removeSwarmState();
+    });
 
-        context('accepts flags', () => {
+    describe('cmd line', function () {
 
-            it('accepts -h', async () => new Promise((resolve) => {
+        context('accepts flags', function () {
 
-                exec('cd ./daemon-build/output/; ./swarm -h', (error, stdout, stderr) => {
+            it('accepts -h', function (done) {
+                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -h`, (error, stdout, stderr) => {
                     if (stdout.includes('bluzelle [OPTION]')) {
-                        resolve()
+                        done()
                     }
                 })
-            }));
+            });
 
-            it('accepts -c', async () => new Promise((resolve) => {
-
-                exec('cd ./daemon-build/output/; ./swarm -c', (error, stdout, stderr) => {
+            it('accepts -c', function (done) {
+                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c`, (error, stdout, stderr) => {
                     if (stderr.includes("ERROR: the required argument for option '--config' is missing")) {
-                        resolve()
+                        done()
                     }
                 })
-            }))
+            });
 
         });
     });
 
-    context('required arguments in config file', () => {
+    context('required arguments in config file', function () {
 
-        context('listener address', () => {
+        const requiredArgumentsTests = [
+            {argument: 'listener_address'},
+            {argument: 'listener_port'},
+            {argument: 'ethereum_io_api_token'},
+            {argument: 'ethereum'}];
 
-            beforeEach(() =>
-                editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['listener_address']}));
-
-            it('throws error if not present', async () => {
-
-                await spawnAndRead("the option 'listener_address' is required but missing");
-
-            });
-
+        Object.defineProperties(requiredArgumentsTests, {
+            testErrorMessage: {value: function (obj) { return `the option '--${obj.argument}' is required but missing` }},
+            name: {value: function (obj) { return `should throw "the option '--${obj.argument}' is required but missing" error`}}
         });
 
-        context('listener port', () => {
+        requiredArgumentsTests.forEach(ctx => {
+            context(`missing ${ctx.argument}`, function () {
 
-            beforeEach(() =>
-                editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['listener_port']}));
+                beforeEach('edit config file', function () {
+                    const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
+                    delete configFile[ctx.argument];
 
-            it('throws error if not present', async () => {
-                await spawnAndRead("the option 'listener_port' is required but missing");
-            });
+                    writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
+                });
 
-        });
-
-        context('ethereum io api token', () => {
-
-            beforeEach(() =>
-                editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['ethereum_io_api_token']}));
-
-            it('throws error if not present', async () => {
-                await spawnAndRead("the option 'ethereum_io_api_token' is required but missing");
-            });
-
-        });
-
-        context('ethereum address', () => {
-
-            context('missing', () => {
-
-                beforeEach(() =>
-                    editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['ethereum']}));
-
-                it('throws error', async () => {
-                    await spawnAndRead("the option 'ethereum' is required but missing");
+                it(requiredArgumentsTests.name(ctx), function (done) {
+                    exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
+                        if (error.message.includes(requiredArgumentsTests.testErrorMessage(ctx))) {
+                            done()
+                        }
+                    })
                 });
 
             });
+        });
 
-            context('with valid address', () => {
+        context('ethereum address', function () {
 
-                context('with balance > 0', () => {
+            context('with valid address', function () {
 
-                    afterEach(despawnSwarm);
+                context('with balance > 0', function () {
 
-                    it('successfully starts up', async () => {
-
-                        await spawnAndRead('Running node with ID:');
-
+                    it('successfully starts up', async function () {
+                        await this.swarm.start();
                     });
                 });
 
-                context('with balance <= 0', () => {
+                context('with balance <= 0', function () {
 
-                    beforeEach(() =>
-                        editFile({
-                            filepath: 'daemon0/bluzelle0.json',
-                            changes: {ethereum: '0x20B289a92d504d82B1502996b3E439072FC66489'}
-                        }));
+                    beforeEach('edit config file', function () {
+                        const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
+                        configFile.ethereum = '0x20B289a92d504d82B1502996b3E439072FC66489';
 
-                    it('fails to start up', async () => {
+                        writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
+                    });
 
-                        await spawnAndRead('No ETH balance found');
+                    it('fails to start up', (done) => {
+
+                        exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
+
+                            if (stdout.includes(`No ETH balance found`)) {
+                                done()
+                            }
+                        })
 
                     });
                 })
             });
 
-            context('with invalid address', () => {
+            context('with invalid address', function () {
 
-                beforeEach(() =>
-                    editFile({filepath: 'daemon0/bluzelle0.json', changes: {ethereum: 'asdf'}}));
+                beforeEach('edit config file', function () {
+                    const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
+                    configFile.ethereum = 'asdf';
 
-                it('fails to start up', async () => {
+                    writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
+                });
 
-                    await spawnAndRead('Invalid Ethereum address asdf');
+                it('fails to start up', function (done) {
 
+                    exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
+
+                        if (stderr.includes('Invalid Ethereum address asdf')) {
+                            done()
+                        }
+                    })
                 });
             });
         });
 
+        context('bootstrap file', function () {
 
-        context('bootstrap file', () => {
+            beforeEach('edit config file', function () {
+                const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
+                delete configFile.bootstrap_file;
 
-            beforeEach(() =>
-                editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['bootstrap_file']}));
-
-            it('throws error if not present', async () => {
-                await spawnAndRead('Bootstrap peers source not specified');
-            });
-        });
-    });
-
-    // displaying maximum size in startup banner disabled, see KEP-490
-    context.skip('optional arguments in config file', () => {
-
-        context('max storage', () => {
-
-            afterEach('kill swarm', despawnSwarm);
-
-
-            context('does not exist', () => {
-
-                beforeEach(() =>
-                    editFile({filepath: 'daemon0/bluzelle0.json', deleteKey: ['max_storage']}));
-
-                it('should default to 2GB', async () => {
-
-                    await spawnAndRead('Maximum Storage: 2147483648 Bytes');
-                });
+                writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
             });
 
-            context('exists', () => {
-
-                beforeEach(() =>
-                    editFile({filepath: 'daemon0/bluzelle0.json', changes: {max_storage: '5000B'}}));
-
-                it('should override default limit', async () => {
-
-                    await spawnAndRead('Maximum Storage: 5000 Bytes');
-
-                });
+            it('throws "Bootstrap peers source not specified" error if not present', function (done) {
+                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
+                    if (error.message.includes('Bootstrap peers source not specified')) {
+                        done()
+                    }
+                })
             });
         });
     });
-});
-
-const spawnAndRead = (matchStr) => new Promise((resolve) => {
-
-    let node = spawn(`./swarm`,  ['-c', `bluzelle0.json`], {cwd: `./daemon-build/output/daemon0`});
-
-    node.stdout.on('data', (data) => {
-
-        if (data.toString().includes(matchStr)) {
-            resolve()
-        }
-    })
 });
