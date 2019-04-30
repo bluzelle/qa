@@ -1,5 +1,5 @@
 const {spawn} = require('child_process');
-const {initializeClient, createKeys} = require('../../utils/daemon/setup');
+const {initializeClient, createKeys} = require('../../utils/clientManager');
 const {readDaemonFile, writeDaemonFile, readDaemonDirectory, getDaemonOutputDir, readDaemonFileSize} = require('../../utils/FileService');
 const {generateSwarm} = require('../../utils/daemonManager');
 

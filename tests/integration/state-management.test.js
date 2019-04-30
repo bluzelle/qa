@@ -1,4 +1,4 @@
-const {initializeClient, createKeys, queryPrimary} = require('../../utils/daemon/setup');
+const {initializeClient, createKeys, queryPrimary} = require('../../utils/clientManager');
 const {generateSwarm} = require('../../utils/daemonManager');
 const {last, takeRight} = require('lodash/fp');
 

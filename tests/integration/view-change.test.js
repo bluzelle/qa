@@ -1,6 +1,6 @@
 const sharedTests = require('../shared/tests');
 const {orderBy} = require('lodash');
-const {initializeClient, createKeys, queryPrimary} = require('../../utils/daemon/setup');
+const {initializeClient, createKeys, queryPrimary} = require('../../utils/clientManager');
 const {generateSwarm} = require('../../utils/daemonManager');
 
 const PollUntil = require('poll-until-promise');
