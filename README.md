@@ -10,7 +10,7 @@ $ npm install
 $ npm run setup-bluzelle-js
 $ npm run link-daemon <relative/path/to/swarmDB/binary>
 // run npm run link-daemon for more detailed instructions
-$ npm run test
+$ npm test
 
 ```
 

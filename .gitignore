@@ -9,8 +9,8 @@ qa.iml
 # symlink pointing to daemon build
 daemon-build
 
-# swarm state
-/utils/output
+# tests output
+tmp
 
 .DS_Store
 node_modules
