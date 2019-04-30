@@ -11,6 +11,7 @@ describe('state management', function () {
     context('one peer joining swarm', function () {
 
         beforeEach('stand up swarm and client, load db without creating checkpoint, start peer that is in pbft membership', async function () {
+            this.timeout(15000);
 
             this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
             await this.swarm.startPartial(numOfNodes - 1);
@@ -44,6 +45,7 @@ describe('state management', function () {
         context('when checkpoint is reached', function () {
 
             beforeEach('create keys until checkpoint is reached', async function () {
+                this.timeout(15000);
 
                 const createKeyInterval = setInterval(async () => {
                     await this.api.create(`${Math.random()}`, 'value');
@@ -86,6 +88,7 @@ describe('state management', function () {
     context('two peers joining swarm', function () {
 
         beforeEach('stand up swarm and client, load db without creating checkpoint, start new peers', async function () {
+            this.timeout(15000);
 
             this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
             await this.swarm.startPartial(numOfNodes - 2);
@@ -124,6 +127,7 @@ describe('state management', function () {
         context('when checkpoint is reached', function () {
 
             beforeEach('create keys until checkpoint is reached', async function () {
+                this.timeout(15000);
 
                 const createKeyInterval = setInterval(async () => {
                     await this.api.create(`${Math.random()}`, 'value');

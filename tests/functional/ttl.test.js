@@ -107,6 +107,8 @@ const delay = require('delay');
             (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
             before('create key with ttl', async function () {
+                this.timeout(15000);
+
                 await this.api.create('salmon', 'fish', TIME_TO_LIVE);
                 await delay((TIME_TO_LIVE + DAEMON_PURGE_LOOP_TIMER) * 1000);
             });
