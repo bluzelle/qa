@@ -85,7 +85,7 @@ const generateDaemon = daemonConfig => {
     async function spawnDaemon() {
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
-        const TIMEOUT = 500;
+        const TIMEOUT = 1500;
 
         await pRetry(async () => {
             await new Promise((resolve, reject) => {
@@ -97,7 +97,7 @@ const generateDaemon = daemonConfig => {
                 });
             });
         }, {
-            onFailedAttempt: err => console.log(`Daemon failed to start in ${TIMEOUT}ms. Attempt ${err.attemptNumber} failed.`),
+            onFailedAttempt: err => console.log(`Daemon-${daemonConfig.listener_port} failed to start in ${TIMEOUT}ms. Attempt ${err.attemptNumber} failed.`),
             retries: 3
         });
 

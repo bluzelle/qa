@@ -21,6 +21,8 @@ exports.remoteSwarmHook = function ({createDB = true} = {}) {
 
 exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false} = {}) {
     before('start swarm and client, create db', async function () {
+        this.timeout(10000);
+
         this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
         await this.swarm.start();
 
