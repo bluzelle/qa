@@ -1,12 +1,13 @@
 const {initializeClient, createKeys, queryPrimary} = require('../../utils/clientManager');
 const {generateSwarm} = require('../../utils/daemonManager');
-const {last, takeRight} = require('lodash/fp');
+const {invoke, take} = require('lodash/fp');
+const {orderBy} = require('lodash');
+const daemonConstants = require('../../resources/daemonConstants');
 
-
-let numOfNodes = harnessConfigs.numOfNodes >= 5 ? harnessConfigs.numOfNodes : 5; // minimum of 5 node swarm required, if two peers unstarted
-const SWARM_CHECKPOINT_OPERATIONS_COUNT = 100; // number of operations before a checkpoint is created by daemon
 
 describe('state management', function () {
+
+    let numOfNodes = harnessConfigs.numOfNodes >= 5 ? harnessConfigs.numOfNodes : 5; // minimum of 5 node swarm required, if two peers unstarted
 
     context('one peer joining swarm', function () {
 
@@ -14,15 +15,17 @@ describe('state management', function () {
             this.timeout(15000);
 
             this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
-            await this.swarm.startPartial(numOfNodes - 1);
 
-            this.api = await initializeClient({setupDB: true, log: false});
+            const pubKeySortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
+            await Promise.all(take(numOfNodes - 1, pubKeySortedDaemons).map(invoke('start')));
+
+            this.api = await initializeClient({port: pubKeySortedDaemons[0].listener_port, setupDB: true, log: false});
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
-            await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
+            await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
 
-            await this.swarm.startUnstarted();
+            this.getNewPeerProcess = (await this.swarm.startUnstarted())[0];
         });
 
 
@@ -33,9 +36,9 @@ describe('state management', function () {
 
         it('should not be able execute request if not synced', function (done) {
 
-            last(this.swarm.getDaemons()).getProcess().stdout.on('data', data => {
-                if (data.toString().includes('Executing request header')) {
-                    throw new Error('Unexpected "Executing request header" string matched in new daemon output');
+            this.getNewPeerProcess().stdout.on('data', data => {
+                if (data.toString().includes(daemonConstants.executingRequest)) {
+                    throw new Error(`Unexpected "${daemonConstants.executingRequest}" string matched in new daemon output`);
                 }
             });
 
@@ -53,7 +56,7 @@ describe('state management', function () {
 
                 await new Promise(res => {
                     this.swarm.getPrimary().getProcess().stdout.on('data', (data) => {
-                        if (data.toString().includes('Reached checkpoint')) {
+                        if (data.toString().includes(daemonConstants.reachedCheckpoint)) {
                             clearInterval(createKeyInterval);
                             res();
                         }
@@ -63,18 +66,20 @@ describe('state management', function () {
 
 
             it('should adopt checkpoint when available', function (done) {
+                this.timeout(60000);
 
-                last(this.swarm.getDaemons()).getProcess().stdout.on('data', data => {
-                    if (data.toString().includes('Adopting checkpoint')) {
+                this.getNewPeerProcess().stdout.on('data', data => {
+                    if (data.toString().includes(daemonConstants.adoptCheckpoint)) {
                         done();
                     }
                 });
             });
 
             it('should be able to execute requests after checkpoint sync', function (done) {
+                this.timeout(60000);
 
-                last(this.swarm.getDaemons()).getProcess().stdout.on('data', data => {
-                    if (data.toString().includes('Executing request header')) {
+                this.getNewPeerProcess().stdout.on('data', data => {
+                    if (data.toString().includes(daemonConstants.executingRequest)) {
                         done();
                     }
                 });
@@ -88,18 +93,20 @@ describe('state management', function () {
     context('two peers joining swarm', function () {
 
         beforeEach('stand up swarm and client, load db without creating checkpoint, start new peers', async function () {
-            this.timeout(15000);
+            this.timeout(100000);
 
             this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
-            await this.swarm.startPartial(numOfNodes - 2);
 
-            this.api = await initializeClient({setupDB: true, log: false});
+            const pubKeySortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
+            await Promise.all(take(numOfNodes - 2, pubKeySortedDaemons).map(invoke('start')));
 
-            await createKeys({api: this.api}, SWARM_CHECKPOINT_OPERATIONS_COUNT - 5);
+            this.api = await initializeClient({port: pubKeySortedDaemons[0].listener_port, setupDB: true, log: false});
+
+            await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
-            await this.swarm.startUnstarted();
+            this.newPeers = await this.swarm.startUnstarted();
         });
 
 
@@ -110,12 +117,11 @@ describe('state management', function () {
 
         it('should not be able execute request if not synced', function (done) {
 
+            this.newPeers.forEach(getDaemonProcess => {
 
-            takeRight(2, this.swarm.getDaemons()).forEach(daemon => {
-
-                daemon.getProcess().stdout.on('data', (data) => {
-                    if (data.toString().includes('Executing request header')) {
-                        throw new Error('Unexpected "Executing request header" string matched in new daemon output');
+                getDaemonProcess().stdout.on('data', (data) => {
+                    if (data.toString().includes(daemonConstants.executingRequest)) {
+                        throw new Error(`Unexpected "${daemonConstants.executingRequest}" string matched in new daemon output`);
                     }
                 });
 
@@ -135,7 +141,7 @@ describe('state management', function () {
 
                 await new Promise(res => {
                     this.swarm.getPrimary().getProcess().stdout.on('data', (data) => {
-                        if (data.toString().includes('Reached checkpoint')) {
+                        if (data.toString().includes(daemonConstants.reachedCheckpoint)) {
                             clearInterval(createKeyInterval);
                             res();
                         }
@@ -144,12 +150,13 @@ describe('state management', function () {
             });
 
             it('new daemons should adopt checkpoint when available', async function () {
+                this.timeout(60000);
 
                 await Promise.all(
-                    takeRight(2, this.swarm.getDaemons())
-                        .map(daemon => new Promise(res => {
-                            daemon.getProcess().stdout.on('data', (data) => {
-                                if (data.toString().includes('Adopting checkpoint')) {
+                    this.newPeers
+                        .map(getDaemonProcess => new Promise(res => {
+                            getDaemonProcess().stdout.on('data', (data) => {
+                                if (data.toString().includes(daemonConstants.adoptCheckpoint)) {
                                     res();
                                 }
                             });
@@ -158,13 +165,14 @@ describe('state management', function () {
             });
 
             it('new daemons should be able to execute requests after checkpoint sync', async function () {
+                this.timeout(60000);
 
                 const matchExecutingStringPromises =
-                    takeRight(2, this.swarm.getDaemons())
-                        .map(daemon => new Promise(res => {
+                    this.newPeers
+                        .map(getDaemonProcess => new Promise(res => {
 
-                            daemon.getProcess().stdout.on('data', (data) => {
-                                if (data.toString().includes('Executing request header')) {
+                            getDaemonProcess().stdout.on('data', (data) => {
+                                if (data.toString().includes(daemonConstants.executingRequest)) {
                                     res();
                                 }
                             });

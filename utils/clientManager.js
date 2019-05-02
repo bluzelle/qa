@@ -1,8 +1,8 @@
 
-const initializeClient = async ({log, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
+const initializeClient = async ({address = harnessConfigs.address, port = harnessConfigs.port, log, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
 
     const api = bluzelle({
-        entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+        entry: `ws://${address}:${port}`,
         uuid: uuid,
         private_pem: pem,
         log: log,

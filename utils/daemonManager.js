@@ -4,6 +4,7 @@ const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
 const {spawn} = require('child_process');
 const {resolve: resolvePath} = require('path');
+const daemonConstants = require('../resources/daemonConstants');
 
 exports.generateSwarm = ({numberOfDaemons}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
@@ -86,7 +87,7 @@ const generateDaemon = daemonConfig => {
         await new Promise(resolve => {
             getDaemonProcess().stdout.on('data', (buf) => {
                 const out = buf.toString();
-                out.includes('Running node with ID') && (setRunning(true) && resolve());
+                out.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
             });
         });
 
@@ -96,6 +97,8 @@ const generateDaemon = daemonConfig => {
                 console.log(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
             }
         });
+
+        return getDaemonProcess;
     }
 };
 
@@ -156,7 +159,7 @@ const createDaemonConfigObject = curry(({listener_port, http_port}, template) =>
     http_port
 }));
 
-const getDaemonConfigTemplate = () => IO.of(require('./config-template'));
+const getDaemonConfigTemplate = () => IO.of(require('../resources/config-template'));
 
 const counter = ({start, step = 1}) => {
     let count = start - 1;

@@ -3,6 +3,7 @@ const {generateSwarm} = require('../../utils/daemonManager');
 const {initializeClient, createKeys} = require('../../utils/clientManager');
 const PollUntil = require('poll-until-promise');
 const {last} = require('lodash/fp');
+const daemonConstants = require('../../resources/daemonConstants');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 
@@ -50,12 +51,6 @@ describe('dynamic peering', function () {
 
                         this.swarm.addDaemon();
                         await this.swarm.startUnstarted();
-
-                        // // Ensure daemons don't get stuck in invalid local state
-                        // const failures = [
-                        //     ['Dropping message because local view is invalid', 5],
-                        // ];
-                        // this.swarm.addMultipleFailureListeners(failures);
                     });
 
                     after('remove configs and peerslist and clear harness state', async function () {
@@ -70,7 +65,7 @@ describe('dynamic peering', function () {
                             last(this.swarm.getDaemons()).getProcess().stdout.on('data', buf => {
                                 const out = buf.toString();
 
-                                if (out.includes('Successfully joined the swarm')) {
+                                if (out.includes(daemonConstants.newPeerJoinsMembership)) {
                                     res();
                                 }
                             });
