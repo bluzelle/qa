@@ -85,11 +85,10 @@ const generateDaemon = daemonConfig => {
     async function spawnDaemon() {
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
-        const TIMEOUT = 1500;
 
         await pRetry(async () => {
             await new Promise((resolve, reject) => {
-                setTimeout(() => reject(new Error()), TIMEOUT);
+                setTimeout(() => reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`)), harnessConfigs.daemonStartTimeout);
 
                 getDaemonProcess().stdout.on('data', (buf) => {
                     const out = buf.toString();
@@ -97,7 +96,10 @@ const generateDaemon = daemonConfig => {
                 });
             });
         }, {
-            onFailedAttempt: err => console.log(`Daemon-${daemonConfig.listener_port} failed to start in ${TIMEOUT}ms. Attempt ${err.attemptNumber} failed.`),
+            onFailedAttempt: err => {
+                invoke('kill', getDaemonProcess());
+                console.log(`${err.message} Attempt ${err.attemptNumber} failed, ${err.retriesLeft} retries left.`)
+            },
             retries: 3
         });
 

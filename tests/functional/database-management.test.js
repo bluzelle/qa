@@ -11,6 +11,8 @@ describe('database management', function () {
     context('with a new swarm per test', function () {
 
         beforeEach('stand up swarm and client', async function () {
+            this.timeout(10000);
+
             this.swarm = await generateSwarm({numberOfDaemons: numOfNodes});
             await this.swarm.start();
             this.api = await initializeClient({swarm: this.swarm, setupDB: false});
