@@ -4,6 +4,7 @@ const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
 const {spawn} = require('child_process');
 const {resolve: resolvePath} = require('path');
+const pRetry = require('p-retry');
 const daemonConstants = require('../resources/daemonConstants');
 
 exports.generateSwarm = ({numberOfDaemons}) => {
@@ -84,12 +85,22 @@ const generateDaemon = daemonConfig => {
     async function spawnDaemon() {
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
-        await new Promise(resolve => {
-            getDaemonProcess().stdout.on('data', (buf) => {
-                const out = buf.toString();
-                out.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
+        const TIMEOUT = 500;
+
+        await pRetry(async () => {
+            await new Promise((resolve, reject) => {
+                setTimeout(() => reject(new Error()), TIMEOUT);
+
+                getDaemonProcess().stdout.on('data', (buf) => {
+                    const out = buf.toString();
+                    out.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
+                });
             });
+        }, {
+            onFailedAttempt: err => console.log(`Daemon failed to start in ${TIMEOUT}ms. Attempt ${err.attemptNumber} failed.`),
+            retries: 3
         });
+
 
         getDaemonProcess().on('close', (code) => {
             setRunning(false);
