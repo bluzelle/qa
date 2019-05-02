@@ -4,5 +4,6 @@ module.exports = {
     executingRequest: 'Executing request header',
     reachedCheckpoint: 'reached local checkpoint',
     adoptCheckpoint: 'Adopting checkpoint',
-    newPeerJoinsMembership: 'Successfully joined the swarm'
+    newPeerJoinsMembership: 'Successfully joined the swarm',
+    ttlPurgeLoopInterval: 5000, // expired kvps check interval
 };

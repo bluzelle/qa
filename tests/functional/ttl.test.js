@@ -1,13 +1,12 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const sharedTests = require('../shared/tests');
 const {times, random} = require('lodash');
-
+const daemonConstants = require('../../resources/daemonConstants');
 const delay = require('delay');
 
-(harnessConfigs.testRemoteSwarm ? describe.only : describe)('time to live', function () {
+(harnessConfigs.testRemoteSwarm ? describe.only : describe.only)('time to live', function () {
 
     const TIME_TO_LIVE = 5;
-    const DAEMON_PURGE_LOOP_TIMER = 5; // daemons check for ttl expiry every 5 seconds
 
     context('key created with expiry', function () {
 
@@ -110,7 +109,7 @@ const delay = require('delay');
                 this.timeout(15000);
 
                 await this.api.create('salmon', 'fish', TIME_TO_LIVE);
-                await delay((TIME_TO_LIVE + DAEMON_PURGE_LOOP_TIMER) * 1000);
+                await delay((TIME_TO_LIVE * 1000) + daemonConstants.ttlPurgeLoopInterval);
             });
 
             it('has should return false', async function () {
@@ -133,37 +132,37 @@ const delay = require('delay');
         const testCases = [{
             numOfKeys: 50,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 50,
             expiryMultiplier: 20,
             valueSize: 1 * 1024
         }, {
             numOfKeys: 50,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 50,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
         }, {
             numOfKeys: 50,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 50,
             expiryMultiplier: 60,
             valueSize: 1 * 1024
         }, {
             numOfKeys: 50,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 50,
             expiryMultiplier: 60,
             valueSize: 55 * 1024
         }, {
             numOfKeys: 100,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 100,
             expiryMultiplier: 20,
             valueSize: 1 * 1024
         }, {
             numOfKeys: 100,
             hookTimeout: 100000,
-            expiryMinDelay: 20,
+            expiryMinDelay: 100,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
         }/*, {
@@ -181,8 +180,7 @@ const delay = require('delay');
         }*/];
 
         Object.defineProperty(testCases, 'name', {
-            value: function (obj) {return `${obj.numOfKeys} keys with min expiry: ${obj.expiryMinDelay}, max expiry: ${obj.expiryMinDelay + obj.expiryMultiplier}, value size: ${obj.valueSize}`},
-            enumerable: false
+            value: function (obj) {return `${obj.numOfKeys} keys with min expiry: ${obj.expiryMinDelay}, max expiry: ${obj.expiryMinDelay + obj.expiryMultiplier}, value size: ${obj.valueSize}`}
         });
 
         testCases.forEach((ctx) => {
@@ -279,8 +277,8 @@ const delay = require('delay');
 
 });
 
-function generateExpiryTimes(numOfKeys, min = 10, mutiplier = 30) {
-    return Array.from({length: numOfKeys}, () => Math.floor((Math.random() * mutiplier) + min))
+function generateExpiryTimes(numOfKeys, min = 10, multiplier = 30) {
+    return Array.from({length: numOfKeys}, () => Math.floor((Math.random() * multiplier) + min))
 };
 
 function generateString(length) {
