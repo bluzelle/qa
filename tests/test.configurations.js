@@ -17,5 +17,9 @@ global.harnessConfigs = {
     clientUuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
     clientPem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==',
     testRemoteSwarm: process.env.TEST_REMOTE_SWARM ? process.env.TEST_REMOTE_SWARM : false,
-    daemonStartTimeout: 2000
+    daemonStartTimeout: 3000,
+    keyCreationTimeoutMultiplier: 500, // time allotted per key created in before hooks of dynamically generated tests
+    defaultTestTimeout: 5000,
+    defaultBeforeHookTimeout: 15000,
+    clientOperationTimeout: 5000
 };

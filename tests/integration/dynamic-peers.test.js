@@ -9,25 +9,24 @@ const numOfNodes = harnessConfigs.numOfNodes;
 
 describe('dynamic peering', function () {
 
-    [{
-        name: 'add peer with no state',
-        numOfKeys: 0,
-        hookTimeout: 30000
+    const dynamicPeerTests = [{
+        numOfKeys: 0
     }, {
-        name: 'add peer with 50 keys loaded',
-        numOfKeys: 50,
-        hookTimeout: 30000
+        numOfKeys: 50
     }, {
-        name: 'add peer with 100 keys loaded',
-        numOfKeys: 100,
-        hookTimeout: 30000
+        numOfKeys: 100
     }, {
-        name: 'add peer with 500 keys loaded',
-        numOfKeys: 500,
-        hookTimeout: 100000
-    }].forEach((ctx) => {
+        numOfKeys: 500
+    }];
 
-        context(ctx.name, function () {
+    Object.defineProperties(dynamicPeerTests, {
+        name: {value: obj => `add peer with ${obj.numOfKeys} keys loaded in db`},
+        hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier}
+    });
+
+    dynamicPeerTests.forEach((ctx) => {
+
+        context(dynamicPeerTests.name(ctx), function () {
             [{
                 name: 'new peer bootstrapped with full peers list',
                 numOfNodesToBootstrap: numOfNodes
@@ -39,7 +38,7 @@ describe('dynamic peering', function () {
                 context(test.name, function () {
 
                     before('stand up swarm and client', async function () {
-                        this.timeout(ctx.hookTimeout);
+                        this.timeout(dynamicPeerTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? dynamicPeerTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
                         this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
                         await this.swarm.start();

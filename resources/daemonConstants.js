@@ -5,5 +5,5 @@ module.exports = {
     reachedCheckpoint: 'reached local checkpoint',
     adoptCheckpoint: 'Adopting checkpoint',
     newPeerJoinsMembership: 'Successfully joined the swarm',
-    ttlPurgeLoopInterval: 5000, // expired kvps check interval
+    ttlPurgeLoopInterval: 5000, // expired KVPs check interval
 };
