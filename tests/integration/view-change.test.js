@@ -81,11 +81,11 @@ describe('view change', function () {
     const keysInFlightTests = [
         {
             keysInFlight: 50,
-        }/*, {
+        }, {
             keysInFlight: 100,
         }, {
             keysInFlight: 110,
-        }*/];
+        }];
 
     Object.defineProperties(keysInFlightTests, {
         name: {value: obj => `primary dies while ${obj.keysInFlight} keys are in flight`},
