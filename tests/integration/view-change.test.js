@@ -30,7 +30,7 @@ describe('view change', function () {
 
     primaryDeathTests.forEach((ctx) => {
 
-        context(primaryDeathTests.name(ctx), function () {
+        context.only(primaryDeathTests.name(ctx), function () {
 
             before(async function () {
                 // this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
@@ -48,13 +48,14 @@ describe('view change', function () {
                 this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
                 await this.swarm.getPrimary().stop();
+                console.log('Primary listener_port: ', this.swarm.getPrimary().listener_port);
 
                 await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
                 await this.swarm.stop();
-                this.swarm.removeSwarmState();
+                // this.swarm.removeSwarmState();
             });
 
             newPrimaryTests();
@@ -81,11 +82,11 @@ describe('view change', function () {
     const keysInFlightTests = [
         {
             keysInFlight: 50,
-        }/*, {
+        }, {
             keysInFlight: 100,
         }, {
             keysInFlight: 110,
-        }*/];
+        }];
 
     Object.defineProperties(keysInFlightTests, {
         name: {value: obj => `primary dies while ${obj.keysInFlight} keys are in flight`},
@@ -123,7 +124,7 @@ describe('view change', function () {
 
             newPrimaryTests();
 
-            it.only('should be able to fetch full keys list', function (done) {
+            it('should be able to fetch full keys list', function (done) {
                 this.timeout(keysInFlightTests.hookTimeout(ctx));
                 const TRIGGER_KEY = 1;
                 const pollKeys = new PollUntil();
