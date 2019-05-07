@@ -4,6 +4,7 @@ const {initializeClient, createKeys, queryPrimary} = require('../../utils/client
 const {generateSwarm} = require('../../utils/daemonManager');
 const PollUntil = require('poll-until-promise');
 const pTimeout = require('p-timeout');
+const chalk = require('chalk');
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
 
@@ -32,7 +33,8 @@ describe('view change', function () {
         context(primaryDeathTests.name(ctx), function () {
 
             before(async function () {
-                this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
+                // this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
+                this.timeout(0);
 
                 this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
                 await this.swarm.start();
@@ -46,13 +48,14 @@ describe('view change', function () {
                 this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
                 await this.swarm.getPrimary().stop();
+                console.log('Primary listener_port: ', this.swarm.getPrimary().listener_port);
 
-                await pTimeout(this.api.create('trigger', 'broadcast'), 15000, `Create() after primary death failed to respond in 15000 ms`);
+                await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
                 await this.swarm.stop();
-                this.swarm.removeSwarmState();
+                // this.swarm.removeSwarmState();
             });
 
             newPrimaryTests();
@@ -95,7 +98,8 @@ describe('view change', function () {
         context(keysInFlightTests.name(ctx), function () {
 
             before(async function () {
-                this.timeout(keysInFlightTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? keysInFlightTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
+                // this.timeout(keysInFlightTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? keysInFlightTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
+                this.timeout(0);
 
                 this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
                 await this.swarm.start();
@@ -110,43 +114,49 @@ describe('view change', function () {
 
                 await this.swarm.getPrimary().stop();
 
-                await pTimeout(this.api.create('trigger', 'broadcast'), 15000, `Create() after primary death failed to respond in 15000 ms`);
+                await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
                 await this.swarm.stop();
-                this.swarm.removeSwarmState();
+                // this.swarm.removeSwarmState();
             });
 
             newPrimaryTests();
 
-            it('should be able to fetch full keys list', async function () {
+            it('should be able to fetch full keys list', function (done) {
                 this.timeout(keysInFlightTests.hookTimeout(ctx));
                 const TRIGGER_KEY = 1;
                 const pollKeys = new PollUntil();
 
-                await pollKeys
+                pollKeys
                     .stopAfter(keysInFlightTests.hookTimeout(ctx))
                     .tryEvery(1000)
                     .execute(() => new Promise((res, rej) => {
-                        setTimeout(() => rej(new Error(`Swarm failed to respond to keys request in ${harnessConfigs.clientOperationTimeout}ms`)), harnessConfigs.clientOperationTimeout);
 
-                        this.api.keys()
+                        pTimeout(this.api.keys(), harnessConfigs.clientOperationTimeout, `Keys() failed to respond in ${harnessConfigs.clientOperationTimeout}ms`)
                             .then(val => {
 
                                 if (val.length === ctx.keysInFlight + TRIGGER_KEY) {
                                     return res(true);
                                 } else {
-                                    rej(false);
+                                    rej(new Error('Expected full keys list to be returned'));
                                 }
                             })
-                            .catch(e => console.log(e));
+                            .catch(err => {
+                                if (err.name === 'TimeoutError') {
+                                    console.log(chalk.yellow(err.message));
+                                } else {
+                                    console.log(chalk.red(err))
+                                }
+                            });
                     }))
+                    .then(() => done())
                     .catch(err => {
                         if (err.message.includes('Failed to wait')) {
-                            throw new Error(`Swarm failed to return full keys list in ${NEW_PRIMARY_TEST_TIMEOUT}ms`)
+                            done(new Error(`Swarm failed to return full keys list in ${NEW_PRIMARY_TEST_TIMEOUT}ms`))
                         } else {
-                            throw err
+                            done(err)
                         }
                     });
             });
@@ -182,10 +192,10 @@ function newPrimaryTests() {
                     })
                     .catch(err => {
                         if (err.name === 'TimeoutError') {
-                            console.log(err.message);
+                            console.log(chalk.yellow(err.message));
                             rej(err);
                         } else {
-                            console.log(err);
+                            console.log(chalk.red(err));
                             rej(err)
                         }
                     });
