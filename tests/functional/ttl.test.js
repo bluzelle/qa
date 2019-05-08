@@ -128,7 +128,7 @@ const delay = require('delay');
 
     context('varying number of keys, expiry time, and value size', function () {
 
-        const testCases = [{
+        const testCases = [/*{
             numOfKeys: 50,
             expiryMultiplier: 20,
             valueSize: 1 * 1024
@@ -144,26 +144,30 @@ const delay = require('delay');
             numOfKeys: 100,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }, {
+        }, */{
             numOfKeys: 200,
             expiryMultiplier: 20,
-            valueSize: 1 * 1024
-        },{
+            valueSize: 1
+        }/*, {
             numOfKeys: 200,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }];
+        }*/];
 
         Object.defineProperties(testCases, {
             name: {value: obj => `${obj.numOfKeys} keys with min expiry: ${testCases.minimumDelay(obj)}, max expiry: ${testCases.minimumDelay(obj) + obj.expiryMultiplier}, value size: ${obj.valueSize}`},
-            hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier},
-            testTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier + (obj.expiryMultiplier * 1000)},
-            minimumDelay: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier / 1000}
+            hookTimeout: {value: obj => obj.numOfKeys * 200 },
+            testTimeout: {value: obj => obj.numOfKeys * 200 + (obj.expiryMultiplier * 1000)},
+            minimumDelay: {value: obj => obj.numOfKeys * 200 / 1000}
+            // hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier},
+            // testTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier + (obj.expiryMultiplier * 1000)},
+            // minimumDelay: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier / 1000}
+
         });
 
         testCases.forEach((ctx) => {
 
-            context(testCases.name(ctx), function () {
+            context.only(testCases.name(ctx), function () {
 
                 (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({preserveSwarmState: false}));
 
@@ -174,21 +178,30 @@ const delay = require('delay');
                     this.sortedExpiryTimes = this.expiryTimes.slice().sort((a, b) => a - b);
                     this.medianDelay = this.sortedExpiryTimes[this.sortedExpiryTimes.length / 2];
 
+                    console.log('medianDelay: ', this.medianDelay);
+
                     return this.expiryTimes.reduce((p, expiryTime, idx) =>
                             p.then(() => this.api.create(`expiry-${idx}`, generateString(ctx.valueSize), expiryTime)),
                         Promise.resolve());
                 });
 
                 it('should be able to list all keys', async function () {
-                    (await this.api.keys()).should.have.lengthOf(ctx.numOfKeys);
+                    const keys = await this.api.keys();
+                    console.log('full keys: ', keys.length);
+                    (keys).should.have.lengthOf(ctx.numOfKeys);
                 });
 
                 it('at least half the keys should expire', async function () {
 
                     this.timeout(testCases.testTimeout(ctx));
 
+                    console.log('waiting for: ', this.medianDelay * 1000 + daemonConstants.ttlPurgeLoopInterval)
+
                     await delay(this.medianDelay * 1000 + daemonConstants.ttlPurgeLoopInterval);
-                    (await this.api.keys()).should.have.lengthOf.at.most(ctx.numOfKeys / 2);
+                    const keys = await this.api.keys();
+
+                    console.log('keys after wait: ', keys.length);
+                    (keys).should.have.lengthOf.at.most(ctx.numOfKeys / 2);
                 });
 
                 it('all the keys should expire', async function () {
