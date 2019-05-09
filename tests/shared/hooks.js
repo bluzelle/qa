@@ -19,8 +19,8 @@ exports.remoteSwarmHook = function ({createDB = true} = {}) {
     });
 };
 
-exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false} = {}) {
-    before('start swarm and client, create db', async function () {
+exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false} = {}) {
+    beforeHook('start swarm and client, create db', async function () {
         this.timeout(10000);
 
         this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
@@ -38,7 +38,7 @@ exports.localSwarmHooks = function ({createDB = true, numOfNodes = harnessConfig
         }
     });
 
-    after('remove configs and peerslist and clear harness state', async function () {
+    afterHook('remove configs and peerslist and clear harness state', async function () {
         await this.swarm.stop();
         this.swarm.removeSwarmState();
     });

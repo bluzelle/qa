@@ -1,6 +1,6 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const sharedTests = require('../shared/tests');
-const {times, random} = require('lodash');
+const {generateString} = require('../../utils/misc');
 const daemonConstants = require('../../resources/daemonConstants');
 const delay = require('delay');
 
@@ -259,8 +259,4 @@ const delay = require('delay');
 
 function generateExpiryTimes(numOfKeys, min = 10, multiplier = 30) {
     return Array.from({length: numOfKeys}, () => Math.floor((Math.random() * multiplier) + min))
-};
-
-function generateString(length) {
-    return times(length, () => String.fromCharCode(random(64, 90))).join('');
 };
