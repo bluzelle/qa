@@ -40,6 +40,6 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
 
     afterHook('remove configs and peerslist and clear harness state', async function () {
         await this.swarm.stop();
-        this.swarm.removeSwarmState();
+        // this.swarm.removeSwarmState();
     });
 };

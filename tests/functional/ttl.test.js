@@ -126,13 +126,13 @@ const delay = require('delay');
         });
     });
 
-    context('varying number of keys, expiry time, and value size', function () {
+    context.only('varying number of keys, expiry time, and value size', function () {
 
         const testCases = [{
             numOfKeys: 50,
             expiryMultiplier: 20,
             valueSize: 1 * 1024
-        }, {
+        }/*, {
             numOfKeys: 50,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
@@ -152,7 +152,7 @@ const delay = require('delay');
             numOfKeys: 200,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }];
+        }*/];
 
         Object.defineProperties(testCases, {
             name: {value: obj => `${obj.numOfKeys} keys with min expiry: ${testCases.minimumDelay(obj)}, max expiry: ${testCases.minimumDelay(obj) + obj.expiryMultiplier}, value size: ${obj.valueSize}`},
