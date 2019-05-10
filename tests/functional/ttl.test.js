@@ -1,6 +1,6 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const sharedTests = require('../shared/tests');
-const {generateString} = require('../../utils/misc');
+const {generateString} = require('../../src/utils');
 const daemonConstants = require('../../resources/daemonConstants');
 const delay = require('delay');
 

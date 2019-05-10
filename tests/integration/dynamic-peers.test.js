@@ -1,6 +1,6 @@
 const sharedTests = require('../shared/tests');
-const {generateSwarm} = require('../../utils/daemonManager');
-const {initializeClient, createKeys} = require('../../utils/clientManager');
+const {generateSwarm} = require('../../src/daemonManager');
+const {initializeClient, createKeys} = require('../../src/clientManager');
 const PollUntil = require('poll-until-promise');
 const {last} = require('lodash/fp');
 const daemonConstants = require('../../resources/daemonConstants');

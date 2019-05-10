@@ -1,4 +1,4 @@
-const {generateSwarm} = require('../../utils/daemonManager');
+const {generateSwarm} = require('../../src/daemonManager');
 
 exports.remoteSwarmHook = function ({createDB = true} = {}) {
     before('initialize client and setup db', async function () {

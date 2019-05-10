@@ -1,6 +1,6 @@
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
-const {generateString} = require('../../utils/misc');
+const {generateString} = require('../../src/utils');
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('basic functionality', function () {
 
