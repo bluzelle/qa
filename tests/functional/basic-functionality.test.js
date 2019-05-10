@@ -15,15 +15,15 @@ const {generateString} = require('../../src/utils');
 
     context('varying number of keys and various sizes', function () {
 
-        const numberOfKeys = [5, 50, 100, 150, 300, 500];
-        const sizes = [1 * 1024, 55 * 1024, 100 * 1024];
+        const numberOfKeys = [/*5, 50, 100, 150, 300, */500];
+        const sizes = [1 /*1 * 1024, 55 * 1024, 100 * 1024*/];
 
         numberOfKeys.forEach(numberOfKeys => {
             sizes.forEach(size => {
 
                 const VALUE = generateString(size);
 
-                context(`with ${numberOfKeys} keys of ${size} size`, function () {
+                context.only(`with ${numberOfKeys} keys of ${size} size`, function () {
 
                     this.timeout(numberOfKeys * harnessConfigs.keyCreationTimeoutMultiplier);
 
