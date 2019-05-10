@@ -1,4 +1,4 @@
-const {generateSwarm} = require('../../utils/daemonManager');
+const {generateSwarm} = require('../../src/daemonManager');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 

@@ -1,5 +1,5 @@
-const {initializeClient, createKeys, queryPrimary} = require('../../utils/clientManager');
-const {generateSwarm} = require('../../utils/daemonManager');
+const {initializeClient, createKeys, queryPrimary} = require('../../src/clientManager');
+const {generateSwarm} = require('../../src/daemonManager');
 const {invoke, take} = require('lodash/fp');
 const {orderBy} = require('lodash');
 const daemonConstants = require('../../resources/daemonConstants');

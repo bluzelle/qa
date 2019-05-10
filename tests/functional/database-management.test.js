@@ -1,5 +1,5 @@
-const {initializeClient, createKeys} = require('../../utils/clientManager');
-const {generateSwarm} = require('../../utils/daemonManager');
+const {initializeClient, createKeys} = require('../../src/clientManager');
+const {generateSwarm} = require('../../src/daemonManager');
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 

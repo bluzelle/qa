@@ -1,6 +1,6 @@
 const {exec, spawn} = require('child_process');
-const {readDaemonFile, writeDaemonFile, getDaemonOutputDir} = require('../../utils/FileService');
-const {generateSwarm} = require('../../utils/daemonManager');
+const {readDaemonFile, writeDaemonFile, getDaemonOutputDir} = require('../../src/FileService');
+const {generateSwarm} = require('../../src/daemonManager');
 
 
 describe('daemon startup', function () {
