@@ -5,6 +5,7 @@ const {generateSwarm} = require('../../src/daemonManager');
 const PollUntil = require('poll-until-promise');
 const pTimeout = require('p-timeout');
 const chalk = require('chalk');
+const delay = require('delay');
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
 
@@ -30,7 +31,7 @@ describe('view change', function () {
 
     primaryDeathTests.forEach((ctx) => {
 
-        context(primaryDeathTests.name(ctx), function () {
+        context.only(primaryDeathTests.name(ctx), function () {
 
             before(async function () {
                 // this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
@@ -50,7 +51,13 @@ describe('view change', function () {
                 await this.swarm.getPrimary().stop();
                 console.log('Primary listener_port: ', this.swarm.getPrimary().listener_port);
 
-                await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
+                // await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
+
+                // per rich's comments on KEP-1407, the swarm needs multiple creates to recover
+                // this is just a temporary hack to produce that behaviour
+                await Promise.race([this.api.create('trigger01', 'broadcast'), delay(10000)])
+                await Promise.race([this.api.create('trigger02', 'broadcast'), delay(10000)])
+                await Promise.race([this.api.create('trigger03', 'broadcast'), delay(10000)])
             });
 
             after('remove configs and peerslist and clear harness state', async function () {
@@ -64,7 +71,7 @@ describe('view change', function () {
 
                 it('should be able to fetch full keys list', async function () {
                     await pTimeout(this.api.keys(), harnessConfigs.clientOperationTimeout, `Keys() failed to respond in ${harnessConfigs.clientOperationTimeout}`)
-                        .then(val => val.should.have.lengthOf(ctx.numOfKeys + 1))
+                        .then(val => val.should.have.lengthOf(ctx.numOfKeys + 3))
                 });
 
                 it('should be able to read last key before primary failure', async function () {
