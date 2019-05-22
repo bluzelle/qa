@@ -36,4 +36,4 @@ before_script:
   - npm run link-daemon ./daemon-binary
 
 script:
-  - yarn test
+  - npm test
