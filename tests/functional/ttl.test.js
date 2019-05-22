@@ -204,38 +204,41 @@ const delay = require('delay');
         });
     });
 
-    context('key created without expiry', function () {
+    context.only('key created without expiry', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
         before('create key without ttl', async function () {
-            await this.api.create('salmon', 'fish', TIME_TO_LIVE);
+            await this.api.create('salmon', 'fish');
         });
 
         it('should be readable', async function () {
             expect(await this.api.read('salmon')).to.equal('fish');
         });
 
-        it('should be able to "persist"', async function () {
-            await this.api.persist('salmon')
+        it('"persist" should return error', async function () {
+            await this.api.persist('salmon').should.be.rejectedWith('TTL_RECORD_NOT_FOUND');
+
         });
 
-        it('should be able to "ttl"', async function () {
+        it('"ttl" should return error', async function () {
             await this.api.ttl('salmon').should.be.rejectedWith('TTL_RECORD_NOT_FOUND');
         });
 
         it('should be able to update expiry with update()', async function () {
-            await this.api.update('salmon', 'fish', TIME_TO_LIVE + 10);
-            (await this.api.ttl('salmon')).should.be.at.least(TIME_TO_LIVE + 9);
+            await this.api.update('salmon', 'fish', TIME_TO_LIVE);
+            (await this.api.ttl('salmon')).should.be.at.least(TIME_TO_LIVE - 2);
         });
 
         it('should be able to set expiry with expire()', async function () {
             await this.api.expire('salmon', TIME_TO_LIVE);
-            (await this.api.ttl('salmon')).should.be.at.most(TIME_TO_LIVE);
+            (await this.api.ttl('salmon')).should.be.at.least(TIME_TO_LIVE - 2);
         });
 
         it('read should be rejected after expiry', function (done) {
-            delay(TIME_TO_LIVE * 1000).then(() => {
+            this.timeout(harnessConfigs.defaultTestTimeout + TIME_TO_LIVE * 1000 + daemonConstants.ttlPurgeLoopInterval);
+
+            delay(TIME_TO_LIVE * 1000 + daemonConstants.ttlPurgeLoopInterval).then(() => {
                 this.api.read('salmon')
                     .then(() => {
                         console.log('Unexpected successful read')
