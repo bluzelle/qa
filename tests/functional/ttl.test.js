@@ -204,7 +204,7 @@ const delay = require('delay');
         });
     });
 
-    context.only('key created without expiry', function () {
+    context('key created without expiry', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
