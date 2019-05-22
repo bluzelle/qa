@@ -1,15 +1,14 @@
-const {exec, spawn} = require('child_process');
+const execa = require('execa');
 const {readDaemonFile, writeDaemonFile, getDaemonOutputDir} = require('../../src/FileService');
 const {generateSwarm} = require('../../src/daemonManager');
 
+const DAEMON_OBJ = {
+    listener_port: 50000,
+    directory_name: 'daemon-50000',
+    config_name: 'bluzelle-50000.json'
+};
 
 describe('daemon startup', function () {
-
-    const DAEMON_OBJ = {
-        listener_port: 50000,
-        directory_name: 'daemon-50000',
-        config_name: 'bluzelle-50000.json'
-    };
 
     beforeEach('generate configs and set harness state', function () {
         this.swarm = generateSwarm({numberOfDaemons: 1});
@@ -24,22 +23,18 @@ describe('daemon startup', function () {
 
         context('accepts flags', function () {
 
-            it('accepts -h', function (done) {
-                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -h`, (error, stdout, stderr) => {
-                    if (stdout.includes('bluzelle [OPTION]')) {
-                        done()
-                    }
-                })
-            });
+            const acceptsFlagsTests = [
+                {argument: '-h', outputStream: 'stdout', expectedOutput: 'bluzelle [OPTION]'},
+                {argument: '-c', outputStream: 'stderr', expectedOutput: "ERROR: the required argument for option '--config' is missing"}
+            ];
 
-            it('accepts -c', function (done) {
-                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c`, (error, stdout, stderr) => {
-                    if (stderr.includes("ERROR: the required argument for option '--config' is missing")) {
-                        done()
+            acceptsFlagsTests.forEach(ctx => {
+                it(`accepts ${ctx.argument}`, function (done) {
+                    if (launchDaemon(ctx.argument)[ctx.outputStream].includes(ctx.expectedOutput)) {
+                        done();
                     }
-                })
+                });
             });
-
         });
     });
 
@@ -51,12 +46,8 @@ describe('daemon startup', function () {
             {argument: 'ethereum_io_api_token'},
             {argument: 'ethereum'}];
 
-        Object.defineProperties(requiredArgumentsTests, {
-            testErrorMessage: {value: function (obj) { return `the option '--${obj.argument}' is required but missing` }},
-            name: {value: function (obj) { return `should throw "the option '--${obj.argument}' is required but missing" error`}}
-        });
-
         requiredArgumentsTests.forEach(ctx => {
+
             context(`missing ${ctx.argument}`, function () {
 
                 beforeEach('edit config file', function () {
@@ -66,12 +57,10 @@ describe('daemon startup', function () {
                     writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
                 });
 
-                it(requiredArgumentsTests.name(ctx), function (done) {
-                    exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
-                        if (error.message.includes(requiredArgumentsTests.testErrorMessage(ctx))) {
-                            done()
-                        }
-                    })
+                it(`should throw "the option '--${ctx.argument}' is required but missing" error`, function (done) {
+                    if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout.includes(`the option '--${ctx.argument}' is required but missing`)) {
+                        done();
+                    }
                 });
 
             });
@@ -98,14 +87,9 @@ describe('daemon startup', function () {
                     });
 
                     it('fails to start up', (done) => {
-
-                        exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
-
-                            if (stdout.includes(`No ETH balance found`)) {
-                                done()
-                            }
-                        })
-
+                        if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout.includes('No ETH balance found')) {
+                            done();
+                        }
                     });
                 })
             });
@@ -120,13 +104,9 @@ describe('daemon startup', function () {
                 });
 
                 it('fails to start up', function (done) {
-
-                    exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
-
-                        if (stderr.includes('Invalid Ethereum address asdf')) {
-                            done()
-                        }
-                    })
+                    if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Invalid Ethereum address asdf')) {
+                        done();
+                    }
                 });
             });
         });
@@ -141,12 +121,15 @@ describe('daemon startup', function () {
             });
 
             it('throws "Bootstrap peers source not specified" error if not present', function (done) {
-                exec(`cd ${getDaemonOutputDir(DAEMON_OBJ)}; ./swarm -c ${DAEMON_OBJ.config_name}`, (error, stdout, stderr) => {
-                    if (error.message.includes('Bootstrap peers source not specified')) {
-                        done()
-                    }
-                })
+                if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Bootstrap peers source not specified')) {
+                    done();
+                }
             });
         });
     });
 });
+
+function launchDaemon(swarmExecutableArguments) {
+    const argumentsArray = Array.isArray(swarmExecutableArguments) ? swarmExecutableArguments : [swarmExecutableArguments];
+    return execa.sync('./swarm', argumentsArray, {cwd: getDaemonOutputDir(DAEMON_OBJ), reject: false});
+};
