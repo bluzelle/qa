@@ -49,13 +49,9 @@ const delay = require('delay');
             args: ['salmon', 'fish']
         }];
 
-        Object.defineProperty(alterTtlTestCases, 'name', {
-            value: function (obj) {return `should be able to alter ttl with ${obj.cmdName}()`}
-        });
-
         alterTtlTestCases.forEach((ctx) => {
 
-            context(alterTtlTestCases.name(ctx), function () {
+            context(`should be able to alter ttl with ${ctx.cmdName}()`, function () {
 
                 (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
 
