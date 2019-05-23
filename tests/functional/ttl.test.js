@@ -127,24 +127,12 @@ const delay = require('delay');
         const testCases = [{
             numOfKeys: 50,
             expiryMultiplier: 20,
-            valueSize: 1 * 1024
-        }, {
-            numOfKeys: 50,
-            expiryMultiplier: 20,
             valueSize: 55 * 1024
-        }, {
-            numOfKeys: 100,
-            expiryMultiplier: 20,
-            valueSize: 1 * 1024
         }, {
             numOfKeys: 100,
             expiryMultiplier: 20,
             valueSize: 55 * 1024
         }, {
-            numOfKeys: 200,
-            expiryMultiplier: 20,
-            valueSize: 1 * 1024
-        },{
             numOfKeys: 200,
             expiryMultiplier: 20,
             valueSize: 55 * 1024

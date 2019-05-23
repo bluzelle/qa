@@ -15,7 +15,7 @@ const {generateString} = require('../../src/utils');
 
     context('varying number of keys and various sizes', function () {
 
-        const numberOfKeys = [5, 50, 100, 150, 300, 500];
+        const numberOfKeys = [50, 100, 150];
         const sizes = [1 * 1024, 55 * 1024, 100 * 1024];
 
         numberOfKeys.forEach(numberOfKeys => {
