@@ -4,10 +4,15 @@ const {IO} = require('monet');
 const {curry} = require('lodash/fp');
 
 
-const getDaemonOutputDir = exports.getDaemonOutputDir = (daemonConfig) => resolvePath(__dirname, `../tmp/output/daemon-${daemonConfig.listener_port}`);
+const getDaemonOutputDir = exports.getDaemonOutputDir = (swarmId, daemonConfig) => resolvePath(__dirname, `../tmp/output/${swarmId}/daemon-${daemonConfig.listener_port}`);
 
-exports.writeDaemonFile = curry((daemonConfig, filename, data) =>
-    IO(() => outputJsonSync(`${getDaemonOutputDir(daemonConfig)}/${filename}`, data)));
+exports.writeDaemonFile = curry((daemonConfig, swarmId, filename, data) =>
+    IO(() => outputJsonSync(`${getDaemonOutputDir(swarmId, daemonConfig)}/${filename}`, data)));
+
+exports.copyToDaemonDir = (swarmId, daemonConfig, source, destination) =>
+    IO(() => copySync(source, `${getDaemonOutputDir(swarmId, daemonConfig)}/${destination}`));
+
+// above functions only refactored for daemonManager calls, not refactored in tests
 
 exports.readDaemonFile = (daemonConfig, filename) =>
     IO(() => readJsonSync(`${getDaemonOutputDir(daemonConfig)}/${filename}`));
@@ -19,7 +24,4 @@ exports.readDaemonDirectory = (filename) =>
     IO(() => readdirSync(resolvePath(__dirname, `../tmp/output/${filename}`)));
 
 exports.removeDaemonDirectory = () =>
-    IO(() => removeSync(resolvePath(__dirname, '../tmp//output')));
-
-exports.copyToDaemonDir = (daemonConfig, source, destination) =>
-    IO(() => copySync(source, `${getDaemonOutputDir(daemonConfig)}/${destination}`));
+    IO(() => removeSync(resolvePath(__dirname, '../tmp/output')));

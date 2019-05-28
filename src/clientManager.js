@@ -1,12 +1,13 @@
 
-const initializeClient = async ({address = harnessConfigs.address, port = harnessConfigs.port, log, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
+const initializeClient = async ({address = harnessConfigs.address, port = harnessConfigs.port, log, setupDB, pem = harnessConfigs.masterPrivateKey} = {}) => {
 
-    const api = bluzelle({
+    const api = await bluzelle({
         entry: `ws://${address}:${port}`,
-        uuid: uuid,
+        ethereum_rpc: harnessConfigs.ethereumRpc,
+        contract_address: harnessConfigs.esrContractAddress,
         private_pem: pem,
-        log: log,
-        p2p_latency_bound: 100
+        _connect_to_all: true,
+        log: false,
     });
 
     if (setupDB) {
