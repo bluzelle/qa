@@ -1,3 +1,6 @@
 [submodule "bluzelle-js"]
 	path = bluzelle-js
 	url = https://github.com/bluzelle/bluzelle-js.git
+[submodule "BluzelleESR"]
+	path = BluzelleESR
+	url = https://github.com/bluzelle/BluzelleESR

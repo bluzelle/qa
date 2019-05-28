@@ -6,18 +6,23 @@ const {spawn} = require('child_process');
 const {resolve: resolvePath} = require('path');
 const pRetry = require('p-retry');
 const daemonConstants = require('../resources/daemonConstants');
+const swarmRegistry = require('./swarmRegistryAdapter');
+const {useState} = require('./utils');
 
-exports.generateSwarm = ({numberOfDaemons}) => {
+exports.generateSwarm = async ({esrInstance, numberOfDaemons, swarmCounter, daemonCounter}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
     const [getDaemons, setDaemons] = useState();
     const [getPrimary, setPrimary] = useState();
-    const daemonCounter = counter({start: numberOfDaemons});
-    setDaemonConfigs(generateSwarmConfig({numberOfDaemons}));
-    const peersList = generatePeersList(getDaemonConfigs());
+    const [getPeersList, setPeersList] = useState();
+    const swarmId = `swarm${swarmCounter()}`;
 
-    writePeersList(getDaemonConfigs(), peersList);
-    getDaemonConfigs().forEach(copyDaemonBinary);
-    setDaemons(getDaemonConfigs().map(generateDaemon));
+    setDaemonConfigs(times(() => generateSwarmConfig({swarmId, daemonCounter}), numberOfDaemons));
+    setPeersList(generatePeersList(getDaemonConfigs()));
+    writePeersList(swarmId, getDaemonConfigs(), getPeersList());
+    getDaemonConfigs().forEach(daemonConfig => copyDaemonBinary(swarmId, daemonConfig));
+    setDaemons(getDaemonConfigs().map(daemonConfig => generateDaemon(swarmId, daemonConfig)));
+
+    await swarmRegistry.addSwarm(wrapPeersObject(), esrInstance);
 
     return {
         start: () => Promise.all(getDaemons().map(invoke('start'))),
@@ -32,27 +37,28 @@ exports.generateSwarm = ({numberOfDaemons}) => {
                 .map(invoke('start'))
             ),
         addDaemon: generateAndSetNewDaemon,
-        removeSwarmState: () => removeDaemonDirectory().run(),
-        getDaemons: getDaemons,
-        getPrimary: getPrimary,
-        setPrimary: (publicKey) => setPrimary(find(daemon => daemon.publicKey === publicKey, getDaemons()))
+        getSwarmId: () => swarmId,
+        getDaemons,
+        getPrimary,
+        setPrimary: (publicKey) => setPrimary(find(daemon => daemon.publicKey === publicKey, getDaemons())),
+        getPeersList
+    };
+
+    function wrapPeersObject() {
+        return {swarm_id: swarmId, peers: getPeersList()}
     };
 
     function generateAndSetNewDaemon() {
-        setDaemonConfigs([...getDaemonConfigs(), ...generateSwarmConfig({
-            numberOfDaemons: 1,
-            nextConfigCount: daemonCounter()
-        })]);
-
-        writePeersList([last(getDaemonConfigs())], peersList);
-        setDaemons([...getDaemons(), generateDaemon(last(getDaemonConfigs()))]);
-        copyDaemonBinary(last(getDaemonConfigs()));
+        setDaemonConfigs([...getDaemonConfigs(), generateSwarmConfig({swarmId, daemonCounter})]);
+        writePeersList(swarmId, [last(getDaemonConfigs())], getPeersList());
+        setDaemons([...getDaemons(), generateDaemon(swarmId, last(getDaemonConfigs()))]);
+        copyDaemonBinary(swarmId, last(getDaemonConfigs()));
     };
 
     function isNotRunning(daemon) { return !daemon.isRunning() };
 };
 
-const generateDaemon = daemonConfig => {
+const generateDaemon = (swarmId, daemonConfig) => {
     const [isRunning, setRunning] = useState(false);
     const [getDaemonProcess, setDaemonProcess] = useState();
 
@@ -83,8 +89,8 @@ const generateDaemon = daemonConfig => {
     }
 
     async function spawnDaemon() {
-        setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(daemonConfig)}));
 
+        setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(swarmId, daemonConfig)}));
 
         await pRetry(async () => {
             await new Promise((resolve, reject) => {
@@ -115,33 +121,23 @@ const generateDaemon = daemonConfig => {
     }
 };
 
-const useState = (initialValue) => {
-    let value = initialValue;
-    return [
-        () => value,
-        (newValue) => value = newValue
-    ]
-};
 
-const copyDaemonBinary = (daemonConfig) => copyToDaemonDir(daemonConfig, resolvePath(__dirname, '../daemon-build/swarm'), 'swarm').run();
+const copyDaemonBinary = (swarmId, daemonConfig) => copyToDaemonDir(swarmId, daemonConfig, resolvePath(__dirname, '../daemon-build/swarm'), 'swarm').run();
 
-const generateSwarmConfig = ({numberOfDaemons, nextConfigCount = 0}) => {
-    const assignListenerPort = counter({start: 50000 + nextConfigCount});
-    const assignHttpPort = counter({start: 8080 + nextConfigCount});
+const generateSwarmConfig = ({swarmId, daemonCounter}) => {
+    const currentDaemonCount = daemonCounter();
 
-    const daemonConfigs = times(pipe(
+    return pipe(
         () => writeDaemonConfigObject({
-            listener_port: assignListenerPort(),
-            http_port: assignHttpPort()
-        }),
+            listener_port: harnessConfigs.initialDaemonListenerPort + currentDaemonCount,
+            http_port: harnessConfigs.initialDaemonHttpPort + currentDaemonCount
+        }, swarmId),
 
         daemonConfig => ({
             ...daemonConfig,
-            publicKey: generateKeys(getDaemonOutputDir(daemonConfig))[0]
+            publicKey: generateKeys(getDaemonOutputDir(swarmId, daemonConfig))[0]
         })
-    ), numberOfDaemons);
-
-    return daemonConfigs;
+    )()
 };
 
 const generatePeersList = (daemonConfigs) => {
@@ -154,14 +150,14 @@ const generatePeersList = (daemonConfigs) => {
     }));
 };
 
-const writePeersList = (daemonConfigs, peersList) => {
-    daemonConfigs.forEach(daemonConfig => writeDaemonFile(daemonConfig, 'peers.json', peersList).run());
+const writePeersList = (swarmId, daemonConfigs, peersList) => {
+    daemonConfigs.forEach(daemonConfig => writeDaemonFile(daemonConfig, swarmId, 'peers.json', peersList).run());
 };
 
-const writeDaemonConfigObject = (config) => {
+const writeDaemonConfigObject = (config, swarmId) => {
     getDaemonConfigTemplate()
         .map(createDaemonConfigObject(config))
-        .flatMap(writeDaemonFile(config, `bluzelle-${config.listener_port}.json`))
+        .flatMap(writeDaemonFile(config, swarmId, `bluzelle-${config.listener_port}.json`))
         .run();
     return config;
 };
@@ -173,8 +169,3 @@ const createDaemonConfigObject = curry(({listener_port, http_port}, template) =>
 }));
 
 const getDaemonConfigTemplate = () => IO.of(require('../resources/config-template'));
-
-const counter = ({start, step = 1}) => {
-    let count = start - 1;
-    return () => count += step
-};

@@ -1,12 +1,17 @@
-const {generateSwarm} = require('../../src/daemonManager');
+const {generateSwarm, swarmManager} = require('../../src/daemonManager');
+const swarmRegistry = require('../../src/swarmRegistryAdapter');
 
 exports.remoteSwarmHook = function ({createDB = true} = {}) {
     before('initialize client and setup db', async function () {
-        this.api = bluzelle({
+
+        this.api = await bluzelle({
             entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            uuid: harnessConfigs.clientUuid,
-            private_pem: harnessConfigs.clientPem,
-            log: false
+            ethereum_rpc: harnessConfigs.ethereumRpc,
+            contract_address: harnessConfigs.esrContractAddress,
+            private_pem: harnessConfigs.masterPrivateKey,
+            public_pem: harnessConfigs.masterPublicKey,
+            _connect_to_all: true,
+            log: false,
         });
 
         if (await this.api.hasDB()) {
@@ -23,14 +28,18 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
     beforeHook('start swarm and client, create db', async function () {
         this.timeout(10000);
 
-        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
-        await this.swarm.start();
+        this.swarmManager = await swarmManager();
+        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
 
-        this.api = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            private_pem: harnessConfigs.clientPem,
+        await this.swarmManager.startAll();
+
+        this.api = await bluzelle({
+            ethereum_rpc: harnessConfigs.ethereumRpc,
+            contract_address: harnessConfigs.esrContractAddress,
+            private_pem: harnessConfigs.masterPrivateKey,
+            public_pem: harnessConfigs.masterPublicKey,
+            _connect_to_all: true,
             log: false,
-            p2p_latency_bound: 100
         });
 
         if (createDB) {
@@ -39,7 +48,7 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
     });
 
     afterHook('remove configs and peerslist and clear harness state', async function () {
-        await this.swarm.stop();
-        this.swarm.removeSwarmState();
+        await this.swarmManager.stopAll();
+        this.swarmManager.removeSwarmState();
     });
 };

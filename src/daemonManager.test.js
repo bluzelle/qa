@@ -1,23 +1,21 @@
-const {generateSwarm} = require('./daemonManager');
+const {swarmManager} = require('./swarmManager');
 const {random, last} = require('lodash/fp');
 const {orderBy} = require('lodash');
 
-const chai = require('chai');
-chai.use(require('chai-as-promised'));
-chai.use(require('chai-things'));
-chai.should();
-
+require('../tests/test.configurations');
 
 describe('daemonManager', function () {
 
     const numberOfDaemons = 3;
 
-    beforeEach('generateSwarm', function () {
-        this.swarm = generateSwarm({numberOfDaemons});
+    beforeEach('generateSwarm', async function () {
+        this.swarmManager = await swarmManager();
+        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons});
     });
 
-    afterEach('stop swarm', function () {
-        this.swarm.stop();
+    afterEach('stop swarm', async function () {
+        await this.swarm.stop();
+        this.swarmManager.removeSwarmState();
     });
 
     it('swarm should have correct number of daemons', function () {
