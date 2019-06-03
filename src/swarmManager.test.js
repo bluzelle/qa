@@ -52,7 +52,9 @@ describe('swarmManager', function () {
     });
 });
 
-function flattenArray(acc, curr) { return acc = [...acc, ...curr] };
+function flattenArray(acc, curr) {
+    return [...acc, ...curr]
+};
 
 function requestIsRunningStatusFromAllNodes () {
     return this.swarmManager.getSwarms().map(invoke('getDaemons')).reduce(flattenArray, []).map(invoke('isRunning'))

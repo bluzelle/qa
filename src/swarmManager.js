@@ -6,13 +6,16 @@ const swarmRegistry = require('./swarmRegistryAdapter');
 
 exports.swarmManager = async () => {
     const [getSwarms, setSwarms] = useState([]);
+    const [getEsrContractAddress, setEsrContractAddress] = useState();
     const daemonCounter = counter({start: 0});
     const swarmCounter = counter({start: 0});
 
     const esrInstance = await swarmRegistry.deploy();
+    setEsrContractAddress(esrInstance.address);
 
     return {
         generateSwarm: generateSwarmAndSetState,
+        getEsrContractAddress,
         getSwarms,
         startAll: () => executeAll('start'),
         stopAll: () => executeAll('stop'),
@@ -20,7 +23,7 @@ exports.swarmManager = async () => {
     };
 
     async function generateSwarmAndSetState({numberOfDaemons}) {
-        const swarm = await generateSwarm({esrInstance, numberOfDaemons, swarmCounter, daemonCounter});
+        const swarm = await generateSwarm({esrContractAddress: getEsrContractAddress(), esrInstance, numberOfDaemons, swarmCounter, daemonCounter});
         setSwarms([...getSwarms(), swarm]);
 
         return swarm;
