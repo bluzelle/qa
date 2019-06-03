@@ -1,33 +1,32 @@
 const sharedTests = require('../shared/tests');
-const {startSwarm, initializeClient, teardown, spawnDaemon, createKeys} = require('../../utils/daemon/setup');
-const {createDirectories, generateConfigs, generatePeersList} = require('../../utils/daemon/configs');
-const fsPromises = require('fs').promises;
+const {generateSwarm} = require('../../src/daemonManager');
+const {initializeClient, createKeys} = require('../../src/clientManager');
 const PollUntil = require('poll-until-promise');
+const {last} = require('lodash/fp');
+const daemonConstants = require('../../resources/daemonConstants');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 
+describe('dynamic peering', function () {
 
-describe('dynamic peering', () => {
+    const dynamicPeerTests = [{
+        numOfKeys: 0
+    }, {
+        numOfKeys: 50
+    }, {
+        numOfKeys: 100
+    }, {
+        numOfKeys: 500
+    }];
 
-    [{
-        name: 'add peer with no state',
-        numOfKeys: 0,
-        hookTimeout: 30000
-    }, {
-        name: 'add peer with 50 keys loaded',
-        numOfKeys: 50,
-        hookTimeout: 30000
-    }, {
-        name: 'add peer with 100 keys loaded',
-        numOfKeys: 100,
-        hookTimeout: 30000
-    }, {
-        name: 'add peer with 500 keys loaded',
-        numOfKeys: 500,
-        hookTimeout: 100000
-    }].forEach((ctx) => {
+    Object.defineProperties(dynamicPeerTests, {
+        name: {value: obj => `add peer with ${obj.numOfKeys} keys loaded in db`},
+        hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier}
+    });
 
-        context(ctx.name, function () {
+    dynamicPeerTests.forEach((ctx) => {
+
+        context(dynamicPeerTests.name(ctx), function () {
             [{
                 name: 'new peer bootstrapped with full peers list',
                 numOfNodesToBootstrap: numOfNodes
@@ -39,40 +38,33 @@ describe('dynamic peering', () => {
                 context(test.name, function () {
 
                     before('stand up swarm and client', async function () {
-                        this.timeout(ctx.hookTimeout);
+                        this.timeout(dynamicPeerTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? dynamicPeerTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
-                        [this.swarm, peersList] = await startSwarm({numOfNodes});
-                        this.api = await initializeClient({swarm: this.swarm, setupDB: true, log: false});
+                        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+                        await this.swarm.start();
+                        this.api = await initializeClient({setupDB: true, log: false});
 
                         if (ctx.numOfKeys > 0) {
                             await createKeys({api: this.api}, ctx.numOfKeys)
                         }
 
-                        // Add new peer to harness and swarm todo: refactor into swarm class after swarm class refactor
-                        const {daemonDirPath, data} = await generateNewPeer(numOfNodes);
-                        this.newPeerIdx = data.index;
-                        addPeerToSwarmObj(this.swarm, data);
-                        const culledPeersList = peersList.slice(0, test.numOfNodesToBootstrap);
-                        await writePeersList(culledPeersList, test.numOfNodesToBootstrap, daemonDirPath);
-                        await spawnDaemon(this.swarm, this.newPeerIdx);
-
-                        // Ensure daemons don't get stuck in invalid local state
-                        const failures = [
-                            ['Dropping message because local view is invalid', 5],
-                        ];
-                        this.swarm.addMultipleFailureListeners(failures);
+                        this.swarm.addDaemon();
+                        await this.swarm.startUnstarted();
                     });
 
-                    after('remove configs and peerslist and clear harness state', function () {
-                        teardown.call(this.currentTest, true, true);
+                    after('remove configs and peerslist and clear harness state', async function () {
+                        this.swarm.stop();
+                        this.swarm.removeSwarmState();
                     });
 
                     it('should successfully join swarm', async function () {
 
                         await new Promise(res => {
-                            this.swarm[`daemon${this.newPeerIdx}`].stream.stdout.on('data', (data) => {
 
-                                if (data.toString().includes('Successfully joined the swarm')) {
+                            last(this.swarm.getDaemons()).getProcess().stdout.on('data', buf => {
+                                const out = buf.toString();
+
+                                if (out.includes(daemonConstants.newPeerJoinsMembership)) {
                                     res();
                                 }
                             });
@@ -109,7 +101,7 @@ describe('dynamic peering', () => {
 
                         const parsedStatusJson = JSON.parse(res.moduleStatusJson).module[0].status;
 
-                        parsedStatusJson.peer_index.should.contain.an.item.with.property('uuid', this.swarm[`daemon${this.newPeerIdx}`].uuid)
+                        parsedStatusJson.peer_index.should.contain.an.item.with.property('uuid', last(this.swarm.getDaemons()).publicKey)
                     });
 
                     if (ctx.numOfKeys > 0) {
@@ -133,29 +125,4 @@ describe('dynamic peering', () => {
         });
 
     })
-
-    // todo: add test for mixed configs, signing disabled
-    //  add test for old clients
-
 });
-
-async function generateNewPeer(numOfExistingPeers) {
-    const daemonDirPath = await createDirectories(1, numOfExistingPeers);
-    const configObj = await generateConfigs({numOfConfigs: 1, pathList: daemonDirPath});
-    const data = configObj[0];
-    return {daemonDirPath, data};
-}
-
-function addPeerToSwarmObj(swarm, data) {
-    swarm[`daemon${data.index}`] =
-        {
-            uuid: data.uuid,
-            port: data.content.listener_port,
-            http_port: data.content.http_port,
-            index: data.index
-        };
-}
-
-async function writePeersList(peersList, numOfNodesToIncludeInPeersList, daemonDirPath) {
-    await fsPromises.writeFile(daemonDirPath[0] + '/peers.json', JSON.stringify(peersList));
-}

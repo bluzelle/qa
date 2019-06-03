@@ -2,13 +2,16 @@
 
 ## Quick Start
 
-1. Clone repo
-2. Install dependencies, initialize and update submodules, and compile `bluzelle-js` client code
+1. Clone repo.
+2. Install dependencies, initialize and update submodules, and compile `bluzelle-js` client code.
+3. Run tests.
 ```javascript
-$ yarn
-$ yarn setup-bluzelle-js
-$ yarn link-daemon <relative/path/to/daemon/build/directory>
-// run yarn link-daemon for more detailed instructions
+$ npm install
+$ npm run setup-bluzelle-js
+$ npm run link-daemon <relative/path/to/swarmDB/binary>
+// run npm run link-daemon for more detailed instructions
+$ npm test
+
 ```
 
 ## System Requirements

@@ -1,15 +1,11 @@
-const {startSwarm, initializeClient, teardown} = require('../../utils/daemon/setup');
-
+const {generateSwarm} = require('../../src/daemonManager');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 
-const CLIENT_1 = {
-    uuid: '4982e0b0-0b2f-4c3a-b39f-26878e2ac814',
-    pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='
-};
-const CLIENT_2 = {
-    uuid: '71e2cd35-b606-41e6-bb08-f20de30df76c',
-    pem: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg=='
+const CLIENTS = {
+    pem1: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==',
+    pem2: 'MHQCAQEEIL5a3uJRsVzjSo4A5UF1/4csXyAeaRDqglbrZw1xY1xuoAcGBSuBBAAKoUQDQgAE/3fvyvYIpo1Aehw8l8wWJkUHCU0u1az7OAEmh6WOhSAYGg1TcVNRrhUtUmWMUQuDG9ajFAybUMW7o94wjYmxOA=='
+
 };
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('multi-client', function () {
@@ -87,8 +83,7 @@ const CLIENT_2 = {
         before('initialize new client with colliding uuid and private_pem', async function () {
             this.api3 = bluzelle({
                 entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-                uuid: CLIENT_1.uuid,
-                private_pem: CLIENT_1.pem,
+                private_pem: CLIENTS.pem1,
                 log: false
             });
         });
@@ -139,14 +134,27 @@ const CLIENT_2 = {
 
 function localSwarmHooks() {
     before('stand up swarm and client', async function () {
-        [this.swarm] = await startSwarm({numOfNodes});
+        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+        await this.swarm.start();
 
-        this.api1 = await initializeClient({uuid: CLIENT_1.uuid, pem: CLIENT_1.pem, swarm: this.swarm, setupDB: true});
-        this.api2 = await initializeClient({uuid: CLIENT_2.uuid, pem: CLIENT_2.pem, swarm: this.swarm, setupDB: true});
+        this.api1 = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+            private_pem: CLIENTS.pem1,
+            log: false
+        });
+
+        this.api2 = bluzelle({
+            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
+            private_pem: CLIENTS.pem2,
+            log: false
+        });
+
+        await this.api1.createDB();
+        await this.api2.createDB();
     });
 
-    after('remove configs and peerslist and clear harness state', function () {
-        teardown.call(this.currentTest, process.env.DEBUG_FAILS);
+    after('remove configs and peerslist and clear harness state', async function () {
+        await this.swarm.stop();
     });
 };
 
@@ -154,15 +162,13 @@ function remoteSwarmHook() {
     before('initialize clients, setup db', async function () {
         this.api1 = bluzelle({
             entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            uuid: CLIENT_1.uuid,
-            private_pem: CLIENT_1.pem,
+            private_pem: CLIENTS.pem1,
             log: false
         });
 
         this.api2 = bluzelle({
             entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            uuid: CLIENT_2.uuid,
-            private_pem: CLIENT_2.pem,
+            private_pem: CLIENTS.pem2,
             log: false
         });
 

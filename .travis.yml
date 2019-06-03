@@ -19,12 +19,9 @@ before_install:
     - eval "${MATRIX_EVAL}"
 
 before_script:
-  - cd bluzelle-js
-  - yarn && yarn build
-  - cd ..
-  - rm -rf daemon-build
-  - mkdir -p daemon-build/output/
-  - cd daemon-build/output
+  - npm run setup-bluzelle-js
+  - mkdir -p daemon-binary
+  - cd daemon-binary
   - |
     if [ "$TRAVIS_BRANCH" = "master" ]; then
       ARTIFACTORY_REPO=https://bluzelle.jfrog.io/bluzelle/OSX/
@@ -35,7 +32,8 @@ before_script:
     fi
   - curl -0 ${ARTIFACTORY_REPO}${LATEST_BLUZELLE_SWARMDB_TARBALL} | tar -zx --strip-components=1
   - echo ${LATEST_BLUZELLE_SWARMDB_TARBALL}
-  - cd ../../
+  - cd ../
+  - npm run link-daemon ./daemon-binary
 
 script:
-  - yarn test-daemon
+  - npm test
