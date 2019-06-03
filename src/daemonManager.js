@@ -9,14 +9,14 @@ const daemonConstants = require('../resources/daemonConstants');
 const swarmRegistry = require('./swarmRegistryAdapter');
 const {useState} = require('./utils');
 
-exports.generateSwarm = async ({esrInstance, numberOfDaemons, swarmCounter, daemonCounter}) => {
+exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons, swarmCounter, daemonCounter}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
     const [getDaemons, setDaemons] = useState();
     const [getPrimary, setPrimary] = useState();
     const [getPeersList, setPeersList] = useState();
     const swarmId = `swarm${swarmCounter()}`;
 
-    setDaemonConfigs(times(() => generateSwarmConfig({swarmId, daemonCounter}), numberOfDaemons));
+    setDaemonConfigs(times(() => generateSwarmConfig({esrContractAddress, swarmId, daemonCounter}), numberOfDaemons));
     setPeersList(generatePeersList(getDaemonConfigs()));
     writePeersList(swarmId, getDaemonConfigs(), getPeersList());
     getDaemonConfigs().forEach(daemonConfig => copyDaemonBinary(swarmId, daemonConfig));
@@ -49,7 +49,7 @@ exports.generateSwarm = async ({esrInstance, numberOfDaemons, swarmCounter, daem
     };
 
     function generateAndSetNewDaemon() {
-        setDaemonConfigs([...getDaemonConfigs(), generateSwarmConfig({swarmId, daemonCounter})]);
+        setDaemonConfigs([...getDaemonConfigs(), generateSwarmConfig({esrContractAddress, swarmId, daemonCounter})]);
         writePeersList(swarmId, [last(getDaemonConfigs())], getPeersList());
         setDaemons([...getDaemons(), generateDaemon(swarmId, last(getDaemonConfigs()))]);
         copyDaemonBinary(swarmId, last(getDaemonConfigs()));
@@ -124,13 +124,15 @@ const generateDaemon = (swarmId, daemonConfig) => {
 
 const copyDaemonBinary = (swarmId, daemonConfig) => copyToDaemonDir(swarmId, daemonConfig, resolvePath(__dirname, '../daemon-build/swarm'), 'swarm').run();
 
-const generateSwarmConfig = ({swarmId, daemonCounter}) => {
+const generateSwarmConfig = ({esrContractAddress, swarmId, daemonCounter}) => {
     const currentDaemonCount = daemonCounter();
 
     return pipe(
         () => writeDaemonConfigObject({
             listener_port: harnessConfigs.initialDaemonListenerPort + currentDaemonCount,
-            http_port: harnessConfigs.initialDaemonHttpPort + currentDaemonCount
+            http_port: harnessConfigs.initialDaemonHttpPort + currentDaemonCount,
+            swarm_id: swarmId,
+            swarm_info_esr_address: esrContractAddress
         }, swarmId),
 
         daemonConfig => ({
@@ -162,10 +164,12 @@ const writeDaemonConfigObject = (config, swarmId) => {
     return config;
 };
 
-const createDaemonConfigObject = curry(({listener_port, http_port}, template) => ({
+const createDaemonConfigObject = curry(({listener_port, http_port, swarm_info_esr_address, swarm_id}, template) => ({
     ...template,
     listener_port,
-    http_port
+    http_port,
+    swarm_info_esr_address: swarm_info_esr_address.substr(2), // swarmDB option does not accept 0x prepended address
+    swarm_id
 }));
 
 const getDaemonConfigTemplate = () => IO.of(require('../resources/config-template'));

@@ -13,7 +13,7 @@ const myAccount = "0xaa81f360c6bbef505b28760fee25443f9d33e499"; // this account 
 
 exports.deploy = async function () {
     const MyContract = contract(BluzelleESRJson);
-    MyContract.setProvider('http://localhost:8545');
+    MyContract.setProvider('http://127.0.0.1:8545');
 
     const BluzelleESRInstance = await MyContract.new({from: myAccount});
 

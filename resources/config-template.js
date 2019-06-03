@@ -13,5 +13,6 @@ module.exports = {
     "crypto_enabled_incoming" : true,
     "chaos_testing_enabled" : false,
     "logfile_rotation_size" : "5MB",
-    "logfile_max_size" : "20MB"
-}
+    "logfile_max_size" : "20MB",
+    "swarm_info_esr_url" : "http://127.0.0.1:8545"
+};
