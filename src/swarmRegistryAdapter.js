@@ -18,7 +18,7 @@ exports.deploy = async function () {
     const BluzelleESRInstance = await MyContract.new({from: myAccount});
 
     const receiptTx = await web3.eth.getTransactionReceipt(BluzelleESRInstance.transactionHash);
-    recordTransaction("BluzelleESR.new", receiptTx, true);
+    recordTransaction("BluzelleESR.new", receiptTx, false);
 
     return BluzelleESRInstance;
 };
