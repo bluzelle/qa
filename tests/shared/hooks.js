@@ -1,4 +1,5 @@
 const {swarmManager} = require('../../src/swarmManager');
+const {initializeClient} = require('../../src/clientManager');
 
 exports.remoteSwarmHook = function ({createDB = true} = {}) {
     before('initialize client and setup db', async function () {
@@ -32,22 +33,9 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
 
         await this.swarmManager.startAll();
 
-        this.apis = await bluzelle({
-            uuid: Math.random().toString(),
-            ethereum_rpc: harnessConfigs.ethereumRpc,
-            contract_address: this.swarmManager.getEsrContractAddress(),
-            private_pem: harnessConfigs.masterPrivateKey,
-            public_pem: harnessConfigs.masterPublicKey,
-            _connect_to_all: true,
-            log: false,
-            logDetailed: false
-        });
+        const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: createDB});
 
-        this.api = this.apis[0];
-
-        if (createDB) {
-            await this.api.createDB();
-        }
+        this.api = apis[0];
     });
 
     afterHook('remove configs and peerslist and clear harness state', async function () {

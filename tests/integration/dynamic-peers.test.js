@@ -1,6 +1,6 @@
-const sharedTests = require('../shared/tests');
-const {generateSwarm} = require('../../src/daemonManager');
 const {initializeClient, createKeys} = require('../../src/clientManager');
+const {swarmManager} = require('../../src/swarmManager');
+const sharedTests = require('../shared/tests');
 const PollUntil = require('poll-until-promise');
 const {last} = require('lodash/fp');
 const daemonConstants = require('../../resources/daemonConstants');
@@ -40,9 +40,14 @@ describe('dynamic peering', function () {
                     before('stand up swarm and client', async function () {
                         this.timeout(dynamicPeerTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? dynamicPeerTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
-                        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
-                        await this.swarm.start();
-                        this.api = await initializeClient({setupDB: true, log: false});
+                        this.swarmManager = await swarmManager();
+                        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
+
+                        await this.swarmManager.startAll();
+
+                        const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true});
+
+                        this.api = apis[0];
 
                         if (ctx.numOfKeys > 0) {
                             await createKeys({api: this.api}, ctx.numOfKeys)
@@ -53,8 +58,8 @@ describe('dynamic peering', function () {
                     });
 
                     after('remove configs and peerslist and clear harness state', async function () {
-                        this.swarm.stop();
-                        this.swarm.removeSwarmState();
+                        await this.swarmManager.stopAll();
+                        this.swarmManager.removeSwarmState();
                     });
 
                     it('should successfully join swarm', async function () {

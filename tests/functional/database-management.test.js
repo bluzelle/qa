@@ -1,26 +1,13 @@
-const {initializeClient, createKeys} = require('../../src/clientManager');
-const {generateSwarm} = require('../../src/daemonManager');
+const {createKeys} = require('../../src/clientManager');
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 
-
-const numOfNodes = harnessConfigs.numOfNodes;
 
 describe('database management', function () {
 
     context('with a new swarm per test', function () {
 
-        beforeEach('stand up swarm and client', async function () {
-            this.timeout(10000);
-
-            this.swarm = await generateSwarm({numberOfDaemons: numOfNodes});
-            await this.swarm.start();
-            this.api = await initializeClient({swarm: this.swarm, setupDB: false});
-        });
-
-        afterEach('remove configs and peerslist and clear harness state', async function () {
-            await this.swarm.stop();
-        });
+        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({beforeHook: beforeEach, afterHook: afterEach, createDB: false}));
 
         context('with no db', function () {
 
