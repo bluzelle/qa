@@ -1,5 +1,5 @@
+const {swarmManager} = require('../../src/swarmManager');
 const {initializeClient, createKeys, queryPrimary} = require('../../src/clientManager');
-const {generateSwarm} = require('../../src/daemonManager');
 const {invoke, take} = require('lodash/fp');
 const {orderBy} = require('lodash');
 const daemonConstants = require('../../resources/daemonConstants');
@@ -12,31 +12,32 @@ describe('state management', function () {
     context('one peer joining swarm', function () {
 
         beforeEach('stand up swarm and client, load db without creating checkpoint, start peer that is in pbft membership', async function () {
-            this.timeout(15000);
+            this.timeout(harnessConfigs.defaultBeforeHookTimeout + harnessConfigs.keyCreationTimeoutMultiplier * daemonConstants.checkpointOperationsCount);
 
-            this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+            this.swarmManager = await swarmManager();
+            this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
 
-            const pubKeySortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
-            await Promise.all(take(numOfNodes - 1, pubKeySortedDaemons).map(invoke('start')));
+            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes,1);
 
-            this.api = await initializeClient({port: pubKeySortedDaemons[0].listener_port, setupDB: true, log: false});
+            const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: false, logDetailed: false});
+            this.api = apis[0];
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
             await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
 
-            this.getNewPeerProcess = (await this.swarm.startUnstarted())[0];
+            this.newPeerProcess = (await this.swarm.startUnstarted())[0];
         });
 
 
-        afterEach('remove configs and peerslist and clear harness state', async function () {
-            await this.swarm.stop();
-            this.swarm.removeSwarmState();
+        afterEach('stop daemons and remove state', async function () {
+            await this.swarmManager.stopAll();
+            this.swarmManager.removeSwarmState();
         });
 
         it('should not be able execute request if not synced', function (done) {
 
-            this.getNewPeerProcess().stdout.on('data', data => {
+            this.newPeerProcess.stdout.on('data', data => {
                 if (data.toString().includes(daemonConstants.executingRequest)) {
                     throw new Error(`Unexpected "${daemonConstants.executingRequest}" string matched in new daemon output`);
                 }
@@ -68,7 +69,7 @@ describe('state management', function () {
             it('should adopt checkpoint when available', function (done) {
                 this.timeout(60000);
 
-                this.getNewPeerProcess().stdout.on('data', data => {
+                this.newPeerProcess.stdout.on('data', data => {
                     if (data.toString().includes(daemonConstants.adoptCheckpoint)) {
                         done();
                     }
@@ -78,7 +79,7 @@ describe('state management', function () {
             it('should be able to execute requests after checkpoint sync', function (done) {
                 this.timeout(60000);
 
-                this.getNewPeerProcess().stdout.on('data', data => {
+                this.newPeerProcess.stdout.on('data', data => {
                     if (data.toString().includes(daemonConstants.executingRequest)) {
                         done();
                     }
@@ -93,20 +94,20 @@ describe('state management', function () {
     context('two peers joining swarm', function () {
 
         beforeEach('stand up swarm and client, load db without creating checkpoint, start new peers', async function () {
-            this.timeout(100000);
+            this.timeout(harnessConfigs.defaultBeforeHookTimeout + harnessConfigs.keyCreationTimeoutMultiplier * daemonConstants.checkpointOperationsCount);
 
-            this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+            this.swarmManager = await swarmManager();
+            this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
+            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes,2);
 
-            const pubKeySortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
-            await Promise.all(take(numOfNodes - 2, pubKeySortedDaemons).map(invoke('start')));
-
-            this.api = await initializeClient({port: pubKeySortedDaemons[0].listener_port, setupDB: true, log: false});
+            const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: false, logDetailed: false});
+            this.api = apis[0];
 
             await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
-            this.newPeers = await this.swarm.startUnstarted();
+            this.newPeersProcesses = await this.swarm.startUnstarted();
         });
 
 
@@ -117,7 +118,7 @@ describe('state management', function () {
 
         it('should not be able execute request if not synced', function (done) {
 
-            this.newPeers.forEach(getDaemonProcess => {
+            this.newPeersProcesses.forEach(getDaemonProcess => {
 
                 getDaemonProcess().stdout.on('data', (data) => {
                     if (data.toString().includes(daemonConstants.executingRequest)) {
@@ -153,7 +154,7 @@ describe('state management', function () {
                 this.timeout(60000);
 
                 await Promise.all(
-                    this.newPeers
+                    this.newPeersProcesses
                         .map(getDaemonProcess => new Promise(res => {
                             getDaemonProcess().stdout.on('data', (data) => {
                                 if (data.toString().includes(daemonConstants.adoptCheckpoint)) {
@@ -168,7 +169,7 @@ describe('state management', function () {
                 this.timeout(60000);
 
                 const matchExecutingStringPromises =
-                    this.newPeers
+                    this.newPeersProcesses
                         .map(getDaemonProcess => new Promise(res => {
 
                             getDaemonProcess().stdout.on('data', (data) => {
@@ -185,3 +186,11 @@ describe('state management', function () {
         });
     });
 });
+
+async function startAllSortedDaemonsLessN(daemons, nodesInSwarm, nodesUnstarted) {
+    await Promise.all(take(nodesInSwarm - nodesUnstarted, sortDaemonsByPublicKey(daemons)).map(invoke('start')));
+};
+
+function sortDaemonsByPublicKey (daemons) {
+    return orderBy(daemons, ['publicKey']);
+};

@@ -1,12 +1,13 @@
+const {swarmManager} = require('../../src/swarmManager');
 const sharedTests = require('../shared/tests');
 const {orderBy} = require('lodash');
 const {initializeClient, createKeys, queryPrimary} = require('../../src/clientManager');
-const {generateSwarm} = require('../../src/daemonManager');
 const PollUntil = require('poll-until-promise');
 const pTimeout = require('p-timeout');
 const chalk = require('chalk');
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
+
 
 describe('view change', function () {
 
@@ -24,22 +25,22 @@ describe('view change', function () {
         }];
 
     Object.defineProperties(primaryDeathTests, {
-        name: {value: obj => `primary dies with ${obj.numOfKeys} keys in db`},
         hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier}
     });
 
     primaryDeathTests.forEach((ctx) => {
 
-        context(primaryDeathTests.name(ctx), function () {
+        context(`primary dies with ${ctx.numOfKeys} keys in db`, function () {
 
             before(async function () {
-                // this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
-                this.timeout(0);
+                this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
-                this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+                this.swarmManager = await swarmManager();
+                this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
                 await this.swarm.start();
 
-                this.api = await initializeClient({setupDB: true});
+                const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: true, logDetailed: true});
+                this.api = apis[0];
 
                 if (ctx.numOfKeys > 0) {
                     await createKeys({api: this.api}, ctx.numOfKeys)
@@ -53,9 +54,9 @@ describe('view change', function () {
                 await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
             });
 
-            after('remove configs and peerslist and clear harness state', async function () {
-                await this.swarm.stop();
-                // this.swarm.removeSwarmState();
+            afterEach('stop daemons and remove state', async function () {
+                await this.swarmManager.stopAll();
+                this.swarmManager.removeSwarmState();
             });
 
             newPrimaryTests();
@@ -89,22 +90,22 @@ describe('view change', function () {
         }];
 
     Object.defineProperties(keysInFlightTests, {
-        name: {value: obj => `primary dies while ${obj.keysInFlight} keys are in flight`},
         hookTimeout: {value: obj => obj.keysInFlight * harnessConfigs.keyCreationTimeoutMultiplier}
     });
 
     keysInFlightTests.forEach(ctx => {
 
-        context(keysInFlightTests.name(ctx), function () {
+        context(`primary dies while ${ctx.keysInFlight} keys are in flight`, function () {
 
             before(async function () {
-                // this.timeout(keysInFlightTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? keysInFlightTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
-                this.timeout(0);
+                this.timeout(keysInFlightTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? keysInFlightTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
-                this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+                this.swarmManager = await swarmManager();
+                this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
                 await this.swarm.start();
 
-                this.api = await initializeClient({setupDB: true});
+                const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: false, logDetailed: false});
+                this.api = apis[0];
 
                 this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
@@ -117,9 +118,9 @@ describe('view change', function () {
                 await pTimeout(this.api.create('trigger', 'broadcast'), 100000, `Create() after primary death failed to respond in 100000 ms`);
             });
 
-            after('remove configs and peerslist and clear harness state', async function () {
-                await this.swarm.stop();
-                // this.swarm.removeSwarmState();
+            afterEach('stop daemons and remove state', async function () {
+                await this.swarmManager.stopAll();
+                this.swarmManager.removeSwarmState();
             });
 
             newPrimaryTests();

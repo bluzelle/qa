@@ -1,24 +1,26 @@
 
-const initializeClient = async ({address = harnessConfigs.address, port = harnessConfigs.port, log, setupDB, pem = harnessConfigs.masterPrivateKey} = {}) => {
+const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey}) => {
 
-    const api = await bluzelle({
-        entry: `ws://${address}:${port}`,
-        ethereum_rpc: harnessConfigs.ethereumRpc,
-        contract_address: harnessConfigs.esrContractAddress,
-        private_pem: pem,
+    const apis = await bluzelle({
+        uuid: Math.random().toString(),
+        ethereum_rpc: ethereum_rpc,
+        contract_address: esrContractAddress,
+        private_pem: private_pem,
+        public_pem: public_pem,
         _connect_to_all: true,
-        log: false,
+        log: log,
+        logDetailed: logDetailed
     });
 
-    if (setupDB) {
+    if (createDB) {
         try {
-            await api.createDB();
+            await apis[0].createDB();
         } catch (err) {
             console.log('Failed to createDB()')
         }
     }
 
-    return api;
+    return apis;
 };
 
 const createKeys = async (clientObj, numOfKeys = 10, base = 'batch', start = 0) => {
