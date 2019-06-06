@@ -3,13 +3,14 @@
 ## Quick Start
 
 1. Clone repo.
-2. Install dependencies, initialize and update submodules, and compile `bluzelle-js` client code.
+2. Install dependencies, initialize and update submodules, and compile `bluzelle-js` client code, and compile `bluzelleESR` solidity contract.
 3. Run tests.
 ```javascript
 $ npm install
 $ npm run setup-bluzelle-js
-$ npm run link-daemon <relative/path/to/swarmDB/binary>
-// run npm run link-daemon for more detailed instructions
+$ npm run setup-bluzelleESR
+$ npm run link-daemon <relative/path/to/swarmDB/binary> // run npm run link-daemon for more detailed instructions
+$ npm run deploy-ganache
 $ npm test
 
 ```
