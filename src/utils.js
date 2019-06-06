@@ -33,6 +33,6 @@ exports.editConfigFile = (daemonObj, changes, deletes) => {
     writeDaemonFile(daemonObj, daemonObj.swarm_id,daemonObj.config_name, configFile).run();
 };
 
-exports.reportPortsAndPubKey = (swarmManager) => {
+exports.reportPortsAndPubKeys = (swarmManager) => {
     swarmManager.getSwarms().map(swarm => swarm.getDaemons()).reduce((acc, curr) => [...acc, ...curr]).map(node => console.log(node.listener_port, ': ', node.publicKey));
 };
