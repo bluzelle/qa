@@ -9,8 +9,7 @@ const initializeClient = async ({log = false, logDetailed = false, createDB, eth
         public_pem,
         _connect_to_all: true,
         log,
-        logDetailed,
-        onclose: () => console.log('onclose callback')
+        logDetailed
     });
 
     if (createDB) {
