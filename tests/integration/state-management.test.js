@@ -17,9 +17,14 @@ describe('state management', function () {
             this.swarmManager = await swarmManager();
             this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
 
-            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes,1);
+            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes, 1);
 
-            const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: false, logDetailed: false});
+            const apis = await initializeClient({
+                esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                createDB: true,
+                log: false,
+                logDetailed: false
+            });
             this.api = apis[0];
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
@@ -98,9 +103,14 @@ describe('state management', function () {
 
             this.swarmManager = await swarmManager();
             this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
-            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes,2);
+            await startAllSortedDaemonsLessN(this.swarm.getDaemons(), numOfNodes, 2);
 
-            const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true, log: false, logDetailed: false});
+            const apis = await initializeClient({
+                esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                createDB: true,
+                log: false,
+                logDetailed: false
+            });
             this.api = apis[0];
 
             await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
@@ -191,6 +201,6 @@ async function startAllSortedDaemonsLessN(daemons, nodesInSwarm, nodesUnstarted)
     await Promise.all(take(nodesInSwarm - nodesUnstarted, sortDaemonsByPublicKey(daemons)).map(invoke('start')));
 };
 
-function sortDaemonsByPublicKey (daemons) {
+function sortDaemonsByPublicKey(daemons) {
     return orderBy(daemons, ['publicKey']);
 };

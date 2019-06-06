@@ -3,6 +3,7 @@ const {editConfigFile} = require('../../src/utils');
 const {spawn} = require('child_process');
 const {initializeClient, createKeys} = require('../../src/clientManager');
 const {readDaemonDirectory, getDaemonOutputDir, readDaemonFileSize} = require('../../src/FileService');
+const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 
 
 describe('logging', function () {
@@ -21,10 +22,7 @@ describe('logging', function () {
             this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: 1});
         });
 
-        afterEach('stop daemons and remove state', async function () {
-            await this.swarmManager.stopAll();
-            this.swarmManager.removeSwarmState();
-        });
+        stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
 
         context('with log_to_stdout: true', function () {
 
@@ -102,7 +100,10 @@ describe('logging', function () {
 
             await this.swarmManager.startAll();
 
-            const apis = await initializeClient({esrContractAddress: this.swarmManager.getEsrContractAddress(), createDB: true});
+            const apis = await initializeClient({
+                esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                createDB: true
+            });
 
             this.api = apis[0];
 
@@ -110,10 +111,7 @@ describe('logging', function () {
 
         });
 
-        afterEach('stop daemons and remove state', async function () {
-            await this.swarmManager.stopAll();
-            this.swarmManager.removeSwarmState();
-        });
+        stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
 
         it('should not have files over set limit', function () {
             const sizes = readDaemonDirectoryFileSizes(DAEMON_OBJ);
@@ -133,7 +131,7 @@ describe('logging', function () {
 });
 
 function readDaemonDirectoryFileSizes(daemonObj) {
-    const logFiles = readDaemonDirectory(daemonObj.swarm_id,`${daemonObj.directory_name}/logs`).run();
+    const logFiles = readDaemonDirectory(daemonObj.swarm_id, `${daemonObj.directory_name}/logs`).run();
     const sizes = logFiles.map(logFile => readDaemonFileSize(daemonObj.swarm_id, daemonObj, '/logs', logFile).run()['size']);
 
     return sizes;

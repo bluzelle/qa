@@ -1,15 +1,16 @@
 
-const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey}) => {
+const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = Math.random().toString()}) => {
 
     const apis = await bluzelle({
-        uuid: Math.random().toString(),
-        ethereum_rpc: ethereum_rpc,
+        uuid,
+        ethereum_rpc,
         contract_address: esrContractAddress,
-        private_pem: private_pem,
-        public_pem: public_pem,
+        private_pem,
+        public_pem,
         _connect_to_all: true,
-        log: log,
-        logDetailed: logDetailed
+        log,
+        logDetailed,
+        onclose: () => console.log('onclose callback')
     });
 
     if (createDB) {

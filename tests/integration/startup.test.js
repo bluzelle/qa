@@ -2,6 +2,7 @@ const {swarmManager} = require('../../src/swarmManager');
 const execa = require('execa');
 const {getDaemonOutputDir} = require('../../src/FileService');
 const {editConfigFile} = require('../../src/utils');
+const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 
 const DAEMON_OBJ = {
     listener_port: 50000,
@@ -17,10 +18,7 @@ describe('daemon startup', function () {
         this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: 1});
     });
 
-    afterEach('stop daemons and remove state', async function () {
-        await this.swarmManager.stopAll();
-        this.swarmManager.removeSwarmState();
-    });
+    stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
 
     describe('cmd line', function () {
 
