@@ -21,6 +21,8 @@ before_install:
 before_script:
   - npm run setup-bluzelle-js
   - npm run setup-bluzelleESR
+  - printf "qa repo package-lock.json:"
+  - cat package-lock.json
   - mkdir -p daemon-binary
   - cd daemon-binary
   - |
