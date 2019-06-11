@@ -18,11 +18,13 @@ matrix:
 before_install:
     - eval "${MATRIX_EVAL}"
 
+install:
+  - npm ci
+
 before_script:
   - npm run setup-bluzelle-js
   - npm run setup-bluzelleESR
-  - printf "qa repo package-lock.json:"
-  - cat package-lock.json
+    # create dir, pull latest swarmDB binary, and symlink binary for testing
   - mkdir -p daemon-binary
   - cd daemon-binary
   - |
