@@ -3,6 +3,7 @@ const {initializeClient, createKeys, queryPrimary} = require('../../src/clientMa
 const {invoke, take} = require('lodash/fp');
 const {orderBy} = require('lodash');
 const daemonConstants = require('../../resources/daemonConstants');
+const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 
 
 describe('state management', function () {
@@ -35,10 +36,8 @@ describe('state management', function () {
         });
 
 
-        afterEach('stop daemons and remove state', async function () {
-            await this.swarmManager.stopAll();
-            this.swarmManager.removeSwarmState();
-        });
+        stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
+
 
         it('should not be able execute request if not synced', function (done) {
 
@@ -122,8 +121,8 @@ describe('state management', function () {
 
 
         afterEach('remove configs and peerslist and clear harness state', async function () {
-            await this.swarm.stop();
-            this.swarm.removeSwarmState();
+            await this.swarmManager.stopAll();
+            this.swarmManager.removeSwarmState();
         });
 
         it('should not be able execute request if not synced', function (done) {
