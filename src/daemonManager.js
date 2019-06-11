@@ -48,12 +48,25 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
         return {swarm_id: swarmId, peers: getPeersList()}
     };
 
-    function generateAndSetNewDaemon() {
-        setDaemonConfigs([...getDaemonConfigs(), generateSwarmConfig({esrContractAddress, swarmId, daemonCounter})]);
+    async function generateAndSetNewDaemon() {
+        const newNode = generateSwarmConfig({esrContractAddress, swarmId, daemonCounter})
+        setDaemonConfigs([...getDaemonConfigs(), newNode]);
         writePeersList(swarmId, [last(getDaemonConfigs())], getPeersList());
         setDaemons([...getDaemons(), generateDaemon(swarmId, last(getDaemonConfigs()))]);
         copyDaemonBinary(swarmId, last(getDaemonConfigs()));
+        await swarmRegistry.addNode(convertPeerInfoForESR(newNode), esrInstance);
     };
+
+    function convertPeerInfoForESR(nodeSwarmConfig) {
+        return {
+            swarm_id: nodeSwarmConfig.swarm_id,
+            host: '127.0.0.1',
+            name: `nodeSwarmConfig-${nodeSwarmConfig.listener_port}`,
+            http_port: nodeSwarmConfig.http_port,
+            port: nodeSwarmConfig.listener_port,
+            uuid: nodeSwarmConfig.publicKey
+        };
+    }
 
     function isNotRunning(daemon) { return !daemon.isRunning() };
 };

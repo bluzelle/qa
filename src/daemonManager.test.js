@@ -1,6 +1,5 @@
 const {swarmManager} = require('./swarmManager');
 const {random, last} = require('lodash/fp');
-const {orderBy} = require('lodash');
 
 require('../tests/test.configurations');
 
@@ -52,29 +51,29 @@ describe('daemonManager', function () {
         this.swarm.getDaemons().map(daemon => daemon.isRunning()).should.all.be.equal(true);
     });
 
-    it('should be able to add daemon to unstarted swarm', function () {
-        this.swarm.addDaemon();
+    it('should be able to add daemon to unstarted swarm', async function () {
+        await this.swarm.addDaemon();
 
         this.swarm.getDaemons().should.have.lengthOf(numberOfDaemons + 1);
     });
 
     it('should be able to add daemon to started swarm', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
 
         this.swarm.getDaemons().should.have.lengthOf(numberOfDaemons + 1);
     });
 
     it('unstarted new daemon should have correct isRunning status', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
 
         last(this.swarm.getDaemons()).isRunning().should.equal(false);
     });
 
     it('starting new daemon should change isRunning status', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
         await this.swarm.startUnstarted();
 
         last(this.swarm.getDaemons()).isRunning().should.equal(true);

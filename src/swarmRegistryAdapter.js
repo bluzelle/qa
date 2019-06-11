@@ -23,7 +23,6 @@ exports.deploy = async function () {
     return BluzelleESRInstance;
 };
 
-
 exports.addSwarm = async function (swarm, BluzelleESRInstance) {
     await BluzelleESRInstance.addSwarm(swarm.swarm_id, 7, "Canada", true, "Disk", 0, [], {from: myAccount});
 
@@ -39,6 +38,19 @@ exports.addSwarm = async function (swarm, BluzelleESRInstance) {
             {from: myAccount}
         );
     }
+};
+
+exports.addNode = function(node, BluzelleESRInstance) {
+
+    return BluzelleESRInstance.addNode(
+        node.swarm_id,
+        node.host,
+        node.name,
+        node.http_port,
+        node.port,
+        node.uuid,
+        {from: myAccount}
+    )
 };
 
 //record transaction summary

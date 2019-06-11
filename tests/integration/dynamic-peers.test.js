@@ -48,7 +48,7 @@ describe('dynamic peering', function () {
                     await createKeys({api: this.api}, ctx.numOfKeys)
                 }
 
-                this.swarm.addDaemon();
+                await this.swarm.addDaemon();
                 await this.swarm.startUnstarted();
             });
 
