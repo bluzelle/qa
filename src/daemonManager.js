@@ -36,7 +36,7 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
                 .filter(isNotRunning)
                 .map(invoke('start'))
             ),
-        addDaemon: generateAndSetNewDaemon,
+        addDaemon: ({addToRegistry} = {}) => generateAndSetNewDaemon({addToRegistry}),
         getSwarmId: () => swarmId,
         getDaemons,
         getPrimary,
@@ -48,13 +48,16 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
         return {swarm_id: swarmId, peers: getPeersList()}
     };
 
-    async function generateAndSetNewDaemon() {
+    async function generateAndSetNewDaemon({addToRegistry}) {
         const newNode = generateSwarmConfig({esrContractAddress, swarmId, daemonCounter})
         setDaemonConfigs([...getDaemonConfigs(), newNode]);
         writePeersList(swarmId, [last(getDaemonConfigs())], getPeersList());
         setDaemons([...getDaemons(), generateDaemon(swarmId, last(getDaemonConfigs()))]);
         copyDaemonBinary(swarmId, last(getDaemonConfigs()));
-        await swarmRegistry.addNode(convertPeerInfoForESR(newNode), esrInstance);
+
+        if (addToRegistry) {
+            await swarmRegistry.addNode(convertPeerInfoForESR(newNode), esrInstance);
+        }
     };
 
     function convertPeerInfoForESR(nodeSwarmConfig) {
