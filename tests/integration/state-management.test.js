@@ -35,13 +35,11 @@ describe('state management', function () {
             this.newPeerProcess = (await this.swarm.startUnstarted())[0];
         });
 
-
         stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
-
 
         it('should not be able execute request if not synced', function (done) {
 
-            this.newPeerProcess.stdout.on('data', data => {
+            this.newPeerProcess().stdout.on('data', data => {
                 if (data.toString().includes(daemonConstants.executingRequest)) {
                     throw new Error(`Unexpected "${daemonConstants.executingRequest}" string matched in new daemon output`);
                 }
@@ -73,7 +71,7 @@ describe('state management', function () {
             it('should adopt checkpoint when available', function (done) {
                 this.timeout(60000);
 
-                this.newPeerProcess.stdout.on('data', data => {
+                this.newPeerProcess().stdout.on('data', data => {
                     if (data.toString().includes(daemonConstants.adoptCheckpoint)) {
                         done();
                     }
@@ -83,7 +81,7 @@ describe('state management', function () {
             it('should be able to execute requests after checkpoint sync', function (done) {
                 this.timeout(60000);
 
-                this.newPeerProcess.stdout.on('data', data => {
+                this.newPeerProcess().stdout.on('data', data => {
                     if (data.toString().includes(daemonConstants.executingRequest)) {
                         done();
                     }
@@ -112,10 +110,10 @@ describe('state management', function () {
             });
             this.api = apis[0];
 
-            await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
 
             this.swarm.setPrimary((await queryPrimary({api: this.api})).uuid);
 
+            await createKeys({api: this.api}, daemonConstants.checkpointOperationsCount - 5);
             this.newPeersProcesses = await this.swarm.startUnstarted();
         });
 

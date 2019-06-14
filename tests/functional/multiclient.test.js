@@ -135,6 +135,8 @@ const UUIDS = {
 
 function localSwarmHooks() {
     before('stand up swarm and client', async function () {
+        this.timeout(harnessConfigs.defaultBeforeHookTimeout * 2);
+
         this.swarmManager = await swarmManager();
         this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
         await this.swarm.start();
@@ -160,6 +162,8 @@ function localSwarmHooks() {
 
 function remoteSwarmHook() {
     before('initialize clients, setup db', async function () {
+        this.timeout(harnessConfigs.defaultBeforeHookTimeout);
+
         const client1Apis = await initializeClient({
             ethereum_rpc: harnessConfigs.ethereumRpc,
             esrContractAddress: harnessConfigs.esrContractAddress,
