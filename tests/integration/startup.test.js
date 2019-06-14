@@ -44,8 +44,8 @@ describe('daemon startup', function () {
         const requiredArgumentsTests = [
             {argument: 'listener_address'},
             {argument: 'listener_port'},
-            {argument: 'ethereum_io_api_token'},
-            {argument: 'ethereum'}];
+            {argument: 'stack'}
+        ];
 
         requiredArgumentsTests.forEach(ctx => {
 
@@ -61,45 +61,6 @@ describe('daemon startup', function () {
                     }
                 });
 
-            });
-        });
-
-        context('ethereum address', function () {
-
-            context('with valid address', function () {
-
-                context('with balance > 0', function () {
-
-                    it('successfully starts up', async function () {
-                        await this.swarm.start();
-                    });
-                });
-
-                context('with balance <= 0', function () {
-
-                    beforeEach('edit config file', function () {
-                        editConfigFile(DAEMON_OBJ, [['ethereum', '0x20B289a92d504d82B1502996b3E439072FC66489']]);
-                    });
-
-                    it('fails to start up', (done) => {
-                        if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout.includes('No ETH balance found')) {
-                            done();
-                        }
-                    });
-                })
-            });
-
-            context('with invalid address', function () {
-
-                beforeEach('edit config file', function () {
-                    editConfigFile(DAEMON_OBJ, [['ethereum', 'asdf']]);
-                });
-
-                it('fails to start up', function (done) {
-                    if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Invalid Ethereum address asdf')) {
-                        done();
-                    }
-                });
             });
         });
 
