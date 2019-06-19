@@ -63,19 +63,6 @@ describe('daemon startup', function () {
 
             });
         });
-
-        context('bootstrap file', function () {
-
-            beforeEach('edit config file', function () {
-                editConfigFile(DAEMON_OBJ, null, ['bootstrap_file']);
-            });
-
-            it('throws "Bootstrap peers source not specified" error if not present', function (done) {
-                if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Bootstrap peers source not specified')) {
-                    done();
-                }
-            });
-        });
     });
 });
 
