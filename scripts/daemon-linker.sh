@@ -14,7 +14,7 @@ if [ -z "$1" ]
     #         └── output
     #             └── swarm executable
 
-    $ yarn link-daemon ../swarmDB/build/output
+    $ npm run link-daemon ../swarmDB/build/output
     "
     exit 1
 fi
