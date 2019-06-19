@@ -11,6 +11,7 @@ chai.use(require('chai-things'));
 chai.should();
 
 global.harnessConfigs = {
+    logLevel: process.env.LOG_LEVEL ? process.env.LOG_LEVEL : 'crit',
     address: process.env.ADDRESS ? process.env.ADDRESS : 'localhost',
     port: process.env.PORT ? parseInt(process.env.PORT) : 50000,
     numOfNodes: process.env.NUM_OF_NODES ? parseInt(process.env.NUM_OF_NODES) : 4,

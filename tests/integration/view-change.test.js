@@ -5,7 +5,8 @@ const {initializeClient, createKeys, queryPrimary} = require('../../src/clientMa
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 const PollUntil = require('poll-until-promise');
 const pTimeout = require('p-timeout');
-const chalk = require('chalk');
+const {log} = require('../../src/logger');
+
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
 
@@ -83,10 +84,10 @@ describe('view change', function () {
                             })
                             .catch(err => {
                                 if (err.name === 'TimeoutError') {
-                                    console.log(chalk.yellow(err.message));
+                                    log.warn(err.message)
                                     rej(err);
                                 } else {
-                                    console.log(chalk.red(err));
+                                    log.crit(err)
                                     rej(err)
                                 }
                             });

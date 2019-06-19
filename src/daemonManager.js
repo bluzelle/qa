@@ -8,6 +8,8 @@ const pRetry = require('p-retry');
 const daemonConstants = require('../resources/daemonConstants');
 const swarmRegistry = require('./swarmRegistryAdapter');
 const {useState} = require('./utils');
+const {log} = require('./logger');
+const split2 = require('split2');
 
 exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons, swarmCounter, daemonCounter}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
@@ -108,19 +110,31 @@ const generateDaemon = (swarmId, daemonConfig) => {
 
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(swarmId, daemonConfig)}));
 
+        getDaemonProcess().stderr
+            .pipe(split2())
+            .on('data', line => {
+
+            if (line.includes('Warning:')) {
+                log.warn(`Daemon stderr ${line}`);
+            } else {
+                log.crit(`Daemon stderr ${line}`);
+            }
+        });
+
         await pRetry(async () => {
             await new Promise((resolve, reject) => {
                 setTimeout(() => reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`)), harnessConfigs.daemonStartTimeout);
 
-                getDaemonProcess().stdout.on('data', (buf) => {
-                    const out = buf.toString();
-                    out.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
+                getDaemonProcess().stdout
+                    .pipe(split2())
+                    .on('data', line => {
+                    line.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
                 });
             });
         }, {
             onFailedAttempt: err => {
                 invoke('kill', getDaemonProcess());
-                console.log(`${err.message} Attempt ${err.attemptNumber} failed, ${err.retriesLeft} retries left.`)
+                log.warn(`${err.message} Attempt ${err.attemptNumber} failed, ${err.retriesLeft} retries left.`);
             },
             retries: 3
         });
@@ -129,7 +143,7 @@ const generateDaemon = (swarmId, daemonConfig) => {
         getDaemonProcess().on('close', (code) => {
             setRunning(false);
             if (code !== 0) {
-                console.log(`Daemon-${daemonConfig.listener_port} exited with ${code}`)
+                log.crit(`Daemon-${daemonConfig.listener_port} exited with ${code}`);
             }
         });
 
