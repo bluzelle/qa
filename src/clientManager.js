@@ -1,5 +1,5 @@
 
-const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = Math.random().toString()}) => {
+const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = harnessConfigs.uuid}) => {
 
     const apis = await bluzelle({
         uuid,
@@ -14,9 +14,9 @@ const initializeClient = async ({log = false, logDetailed = false, createDB, eth
 
     if (createDB) {
         try {
-            await apis[0].createDB();
+            await apis[0].createDB().timeout(10000);
         } catch (err) {
-            console.log('Failed to createDB()')
+            console.log('Failed to createDB()', err)
         }
     }
 
