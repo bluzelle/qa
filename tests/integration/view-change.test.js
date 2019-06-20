@@ -4,7 +4,6 @@ const {orderBy} = require('lodash');
 const {initializeClient, createKeys, queryPrimary} = require('../../src/clientManager');
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 const PollUntil = require('poll-until-promise');
-const pTimeout = require('p-timeout');
 const {log} = require('../../src/logger');
 
 
@@ -58,7 +57,19 @@ describe('view change', function () {
 
                 await this.swarm.getPrimary().stop();
 
-                await pTimeout(this.api.create('trigger', 'broadcast'), 20000, `Create() after primary death failed to respond in 20000 ms`);
+                // establish new client if previous client's primary connection was to the primary node
+                if (this.swarm.getPrimary().publicKey === this.api.entry_uuid) {
+                    const newApis = await initializeClient({
+                        esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                        createDB: false,
+                        log: false,
+                        logDetailed: false
+                    });
+                    this.api = newApis[0];
+                };
+
+                await this.api.create('trigger', 'broadcast').timeout(20000);
+
             });
 
             stopSwarmsAndRemoveStateHook({afterHook: after, preserveSwarmState: true});
@@ -72,7 +83,7 @@ describe('view change', function () {
                     .tryEvery(1000)
                     .execute(() => new Promise((res, rej) => {
 
-                        pTimeout(this.api.status(), harnessConfigs.clientOperationTimeout, `Status() failed to respond in ${harnessConfigs.clientOperationTimeout}ms`)
+                        this.api.status()
                             .then(val => {
                                 const parsedStatusJson = JSON.parse(val.moduleStatusJson).module[0].status;
 
@@ -106,7 +117,13 @@ describe('view change', function () {
 
                 const sortedDaemons = orderBy(this.swarm.getDaemons(), ['publicKey']);
 
-                const statusResponse = await pTimeout(this.api.status(), 4500, 'Status() failed to respond in 4500ms');
+                let statusResponse;
+
+                try {
+                    statusResponse = await this.api.status();
+                } catch (err) {
+                    log.crit(err);
+                }
 
                 const swarmStatusPrimary = JSON.parse(statusResponse.moduleStatusJson).module[0].status.primary;
 
@@ -116,8 +133,9 @@ describe('view change', function () {
             if (ctx.numOfKeys > 0) {
 
                 it('should be able to fetch full keys list', async function () {
-                    await pTimeout(this.api.keys(), harnessConfigs.clientOperationTimeout, `Keys() failed to respond in ${harnessConfigs.clientOperationTimeout}`)
+                    this.api.keys()
                         .then(val => val.should.have.lengthOf(ctx.numOfKeys + 1))
+                        .catch(err => err)
                 });
 
                 it('should be able to read last key before primary failure', async function () {
