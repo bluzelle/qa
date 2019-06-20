@@ -116,7 +116,7 @@ const delay = require('delay');
             });
 
             it('keys should return empty array', async function () {
-                await this.api.keys().should.be.empty;
+                (await this.api.keys()).should.be.empty;
             });
 
         });
