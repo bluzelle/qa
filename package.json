@@ -4,8 +4,8 @@
     "test-functional": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/functional/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test-integration": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/integration/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "debug-daemon": "mocha --opts tests/mocha.opts tests/**/*test.js debug",
-    "setup-bluzelle-js": "git submodule update --init --recursive; cd bluzelle-js && npm install && cd bluzelleESR && npm install && npx truffle compile && cd .. && webpack",
-    "setup-bluzelleESR": "git submodule update --init; cd bluzelleESR && npm install && npx truffle compile",
+    "setup-bluzelle-js": "git submodule update --init --recursive; cd bluzelle-js && npm install && cd bluzelleESR && npm install && npm run truffle compile && cd .. && npm run webpack",
+    "setup-bluzelleESR": "git submodule update --init; cd bluzelleESR && npm install && npm run truffle compile",
     "link-daemon": "./scripts/daemon-linker.sh",
     "deploy-ganache": "npx ganache-cli --account='0x1f0d511e990ddbfec302e266d62542384f755f6cc6b3161b2e49a2a4e6c4be3d,100000000000000000000'"
   },
