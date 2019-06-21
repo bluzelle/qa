@@ -36,3 +36,9 @@ exports.editConfigFile = (daemonObj, changes, deletes) => {
 exports.reportPortsAndPubKeys = (swarmManager) => {
     swarmManager.getSwarms().map(swarm => swarm.getDaemons()).reduce((acc, curr) => [...acc, ...curr]).map(node => console.log(node.listener_port, ': ', node.publicKey));
 };
+
+exports.wrappedError = function (error, newErrorMessage) {
+    const newError = new Error(newErrorMessage);
+    newError.stack += `\nCaused By:\ ${error.stack}`;
+    return newError;
+};

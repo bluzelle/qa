@@ -28,8 +28,9 @@ global.harnessConfigs = {
     initialDaemonHttpPort: 8080,
 
     daemonStartTimeout: 3000,
-    keyCreationTimeoutMultiplier: 500, // time allotted per key created in before hooks of dynamically generated tests
-    defaultTestTimeout: 5000,
-    defaultBeforeHookTimeout: 15000,
-    clientOperationTimeout: 5000
+    keyCreationTimeoutMultiplier: process.env.KEY_CREATION_TIMEOUT_MULTIPLIER ? process.env.KEY_CREATION_TIMEOUT_MULTIPLIER : 750, // time allotted per key created in before hooks of dynamically generated tests
+    defaultTestTimeout: process.env.TEST_TIMEOUT ? process.env.TEST_TIMEOUT : 5000,
+    defaultBeforeHookTimeout: process.env.BEFORE_HOOK_TIMEOUT ? process.env.BEFORE_HOOK_TIMEOUT : 25000,
+    defaultAfterHookTimeout: process.env.AFTER_HOOK_TIMEOUT ? process.env.AFTER_HOOK_TIMEOUT : 10000,
+    clientOperationTimeout: 10000
 };

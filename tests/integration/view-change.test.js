@@ -5,7 +5,7 @@ const {initializeClient, createKeys, queryPrimary} = require('../../src/clientMa
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 const PollUntil = require('poll-until-promise');
 const {log} = require('../../src/logger');
-
+const {wrappedError} = require('../../src/utils');
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
 
@@ -68,7 +68,11 @@ describe('view change', function () {
                     this.api = newApis[0];
                 };
 
-                await this.api.create('trigger', 'broadcast').timeout(20000);
+                try {
+                    await this.api.create('trigger', 'broadcast').timeout(harnessConfigs.clientOperationTimeout * 2);
+                } catch (err) {
+                    throw wrappedError(err, 'Trigger create operation failed');
+                }
 
             });
 
@@ -79,8 +83,8 @@ describe('view change', function () {
                 const pollPrimary = new PollUntil();
 
                 pollPrimary
-                    .stopAfter(50000)
-                    .tryEvery(1000)
+                    .stopAfter(NEW_PRIMARY_TEST_TIMEOUT - 1000)
+                    .tryEvery(5000)
                     .execute(() => new Promise((res, rej) => {
 
                         this.api.status()
@@ -90,22 +94,22 @@ describe('view change', function () {
                                 if (parsedStatusJson.primary.uuid !== this.swarm.getPrimary().publicKey) {
                                     return res(true);
                                 } else {
-                                    rej(new Error('Expected new primary to take over'));
+                                    rej(new Error('Unexpected primary'));
                                 }
                             })
                             .catch(err => {
-                                if (err.name === 'TimeoutError') {
-                                    log.warn(err.message)
+                                if (err.message.includes('operation timed out')) { // client timeout message
+                                    log.warn(`Status polling request failed: ${err.message}`);
                                     rej(err);
                                 } else {
-                                    log.crit(err)
+                                    log.crit(err);
                                     rej(err)
                                 }
                             });
                     }))
                     .then(() => done())
                     .catch(err => {
-                        if (err.message.includes('Failed to wait')) {
+                        if (err.message.includes('Failed to wait')) { // PollUntil failure message
                             done(new Error(`New primary failed to take over in ${NEW_PRIMARY_TEST_TIMEOUT}ms`))
                         } else {
                             done(err)
@@ -122,7 +126,7 @@ describe('view change', function () {
                 try {
                     statusResponse = await this.api.status();
                 } catch (err) {
-                    log.crit(err);
+                    throw wrappedError(err, 'Status request failed ');
                 }
 
                 const swarmStatusPrimary = JSON.parse(statusResponse.moduleStatusJson).module[0].status.primary;
@@ -133,9 +137,7 @@ describe('view change', function () {
             if (ctx.numOfKeys > 0) {
 
                 it('should be able to fetch full keys list', async function () {
-                    this.api.keys()
-                        .then(val => val.should.have.lengthOf(ctx.numOfKeys + 1))
-                        .catch(err => err)
+                    (await this.api.keys().timeout(harnessConfigs.clientOperationTimeout)).should.have.lengthOf(ctx.numOfKeys + 1);
                 });
 
                 it('should be able to read last key before primary failure', async function () {
