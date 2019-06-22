@@ -1,7 +1,6 @@
 module.exports = {
     "listener_address" : "127.0.0.1",
     "listener_port" : 50000,
-    "http_port" : 8080,
     "stack" : "local-swarm",
     "bootstrap_file" : "./peers.json",
     "debug_logging" : true,

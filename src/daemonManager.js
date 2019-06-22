@@ -7,7 +7,7 @@ const {resolve: resolvePath} = require('path');
 const pRetry = require('p-retry');
 const daemonConstants = require('../resources/daemonConstants');
 const swarmRegistry = require('./swarmRegistryAdapter');
-const {useState} = require('./utils');
+const {useState, wrappedError} = require('./utils');
 const {log} = require('./logger');
 const split2 = require('split2');
 
@@ -24,7 +24,11 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
     getDaemonConfigs().forEach(daemonConfig => copyDaemonBinary(swarmId, daemonConfig));
     setDaemons(getDaemonConfigs().map(daemonConfig => generateDaemon(swarmId, daemonConfig)));
 
-    await swarmRegistry.addSwarm(wrapPeersObject(), esrInstance);
+    try {
+        await swarmRegistry.addSwarm(wrapPeersObject(), esrInstance);
+    } catch (err) {
+        throw wrappedError(err, 'Failed to add swarm to ESR');
+    }
 
     return {
         start: () => Promise.all(getDaemons().map(invoke('start'))),
@@ -67,7 +71,6 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
             swarm_id: nodeSwarmConfig.swarm_id,
             host: '127.0.0.1',
             name: `nodeSwarmConfig-${nodeSwarmConfig.listener_port}`,
-            http_port: nodeSwarmConfig.http_port,
             port: nodeSwarmConfig.listener_port,
             uuid: nodeSwarmConfig.publicKey
         };
@@ -160,7 +163,6 @@ const generateSwarmConfig = ({esrContractAddress, swarmId, daemonCounter}) => {
     return pipe(
         () => writeDaemonConfigObject({
             listener_port: harnessConfigs.initialDaemonListenerPort + currentDaemonCount,
-            http_port: harnessConfigs.initialDaemonHttpPort + currentDaemonCount,
             swarm_id: swarmId,
             swarm_info_esr_address: esrContractAddress
         }, swarmId),
@@ -177,7 +179,6 @@ const generatePeersList = (daemonConfigs) => {
         name: `daemon${config.listener_port}`,
         host: '127.0.0.1',
         port: config.listener_port,
-        http_port: config.http_port,
         uuid: config.publicKey
     }));
 };
@@ -194,10 +195,9 @@ const writeDaemonConfigObject = (config, swarmId) => {
     return config;
 };
 
-const createDaemonConfigObject = curry(({listener_port, http_port, swarm_info_esr_address, swarm_id}, template) => ({
+const createDaemonConfigObject = curry(({listener_port, swarm_info_esr_address, swarm_id}, template) => ({
     ...template,
     listener_port,
-    http_port,
     swarm_info_esr_address: swarm_info_esr_address.substr(2), // swarmDB option does not accept 0x prepended address
     swarm_id
 }));

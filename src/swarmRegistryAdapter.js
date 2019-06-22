@@ -32,7 +32,6 @@ exports.addSwarm = async function (swarm, BluzelleESRInstance) {
             swarm.swarm_id,
             swarm.peers[i].host,
             swarm.peers[i].name,
-            swarm.peers[i].http_port,
             swarm.peers[i].port,
             swarm.peers[i].uuid,
             {from: myAccount}
@@ -46,7 +45,6 @@ exports.addNode = function(node, BluzelleESRInstance) {
         node.swarm_id,
         node.host,
         node.name,
-        node.http_port,
         node.port,
         node.uuid,
         {from: myAccount}
