@@ -8,7 +8,9 @@ exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed =
         const apis = await initializeClient({
             ethereum_rpc: harnessConfigs.ethereumRpc,
             esrContractAddress: harnessConfigs.esrContractAddress,
-            createDB: createDB
+            createDB: createDB,
+            log,
+            logDetailed
         });
 
         this.api = apis[0];
@@ -25,6 +27,7 @@ exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed =
 
 const stopSwarmsAndRemoveStateHook  = exports.stopSwarmsAndRemoveStateHook = function ({afterHook = after, preserveSwarmState = false}) {
     afterHook('stop daemons and remove state', async function () {
+        this.timeout(harnessConfigs.defaultAfterHookTimeout);
         await this.swarmManager.stopAll();
         if (!preserveSwarmState) {
             this.swarmManager.removeSwarmState();
