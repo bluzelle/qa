@@ -4,9 +4,9 @@ const {generateString} = require('../../src/utils');
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('basic functionality', function () {
 
-    context('smoke test', function () {
+    context.only('smoke test', function () {
 
-        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
+        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({log: true, logDetailed: true}) : localSwarmHooks());
 
         sharedTests.crudFunctionality.apply(this);
 
