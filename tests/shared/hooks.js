@@ -8,18 +8,16 @@ exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed =
         const apis = await initializeClient({
             ethereum_rpc: harnessConfigs.ethereumRpc,
             esrContractAddress: harnessConfigs.esrContractAddress,
-            createDB: createDB,
             log,
             logDetailed
         });
 
         this.api = apis[0];
 
-        if (await this.api.hasDB()) {
-            await this.api.deleteDB();
-        }
-
         if (createDB) {
+            if (await this.api.hasDB()) {
+                await this.api.deleteDB();
+            }
             await this.api.createDB();
         }
     });
