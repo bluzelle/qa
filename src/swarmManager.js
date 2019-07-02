@@ -3,6 +3,7 @@ const {removeDaemonDirectory} = require('./FileService');
 const {generateSwarm} = require('./daemonManager');
 const {counter, useState} = require('./utils');
 const swarmRegistry = require('./swarmRegistryAdapter');
+const {log} = require('./logger');
 
 exports.swarmManager = async () => {
     const [getSwarms, setSwarms] = useState([]);
@@ -12,6 +13,8 @@ exports.swarmManager = async () => {
 
     const esrInstance = await swarmRegistry.deploy();
     setEsrContractAddress(esrInstance.address);
+
+    log.info(`Deployed local ESR Contract Address: ${esrInstance.address}`);
 
     return {
         generateSwarm: generateSwarmAndSetState,

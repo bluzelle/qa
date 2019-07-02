@@ -1,10 +1,9 @@
-const {initializeClient, createKeys} = require('../../src/clientManager');
-const {swarmManager} = require('../../src/swarmManager');
+const {createKeys} = require('../../src/clientManager');
 const sharedTests = require('../shared/tests');
 const PollUntil = require('poll-until-promise');
 const {last} = require('lodash/fp');
 const daemonConstants = require('../../resources/daemonConstants');
-const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
+const {stopSwarmsAndRemoveStateHook, localSetup} = require('../shared/hooks');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 
@@ -32,17 +31,10 @@ describe('dynamic peering', function () {
             before('stand up swarm and client', async function () {
                 this.timeout(dynamicPeerTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout ? dynamicPeerTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout);
 
-                this.swarmManager = await swarmManager();
-                this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
-
-                await this.swarmManager.startAll();
-
-                const apis = await initializeClient({
-                    esrContractAddress: this.swarmManager.getEsrContractAddress(),
-                    createDB: true
-                });
-
-                this.api = apis[0];
+                const {manager: _manager, swarm: _swarm, api: _api} = await localSetup({numOfNodes, createDB: true});
+                this.swarmManager = _manager;
+                this.swarm = _swarm;
+                this.api = _api;
 
                 if (ctx.numOfKeys > 0) {
                     await createKeys({api: this.api}, ctx.numOfKeys)

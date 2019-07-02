@@ -1,6 +1,6 @@
 const {wrappedError} = require('../src/utils');
 
-const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = harnessConfigs.uuid}) => {
+const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = harnessConfigs.defaultUuid}) => {
 
     let apis;
 

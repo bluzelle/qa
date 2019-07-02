@@ -1,8 +1,7 @@
-const {swarmManager} = require('../../src/swarmManager');
 const sharedTests = require('../shared/tests');
 const {orderBy} = require('lodash');
 const {initializeClient, createKeys, queryPrimary} = require('../../src/clientManager');
-const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
+const {stopSwarmsAndRemoveStateHook, localSetup} = require('../shared/hooks');
 const PollUntil = require('poll-until-promise');
 const {log} = require('../../src/logger');
 const {wrappedError} = require('../../src/utils');
@@ -16,17 +15,17 @@ describe('view change', function () {
 
     const primaryDeathTests = [
         {
-            numOfKeys: 0,
-        }, {
-            numOfKeys: 50,
-        }, {
             numOfKeys: 100,
         }, {
-            numOfKeys: 500,
+            numOfKeys: 150,
+        }, {
+            numOfKeys: 250,
+        }, {
+            numOfKeys: 400,
         }];
 
     Object.defineProperties(primaryDeathTests, {
-        hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier}
+        hookTimeout: {value: obj => obj.numOfKeys * harnessConfigs.keyCreationTimeoutMultiplier + harnessConfigs.viewChangeTimeout}
     });
 
     primaryDeathTests.forEach((ctx) => {
@@ -34,20 +33,12 @@ describe('view change', function () {
         context(`primary dies with ${ctx.numOfKeys} keys in db`, function () {
 
             before(async function () {
-                this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout * 2 ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout * 2);
+                this.timeout(primaryDeathTests.hookTimeout(ctx) > harnessConfigs.defaultBeforeHookTimeout + harnessConfigs.viewChangeTimeout ? primaryDeathTests.hookTimeout(ctx) : harnessConfigs.defaultBeforeHookTimeout + harnessConfigs.viewChangeTimeout);
 
-                this.swarmManager = await swarmManager();
-                this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
-
-                await this.swarm.start();
-
-                const apis = await initializeClient({
-                    esrContractAddress: this.swarmManager.getEsrContractAddress(),
-                    createDB: true,
-                    log: false,
-                    logDetailed: false
-                });
-                this.api = apis[0];
+                const {manager: _manager, swarm: _swarm, api: _api} = await localSetup({numOfNodes});
+                this.swarmManager = _manager;
+                this.swarm = _swarm;
+                this.api = _api;
 
                 if (ctx.numOfKeys > 0) {
                     await createKeys({api: this.api}, ctx.numOfKeys)
@@ -69,7 +60,7 @@ describe('view change', function () {
                 };
 
                 try {
-                    await this.api.create('trigger', 'broadcast').timeout(harnessConfigs.clientOperationTimeout * 2);
+                    await this.api.create('trigger', 'broadcast').timeout(harnessConfigs.viewChangeTimeout);
                 } catch (err) {
                     throw wrappedError(err, 'Trigger create operation failed');
                 }

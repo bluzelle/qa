@@ -81,8 +81,9 @@ const UUIDS = {
     describe('colliding uuid', function () {
 
         before('initialize new client with colliding uuid and private_pem', async function () {
+
             const client3Apis = await initializeClient({
-                esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                esrContractAddress: this.esrAddress,
                 createDB: false,
                 uuid: UUIDS.client1
             });
@@ -164,9 +165,11 @@ function remoteSwarmHook() {
     before('initialize clients, setup db', async function () {
         this.timeout(harnessConfigs.defaultBeforeHookTimeout);
 
+        this.esrAddress = harnessConfigs.testRemoteSwarm ? harnessConfigs.esrContractAddress : this.swarmManager.getEsrContractAddress();
+
         const client1Apis = await initializeClient({
             ethereum_rpc: harnessConfigs.ethereumRpc,
-            esrContractAddress: harnessConfigs.esrContractAddress,
+            esrContractAddress: this.esrAddress,
             createDB: false,
             uuid: UUIDS.client1
         });
@@ -174,7 +177,7 @@ function remoteSwarmHook() {
 
         const client2Apis = await initializeClient({
             ethereum_rpc: harnessConfigs.ethereumRpc,
-            esrContractAddress: harnessConfigs.esrContractAddress,
+            esrContractAddress: this.esrAddress,
             createDB: false,
             uuid: UUIDS.client2
         });

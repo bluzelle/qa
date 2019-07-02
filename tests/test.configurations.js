@@ -10,14 +10,14 @@ chai.use(require('chai-json-schema'));
 chai.use(require('chai-things'));
 chai.should();
 
-global.harnessConfigs = {
+const harnessConfigs = global.harnessConfigs = {
     logLevel: process.env.LOG_LEVEL ? process.env.LOG_LEVEL : 'crit',
     address: process.env.ADDRESS ? process.env.ADDRESS : 'localhost',
     port: process.env.PORT ? parseInt(process.env.PORT) : 50000,
     numOfNodes: process.env.NUM_OF_NODES ? parseInt(process.env.NUM_OF_NODES) : 4,
     testRemoteSwarm: process.env.TEST_REMOTE_SWARM ? process.env.TEST_REMOTE_SWARM : false,
 
-    uuid: '1eee6416-2555-4733-8523-fe427618f899',
+    defaultUuid: '96dd6297-d8ed-4bd1-a91e-ed2958cda3c7',
     masterPrivateKey: 'MHQCAQEEIEOd7E9zSxgJjtpGzK/gHl0vVSOZ2iF3TY50InD67BnHoAcGBSuBBAAKoUQDQgAEE/Yeq9sYdyeou+TnNEJjMnuntrzqcFIfIHd49LW461d55TY4hVX66ZXXGvAWRqMVMeELtYuKGYU44bPaxTb1ig==',
     masterPublicKey: 'MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEE/Yeq9sYdyeou+TnNEJjMnuntrzqcFIfIHd49LW461d55TY4hVX66ZXXGvAWRqMVMeELtYuKGYU44bPaxTb1ig==',
 
@@ -27,10 +27,32 @@ global.harnessConfigs = {
     initialDaemonListenerPort: 50000,
     initialDaemonHttpPort: 8080,
 
-    daemonStartTimeout: 3000,
-    keyCreationTimeoutMultiplier: process.env.KEY_CREATION_TIMEOUT_MULTIPLIER ? process.env.KEY_CREATION_TIMEOUT_MULTIPLIER : 750, // time allotted per key created in before hooks of dynamically generated tests
-    defaultTestTimeout: process.env.TEST_TIMEOUT ? process.env.TEST_TIMEOUT : 5000,
-    defaultBeforeHookTimeout: process.env.BEFORE_HOOK_TIMEOUT ? process.env.BEFORE_HOOK_TIMEOUT : 25000,
-    defaultAfterHookTimeout: process.env.AFTER_HOOK_TIMEOUT ? process.env.AFTER_HOOK_TIMEOUT : 10000,
-    clientOperationTimeout: 10000
+    keyCreationTimeoutMultiplier: process.env.KEY_CREATION_TIMEOUT_MULTIPLIER ? process.env.KEY_CREATION_TIMEOUT_MULTIPLIER : 5000, // time allotted per key created in before hooks of dynamically generated tests
+    daemonStartTimeout: 5000,
 };
+
+Object.defineProperties(global.harnessConfigs, {
+    viewChangeTimeout: {
+        value: multiplyKeyCreationTimeoutBy.call(harnessConfigs, 300)
+    },
+    clientOperationTimeout: {
+        value: multiplyKeyCreationTimeoutBy.call(harnessConfigs, 100)
+    },
+    defaultTestTimeout: {
+        value: multiplyKeyCreationTimeoutBy.call(harnessConfigs, 50)
+    },
+    defaultBeforeHookTimeout: {
+        value: multiplyKeyCreationTimeoutBy.call(harnessConfigs, 250)
+    },
+    defaultAfterHookTimeout: {
+        value: multiplyKeyCreationTimeoutBy.call(harnessConfigs, 100)
+    }
+});
+
+function multiplyKeyCreationTimeoutBy(multiplier) {
+    return this.keyCreationTimeoutMultiplier * multiplier
+};
+
+console.log('***************************************************************************************************************************************************');
+console.log(`Test configurations. ethereumRPC: ${harnessConfigs.ethereumRpc}, esrContractAddress: ${harnessConfigs.esrContractAddress}, testRemoteSwarm: ${harnessConfigs.testRemoteSwarm}`);
+console.log('***************************************************************************************************************************************************\n');

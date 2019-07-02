@@ -110,6 +110,7 @@ const generateDaemon = (swarmId, daemonConfig) => {
     }
 
     async function spawnDaemon() {
+        log.info(`Starting daemon ${daemonConfig.listener_port}`);
 
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(swarmId, daemonConfig)}));
 
@@ -131,7 +132,7 @@ const generateDaemon = (swarmId, daemonConfig) => {
                 getDaemonProcess().stdout
                     .pipe(split2())
                     .on('data', line => {
-                    line.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
+                    line.includes(daemonConstants.startSuccessful) && (log.info(`Successfully started daemon ${daemonConfig.listener_port}`) || (setRunning(true) && resolve()));
                 });
             });
         }, {
@@ -142,8 +143,9 @@ const generateDaemon = (swarmId, daemonConfig) => {
             retries: 3
         });
 
-
         getDaemonProcess().on('close', (code) => {
+            log.info(`Stopping daemon ${daemonConfig.listener_port}`);
+
             setRunning(false);
             if (code !== 0) {
                 log.crit(`Daemon-${daemonConfig.listener_port} exited with ${code}`);
