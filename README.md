@@ -47,6 +47,14 @@ npm run calibrate-and-run
 # npm run calibrate-and-run test-integration
 ```
 
+#### Debugging
+Log levels can be set via environment variable
+
+```
+# info, warn, crit
+LOG_LEVEL=info
+```
+
 ## System Requirements
 - Node > v10.10.0
 - OpenSSL > 1.0.2 or LibreSSL > 2.2.7
