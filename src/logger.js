@@ -6,15 +6,15 @@ const LOG_LEVEL_CHALK_MAP = Object.freeze({info: "green", warn: "yellow", crit: 
 const log = module.exports.log = Object.defineProperties({}, {
     'compareLevel': {value: (level) => LOG_LEVEL_ENUM[level] >= LOG_LEVEL_ENUM[harnessConfigs.logLevel] ? true : false},
     'info': {
-        value: (string) => log.compareLevel('info') && console.log(chalk[LOG_LEVEL_CHALK_MAP['info']](string)),
+        value: (string) => log.compareLevel('info') && console.log(chalk[LOG_LEVEL_CHALK_MAP['info']](`INFO: ${Date.now()} ${string}`)),
         enumerable: true
     },
     'warn': {
-        value: (string) => log.compareLevel('warn') && console.error(chalk[LOG_LEVEL_CHALK_MAP['warn']](string)),
+        value: (string) => log.compareLevel('warn') && console.error(chalk[LOG_LEVEL_CHALK_MAP['warn']](`WARN: ${Date.now()} ${string}`)),
         enumerable: true
     },
     'crit': {
-        value: (string) => log.compareLevel('crit') && console.error(chalk[LOG_LEVEL_CHALK_MAP['crit']](string)),
+        value: (string) => log.compareLevel('crit') && console.error(chalk[LOG_LEVEL_CHALK_MAP['crit']](`CRIT: ${Date.now()} ${string}`)),
         enumerable: true
     }
 });
