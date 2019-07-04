@@ -42,5 +42,5 @@ before_script:
 
 script:
   - npx ganache-cli --account="0x1f0d511e990ddbfec302e266d62542384f755f6cc6b3161b2e49a2a4e6c4be3d,100000000000000000000" > /dev/null &
-  - sleep 5
+  - sleep 10
   - npm test
