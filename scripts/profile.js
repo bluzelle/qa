@@ -8,7 +8,7 @@ const TIMEOUT = process.env.PROFILE_TIMEOUT || 60000;
 
 (async (numberOfDaemons) => {
 
-    numberOfDaemons = isInt(numberOfDaemons) && numberOfDaemons >= 2 ? numberOfDaemons : harnessConfigs.numOfNodes;
+    numberOfDaemons = Number.isInteger(numberOfDaemons) && numberOfDaemons >= 2 ? numberOfDaemons : harnessConfigs.numOfNodes;
 
     const LOCAL_MESSAGE = `local swarm with ${numberOfDaemons} nodes.`;
     const REMOTE_MESSAGE = `remote swarm at ${harnessConfigs.ethereumRpc} ${harnessConfigs.esrContractAddress}`;
@@ -98,10 +98,4 @@ async function profile(fn, ...args) {
 
 function calculateAverage(arr) {
     return arr.reduce((sum, value) => sum += value, 0) / arr.length;
-};
-
-function isInt(value) {
-    return !isNaN(value) &&
-        parseInt(Number(value)) == value &&
-        !isNaN(parseInt(value, 10));
 };
