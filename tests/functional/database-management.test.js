@@ -11,7 +11,11 @@ describe('database management', function () {
 
         context('with a new swarm per test', function () {
 
-            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({beforeHook: beforeEach, afterHook: afterEach, createDB: false}));
+            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({
+                beforeHook: beforeEach,
+                afterHook: afterEach,
+                createDB: false
+            }));
 
             context('with no db', function () {
 
@@ -124,96 +128,35 @@ describe('database management', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({createDB: false}));
 
-        const DB_SIZE = 5000;
-        const KEY_SIZE = 5;
-        const KEY_VALUE_SIZE = 3000;
+        context('with a limited db', async function () {
 
-        before('createDB of size', async function () {
-            await this.api.createDB(DB_SIZE)
-        });
+            const testParams = {
+                databaseSize: 5000,
+                initialKey: 'hello',
+                initialKeyValueSize: 3000,
 
-        it(`should show remainingBytes of ${DB_SIZE}`, async function () {
-            expect(await this.api.size()).to.deep.include({remainingBytes: DB_SIZE});
-        });
+                numberOfExtraKeys: 5,
+                extraKeysValueSize: 5,
+                extraKeysKeySize: 2,
 
-        it('should show bytes of 0', async function () {
-            expect(await this.api.size()).to.deep.include({bytes: 0});
-        });
+                largeKey: 'large',
+                largeKeyValueSize: 3000,
 
-        it('should show keys of 0', async function () {
-            expect(await this.api.size()).to.deep.include({keys: 0});
-        });
+                databaseIncreaseSize: 3000
+            };
 
-        context('creating a key', function () {
-
-            const KEY = 'hello';
-
-            before(`create key of value size ${KEY_VALUE_SIZE}`, async function () {
-                await this.api.create(KEY, generateString(KEY_VALUE_SIZE));
+            Object.defineProperties(testParams, {
+                'initialKeyTotal': {value: calculateTotalSize(calculateKeySize(testParams.initialKey), testParams.initialKeyValueSize)},
+                'extraKeysTotal': {value: calculateTotalSize(calculateKeySize(testParams.extraKeysKeySize), testParams.extraKeysValueSize) * testParams.numberOfExtraKeys},
+                'largeKeyTotal': {value: calculateTotalSize(calculateKeySize(testParams.largeKey), testParams.largeKeyValueSize)}
             });
 
-            it(`should show remainingBytes of ${DB_SIZE - KEY_VALUE_SIZE}`, async function () {
-                expect(await this.api.size()).to.deep.include({remainingBytes: DB_SIZE - KEY_VALUE_SIZE - KEY_SIZE});
+            before('createDB of size', async function () {
+                await this.api.createDB(testParams.databaseSize)
             });
 
-            it(`should show bytes of ${KEY_VALUE_SIZE - KEY_SIZE}`, async function () {
-                expect(await this.api.size()).to.deep.include({bytes: KEY_VALUE_SIZE + KEY_SIZE});
-            });
-
-            it('should show keys of 1', async function () {
-                expect(await this.api.size()).to.deep.include({keys: 1});
-            });
-        });
-
-        context('creating more keys', function () {
-
-            const KEY_STRING_SIZE = 2;
-            const NUMBER_OF_KEYS_TO_ADD = 5;
-            const VALUE_SIZE = 5;
-
-            before(`creating ${NUMBER_OF_KEYS_TO_ADD} more keys`, async function () {
-                // createKeys creates keys as create(base_string + i, 'value'), so a total size of base_string + 1 + 5. Passing in a single byte string will result in a 2 byte key.
-                await createKeys({api: this.api}, NUMBER_OF_KEYS_TO_ADD, generateString(KEY_STRING_SIZE - 1));
-            });
-
-            it(`should show correct remainingBytes`, async function () {
-                expect(await this.api.size()).to.deep.include({remainingBytes: DB_SIZE - KEY_VALUE_SIZE - KEY_SIZE - (NUMBER_OF_KEYS_TO_ADD * (VALUE_SIZE + KEY_STRING_SIZE))});
-            });
-
-            it(`should show correct bytes`, async function () {
-                expect(await this.api.size()).to.deep.include({bytes: KEY_VALUE_SIZE + KEY_SIZE + (NUMBER_OF_KEYS_TO_ADD * (VALUE_SIZE + KEY_STRING_SIZE))});
-            });
-
-            it('should show correct amount of keys', async function () {
-                expect(await this.api.size()).to.deep.include({keys: 1 + NUMBER_OF_KEYS_TO_ADD});
-            });
-        });
-
-        context('overfilling allotted space in DB', function () {
-
-            it('should throw insufficient space error', async function () {
-                await this.api.create('gigantic', generateString(5000)).should.be.rejectedWith(daemonConstants.insufficientSpaceError);
-            });
-
-            it('should be able to store smaller value', async function () {
-                await this.api.create('asdf0', generateString(30));
-            });
-        });
-
-        context('deleting all keys', function () {
-
-            before('fetch key list and delete all', async function () {
-                this.timeout(harnessConfigs.defaultTestTimeout + (harnessConfigs.keyCreationTimeoutMultiplier * 7));
-
-                const keys = await this.api.keys();
-
-                await keys.reduce((p, key) =>
-                        p.then(() => this.api.delete(key)),
-                    Promise.resolve());
-            });
-
-            it(`should show remainingBytes of ${DB_SIZE}`, async function () {
-                expect(await this.api.size()).to.deep.include({remainingBytes: DB_SIZE});
+            it(`should show remainingBytes of ${testParams.databaseSize}`, async function () {
+                expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize});
             });
 
             it('should show bytes of 0', async function () {
@@ -222,6 +165,101 @@ describe('database management', function () {
 
             it('should show keys of 0', async function () {
                 expect(await this.api.size()).to.deep.include({keys: 0});
+            });
+
+            context('creating a key', function () {
+
+
+                before(`create key of value size ${testParams.initialKeyValueSize}`, async function () {
+                    await this.api.create(testParams.initialKey, generateString(testParams.initialKeyValueSize));
+                });
+
+                it(`should show remainingBytes of ${testParams.databaseSize - testParams.initialKeyTotal}`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize - testParams.initialKeyTotal});
+                });
+
+                it(`should show bytes of ${testParams.initialKeyTotal}`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal});
+                });
+
+                it('should show keys of 1', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1});
+                });
+            });
+
+            context('creating more keys', function () {
+
+                before(`creating ${testParams.numberOfExtraKeys} more keys`, async function () {
+                    // createKeys creates keys as create(base_string + i, 'value'), so a total size of base_string + 1 + 5. Passing in a single byte string will result in a 2 byte key.
+                    await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                });
+
+                it(`should show correct remainingBytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize - (testParams.initialKeyTotal + testParams.extraKeysTotal)});
+                });
+
+                it(`should show correct bytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal + testParams.extraKeysTotal});
+                });
+
+                it('should show correct amount of keys', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1 + testParams.numberOfExtraKeys});
+                });
+            });
+
+            context('overfilling allotted space in DB', function () {
+
+                it('should throw insufficient space error', async function () {
+                    await this.api.create('gigantic', generateString(testParams.largeKeyValueSize)).should.be.rejectedWith(daemonConstants.insufficientSpaceError);
+                });
+            });
+
+            context('increasing db size limit', function () {
+
+                before('increase db limit', async function () {
+                    await this.api.updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
+                });
+
+                it(`should show correct remainingBytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize + testParams.databaseIncreaseSize - (testParams.initialKeyTotal + testParams.extraKeysTotal)});
+                });
+
+                it(`should show correct bytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal + testParams.extraKeysTotal});
+                });
+
+                it('should show correct amount of keys', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1 + testParams.numberOfExtraKeys});
+                });
+
+                it('should be able to store value exceeding original space', async function () {
+                    await this.api.create(testParams.largeKey, generateString(testParams.largeKeyValueSize));
+                });
+            });
+
+            context('deleting all keys', function () {
+
+                before('fetch key list and delete all', async function () {
+                    this.timeout(harnessConfigs.defaultTestTimeout + (harnessConfigs.keyCreationTimeoutMultiplier * (testParams.numberOfExtraKeys + 2)));
+
+                    const keys = await this.api.keys();
+
+                    await keys.reduce((p, key) =>
+                            p.then(() => this.api.delete(key)),
+                        Promise.resolve());
+                });
+
+                it(`should show remainingBytes of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize + testParams.databaseIncreaseSize});
+                });
+
+                it('should show bytes of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: 0});
+                });
+
+                it('should show keys of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 0});
+                });
             });
         });
     });
@@ -287,4 +325,20 @@ function noDbExpectedFailureTests() {
             await this.api[cmd]('hello', 'world').should.be.rejectedWith('DATABASE_NOT_FOUND');
         });
     });
+};
+
+
+function calculateTotalSize(keyValueSize, valueSize) {
+    return keyValueSize + valueSize;
+}
+
+function calculateKeySize(key) {
+    let keyValueSize;
+    if (Number.isInteger(key)) {
+        keyValueSize = key;
+    } else if (typeof key === 'string') {
+        keyValueSize = key.length;
+    }
+
+    return keyValueSize
 };
