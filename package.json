@@ -2,6 +2,7 @@
   "scripts": {
     "profile" : "node --no-warnings ./scripts/profile.js",
     "calibrate-and-run" : "./scripts/set-calibration-env.sh",
+    "test-target" : "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts $TEST_TARGET; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/**/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test-functional": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/functional/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test-integration": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/integration/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
