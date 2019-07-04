@@ -26,7 +26,7 @@ const harnessConfigs = global.harnessConfigs = {
 
     initialDaemonListenerPort: 50000,
 
-    keyCreationTimeoutMultiplier: process.env.KEY_CREATION_TIMEOUT_MULTIPLIER ? process.env.KEY_CREATION_TIMEOUT_MULTIPLIER : 5000, // time allotted per key created in before hooks of dynamically generated tests
+    keyCreationTimeoutMultiplier: process.env.KEY_CREATION_TIMEOUT_MULTIPLIER ? process.env.KEY_CREATION_TIMEOUT_MULTIPLIER : 500, // time allotted per key created in before hooks of dynamically generated tests
     daemonStartTimeout: 5000,
 };
 
