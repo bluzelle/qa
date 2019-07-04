@@ -81,6 +81,7 @@ const UUIDS = {
     describe('colliding uuid', function () {
 
         before('initialize new client with colliding uuid and private_pem', async function () {
+            this.timeout(harnessConfigs.defaultBeforeHookTimeout);
 
             const client3Apis = await initializeClient({
                 esrContractAddress: this.esrAddress,
