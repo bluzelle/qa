@@ -144,7 +144,7 @@ const generateDaemon = (swarmId, daemonConfig) => {
         });
 
         getDaemonProcess().on('close', (code) => {
-            log.info(`Stopping daemon ${daemonConfig.listener_port}`);
+            log.info(`Daemon ${daemonConfig.listener_port} stopped`);
 
             setRunning(false);
             if (code !== 0) {
