@@ -1,11 +1,11 @@
-const {generateSwarm} = require('../../src/daemonManager');
+const {swarmManager} = require('../../src/swarmManager');
+const {initializeClient} = require('../../src/clientManager');
+const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 
 const numOfNodes = harnessConfigs.numOfNodes;
-
-const CLIENTS = {
-    pem1: 'MHQCAQEEIFH0TCvEu585ygDovjHE9SxW5KztFhbm4iCVOC67h0tEoAcGBSuBBAAKoUQDQgAE9Icrml+X41VC6HTX21HulbJo+pV1mtWn4+evJAi8ZeeLEJp4xg++JHoDm8rQbGWfVM84eqnb/RVuIXqoz6F9Bg==',
-    pem2: 'MHQCAQEEIL5a3uJRsVzjSo4A5UF1/4csXyAeaRDqglbrZw1xY1xuoAcGBSuBBAAKoUQDQgAE/3fvyvYIpo1Aehw8l8wWJkUHCU0u1az7OAEmh6WOhSAYGg1TcVNRrhUtUmWMUQuDG9ajFAybUMW7o94wjYmxOA=='
-
+const UUIDS = {
+    client1: '15f3bf98-6858-40e2-b57a-8f8ff60d9373',
+    client2: 'b3fe17a2-3c64-4941-9f1c-1ef77c6d8af7'
 };
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('multi-client', function () {
@@ -81,11 +81,14 @@ const CLIENTS = {
     describe('colliding uuid', function () {
 
         before('initialize new client with colliding uuid and private_pem', async function () {
-            this.api3 = bluzelle({
-                entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-                private_pem: CLIENTS.pem1,
-                log: false
+            this.timeout(harnessConfigs.defaultBeforeHookTimeout);
+
+            const client3Apis = await initializeClient({
+                esrContractAddress: this.esrAddress,
+                createDB: false,
+                uuid: UUIDS.client1
             });
+            this.api3 = client3Apis[0];
         });
 
         it('client1 should be able to write to database', async function () {
@@ -134,43 +137,52 @@ const CLIENTS = {
 
 function localSwarmHooks() {
     before('stand up swarm and client', async function () {
-        this.swarm = generateSwarm({numberOfDaemons: numOfNodes});
+        this.timeout(harnessConfigs.defaultBeforeHookTimeout * 2);
+
+        this.swarmManager = await swarmManager();
+        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: numOfNodes});
         await this.swarm.start();
 
-        this.api1 = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            private_pem: CLIENTS.pem1,
-            log: false
+        const client1Apis = await initializeClient({
+            esrContractAddress: this.swarmManager.getEsrContractAddress(),
+            createDB: true,
+            uuid: UUIDS.client1
         });
+        this.api1 = client1Apis[0];
 
-        this.api2 = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            private_pem: CLIENTS.pem2,
-            log: false
+        const client2Apis = await initializeClient({
+            esrContractAddress: this.swarmManager.getEsrContractAddress(),
+            createDB: true,
+            uuid: UUIDS.client2
         });
-
-        await this.api1.createDB();
-        await this.api2.createDB();
+        this.api2 = client2Apis[0];
     });
 
-    after('remove configs and peerslist and clear harness state', async function () {
-        await this.swarm.stop();
-    });
+    stopSwarmsAndRemoveStateHook({afterHook: after, preserveSwarmState: false});
+
 };
 
 function remoteSwarmHook() {
     before('initialize clients, setup db', async function () {
-        this.api1 = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            private_pem: CLIENTS.pem1,
-            log: false
-        });
+        this.timeout(harnessConfigs.defaultBeforeHookTimeout);
 
-        this.api2 = bluzelle({
-            entry: `ws://${harnessConfigs.address}:${harnessConfigs.port}`,
-            private_pem: CLIENTS.pem2,
-            log: false
+        this.esrAddress = harnessConfigs.testRemoteSwarm ? harnessConfigs.esrContractAddress : this.swarmManager.getEsrContractAddress();
+
+        const client1Apis = await initializeClient({
+            ethereum_rpc: harnessConfigs.ethereumRpc,
+            esrContractAddress: this.esrAddress,
+            createDB: false,
+            uuid: UUIDS.client1
         });
+        this.api1 = client1Apis[0];
+
+        const client2Apis = await initializeClient({
+            ethereum_rpc: harnessConfigs.ethereumRpc,
+            esrContractAddress: this.esrAddress,
+            createDB: false,
+            uuid: UUIDS.client2
+        });
+        this.api2 = client2Apis[0];
 
         if (await this.api1.hasDB()) {
             await this.api1.deleteDB();

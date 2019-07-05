@@ -6,7 +6,7 @@ sudo: false
 language: node_js
 
 node_js:
-  - node
+  - "10.10.0"
 
 matrix:
   include:
@@ -18,8 +18,13 @@ matrix:
 before_install:
     - eval "${MATRIX_EVAL}"
 
+install:
+  - npm ci
+
 before_script:
   - npm run setup-bluzelle-js
+  - npm run setup-bluzelleESR
+    # create dir, pull latest swarmDB binary, and symlink binary for testing
   - mkdir -p daemon-binary
   - cd daemon-binary
   - |
@@ -36,4 +41,6 @@ before_script:
   - npm run link-daemon ./daemon-binary
 
 script:
-  - npm test
+  - npx ganache-cli --account="0x1f0d511e990ddbfec302e266d62542384f755f6cc6b3161b2e49a2a4e6c4be3d,100000000000000000000" > /dev/null &
+  - sleep 10
+  - npm run calibrate-and-run test-target

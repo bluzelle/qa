@@ -1,4 +1,5 @@
 const sharedTests = require('../shared/tests');
+const {localTeardown, localSetup, remoteSetup} = require('../shared/hooks');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
 
@@ -6,7 +7,7 @@ const {generateString} = require('../../src/utils');
 
     context('smoke test', function () {
 
-        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
+        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({log: false, logDetailed: false}) : localSwarmHooks());
 
         sharedTests.crudFunctionality.apply(this);
 
@@ -72,6 +73,8 @@ const {generateString} = require('../../src/utils');
                     });
 
                     it(`should be able to delete all keys`, async function () {
+                        this.timeout(numberOfKeys * harnessConfigs.keyCreationTimeoutMultiplier * 2);
+
                         for (let i = 0; i < numberOfKeys; i ++) {
                             await this.api.delete(`key-${i}`);
                         }

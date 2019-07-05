@@ -1,23 +1,24 @@
+const {swarmManager} = require('../../src/swarmManager');
 const execa = require('execa');
-const {readDaemonFile, writeDaemonFile, getDaemonOutputDir} = require('../../src/FileService');
-const {generateSwarm} = require('../../src/daemonManager');
+const {getDaemonOutputDir} = require('../../src/FileService');
+const {editConfigFile} = require('../../src/utils');
+const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
 
 const DAEMON_OBJ = {
     listener_port: 50000,
+    swarm_id: 'swarm0',
     directory_name: 'daemon-50000',
     config_name: 'bluzelle-50000.json'
 };
 
 describe('daemon startup', function () {
 
-    beforeEach('generate configs and set harness state', function () {
-        this.swarm = generateSwarm({numberOfDaemons: 1});
+    beforeEach('generate configs and set harness state', async function () {
+        this.swarmManager = await swarmManager();
+        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons: 1});
     });
 
-    afterEach('remove configs and peerslist and clear harness state', async function () {
-        await this.swarm.stop();
-        this.swarm.removeSwarmState();
-    });
+    stopSwarmsAndRemoveStateHook({afterHook: afterEach, preserveSwarmState: false});
 
     describe('cmd line', function () {
 
@@ -43,18 +44,15 @@ describe('daemon startup', function () {
         const requiredArgumentsTests = [
             {argument: 'listener_address'},
             {argument: 'listener_port'},
-            {argument: 'ethereum_io_api_token'},
-            {argument: 'ethereum'}];
+            {argument: 'stack'}
+        ];
 
         requiredArgumentsTests.forEach(ctx => {
 
             context(`missing ${ctx.argument}`, function () {
 
                 beforeEach('edit config file', function () {
-                    const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
-                    delete configFile[ctx.argument];
-
-                    writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
+                    editConfigFile(DAEMON_OBJ, null, [ctx.argument]);
                 });
 
                 it(`should throw "the option '--${ctx.argument}' is required but missing" error`, function (done) {
@@ -65,71 +63,10 @@ describe('daemon startup', function () {
 
             });
         });
-
-        context('ethereum address', function () {
-
-            context('with valid address', function () {
-
-                context('with balance > 0', function () {
-
-                    it('successfully starts up', async function () {
-                        await this.swarm.start();
-                    });
-                });
-
-                context('with balance <= 0', function () {
-
-                    beforeEach('edit config file', function () {
-                        const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
-                        configFile.ethereum = '0x20B289a92d504d82B1502996b3E439072FC66489';
-
-                        writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
-                    });
-
-                    it('fails to start up', (done) => {
-                        if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout.includes('No ETH balance found')) {
-                            done();
-                        }
-                    });
-                })
-            });
-
-            context('with invalid address', function () {
-
-                beforeEach('edit config file', function () {
-                    const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
-                    configFile.ethereum = 'asdf';
-
-                    writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
-                });
-
-                it('fails to start up', function (done) {
-                    if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Invalid Ethereum address asdf')) {
-                        done();
-                    }
-                });
-            });
-        });
-
-        context('bootstrap file', function () {
-
-            beforeEach('edit config file', function () {
-                const configFile = readDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name).run();
-                delete configFile.bootstrap_file;
-
-                writeDaemonFile(DAEMON_OBJ, DAEMON_OBJ.config_name, configFile).run();
-            });
-
-            it('throws "Bootstrap peers source not specified" error if not present', function (done) {
-                if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stderr.includes('Bootstrap peers source not specified')) {
-                    done();
-                }
-            });
-        });
     });
 });
 
 function launchDaemon(swarmExecutableArguments) {
     const argumentsArray = Array.isArray(swarmExecutableArguments) ? swarmExecutableArguments : [swarmExecutableArguments];
-    return execa.sync('./swarm', argumentsArray, {cwd: getDaemonOutputDir(DAEMON_OBJ), reject: false});
+    return execa.sync('./swarm', argumentsArray, {cwd: getDaemonOutputDir(DAEMON_OBJ.swarm_id, DAEMON_OBJ), reject: false});
 };

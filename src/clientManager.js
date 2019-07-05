@@ -1,32 +1,58 @@
+const {wrappedError} = require('../src/utils');
 
-const initializeClient = async ({address = harnessConfigs.address, port = harnessConfigs.port, log, setupDB, uuid = harnessConfigs.clientUuid, pem = harnessConfigs.clientPem} = {}) => {
+const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = harnessConfigs.defaultUuid}) => {
 
-    const api = bluzelle({
-        entry: `ws://${address}:${port}`,
-        uuid: uuid,
-        private_pem: pem,
-        log: log,
-        p2p_latency_bound: 100
-    });
+    let apis;
 
-    if (setupDB) {
+    try {
+        apis = await bluzelle({
+            uuid,
+            ethereum_rpc,
+            contract_address: esrContractAddress,
+            private_pem,
+            public_pem,
+            _connect_to_all: true,
+            log,
+            logDetailed
+        });
+    } catch (err) {
+        throw wrappedError(err, 'Client initialization failed');
+    }
+
+    if (createDB) {
         try {
-            await api.createDB();
+            await apis[0].createDB().timeout(harnessConfigs.clientOperationTimeout);
         } catch (err) {
-            console.log('Failed to createDB()')
+            throw wrappedError(err, 'Client initialization createDB failed');
+
         }
     }
 
-    return api;
+    return apis;
 };
 
 const createKeys = async (clientObj, numOfKeys = 10, base = 'batch', start = 0) => {
-    for (let j = start; j < numOfKeys; j ++) {
+    for (let j = start; j < numOfKeys; j++) {
         await clientObj.api.create(`${base}${j}`, 'value')
     }
 };
 
-const queryPrimary = async (clientObj) => JSON.parse((await clientObj.api.status()).moduleStatusJson).module[0].status.primary;
+const queryPrimary = async (clientObj) => {
+
+    let statusResponse;
+
+    try {
+        statusResponse = await clientObj.api.status().timeout(harnessConfigs.clientOperationTimeout)
+    } catch (err) {
+        throw wrappedError(err, 'queryPrimary status request failed');
+    }
+
+    try {
+        return (JSON.parse(statusResponse.moduleStatusJson)).module[0].status.primary
+    } catch (err) {
+        throw wrappedError(err, 'Failed to parse status response JSON');
+    }
+};
 
 module.exports = {
     initializeClient,

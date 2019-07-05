@@ -1,23 +1,20 @@
-const {generateSwarm} = require('./daemonManager');
+const {swarmManager} = require('./swarmManager');
 const {random, last} = require('lodash/fp');
-const {orderBy} = require('lodash');
 
-const chai = require('chai');
-chai.use(require('chai-as-promised'));
-chai.use(require('chai-things'));
-chai.should();
-
+require('../tests/test.configurations');
 
 describe('daemonManager', function () {
 
     const numberOfDaemons = 3;
 
-    beforeEach('generateSwarm', function () {
-        this.swarm = generateSwarm({numberOfDaemons});
+    beforeEach('generateSwarm', async function () {
+        this.swarmManager = await swarmManager();
+        this.swarm = await this.swarmManager.generateSwarm({numberOfDaemons});
     });
 
-    afterEach('stop swarm', function () {
-        this.swarm.stop();
+    afterEach('stop swarm', async function () {
+        await this.swarm.stop();
+        this.swarmManager.removeSwarmState();
     });
 
     it('swarm should have correct number of daemons', function () {
@@ -54,29 +51,29 @@ describe('daemonManager', function () {
         this.swarm.getDaemons().map(daemon => daemon.isRunning()).should.all.be.equal(true);
     });
 
-    it('should be able to add daemon to unstarted swarm', function () {
-        this.swarm.addDaemon();
+    it('should be able to add daemon to unstarted swarm', async function () {
+        await this.swarm.addDaemon();
 
         this.swarm.getDaemons().should.have.lengthOf(numberOfDaemons + 1);
     });
 
     it('should be able to add daemon to started swarm', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
 
         this.swarm.getDaemons().should.have.lengthOf(numberOfDaemons + 1);
     });
 
     it('unstarted new daemon should have correct isRunning status', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
 
         last(this.swarm.getDaemons()).isRunning().should.equal(false);
     });
 
     it('starting new daemon should change isRunning status', async function () {
         await this.swarm.start();
-        this.swarm.addDaemon();
+        await this.swarm.addDaemon();
         await this.swarm.startUnstarted();
 
         last(this.swarm.getDaemons()).isRunning().should.equal(true);
