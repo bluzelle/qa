@@ -156,6 +156,8 @@ function localSwarmHooks() {
             uuid: UUIDS.client2
         });
         this.api2 = client2Apis[0];
+
+        this.esrAddress = this.swarmManager.getEsrContractAddress();
     });
 
     stopSwarmsAndRemoveStateHook({afterHook: after, preserveSwarmState: false});
