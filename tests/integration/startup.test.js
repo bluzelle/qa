@@ -1,5 +1,6 @@
 const {swarmManager} = require('../../src/swarmManager');
-const execa = require('execa');
+const {spawn} = require('child_process');
+const split2 = require('split2');
 const {getDaemonOutputDir} = require('../../src/FileService');
 const {editConfigFile} = require('../../src/utils');
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
@@ -31,9 +32,13 @@ describe('daemon startup', function () {
 
             acceptsFlagsTests.forEach(ctx => {
                 it(`accepts ${ctx.argument}`, function (done) {
-                    if (launchDaemon(ctx.argument)[ctx.outputStream].includes(ctx.expectedOutput)) {
-                        done();
-                    }
+                    launchDaemon(ctx.argument)[ctx.outputStream]
+                        .pipe(split2())
+                        .on('data', line => {
+                            if (line.includes(ctx.expectedOutput)) {
+                                done();
+                            }
+                        })
                 });
             });
         });
@@ -56,11 +61,65 @@ describe('daemon startup', function () {
                 });
 
                 it(`should throw "the option '--${ctx.argument}' is required but missing" error`, function (done) {
-                    if (launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout.includes(`the option '--${ctx.argument}' is required but missing`)) {
-                        done();
-                    }
+                  launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
+                        .pipe(split2())
+                        .on('data', line => {
+                            if (line.includes(`the option '--${ctx.argument}' is required but missing`)) {
+                                done();
+                            }
+                    })
                 });
 
+            });
+        });
+    });
+
+    context('esr location', function () {
+
+        context('default', function () {
+
+            beforeEach('edit config file', function () {
+                editConfigFile(DAEMON_OBJ, null, ['swarm_info_esr_url']);
+
+            });
+
+            it('should default to infura', function (done) {
+                launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
+                    .pipe(split2())
+                    .on('data', line => {
+                        if (line.includes('Connecting to: ropsten.infura.io...')) {
+                            done();
+                        }
+                });
+            });
+
+        });
+
+        context('should be configurable with swarm_info_esr_url', function () {
+
+            beforeEach('edit config file', function (done) {
+                editConfigFile(DAEMON_OBJ, [['swarm_info_esr_url', 'http://127.0.0.1:8545']]);
+
+                this.output = '';
+
+                launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
+                    .pipe(split2())
+                    .on('data', line => {
+                        this.output += line;
+                    });
+
+                setTimeout(done, 2000);
+            });
+
+            it('should connect to passed address', function (done) {
+
+                if (this.output.includes('Connecting to: ropsten.infura.io...')) {
+                    throw new Error('Unexpected attempt to connect to infura')
+                }
+
+                if (this.output.includes('Connecting to: 127.0.0.1...')) {
+                    done()
+                }
             });
         });
     });
@@ -68,5 +127,5 @@ describe('daemon startup', function () {
 
 function launchDaemon(swarmExecutableArguments) {
     const argumentsArray = Array.isArray(swarmExecutableArguments) ? swarmExecutableArguments : [swarmExecutableArguments];
-    return execa.sync('./swarm', argumentsArray, {cwd: getDaemonOutputDir(DAEMON_OBJ.swarm_id, DAEMON_OBJ), reject: false});
+    return spawn('./swarm', argumentsArray, {cwd: getDaemonOutputDir(DAEMON_OBJ.swarm_id, DAEMON_OBJ)})
 };
