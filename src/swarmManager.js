@@ -25,8 +25,8 @@ exports.swarmManager = async () => {
         removeSwarmState: () => removeDaemonDirectory().run(),
     };
 
-    async function generateSwarmAndSetState({numberOfDaemons}) {
-        const swarm = await generateSwarm({esrContractAddress: getEsrContractAddress(), esrInstance, numberOfDaemons, swarmCounter, daemonCounter});
+    async function generateSwarmAndSetState({numberOfDaemons, configOptions}) {
+        const swarm = await generateSwarm({esrContractAddress: getEsrContractAddress(), esrInstance, numberOfDaemons, swarmCounter, daemonCounter, configOptions});
         setSwarms([...getSwarms(), swarm]);
 
         return swarm;
