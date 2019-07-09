@@ -10,14 +10,16 @@ const {useState, wrappedError} = require('./utils');
 const {log} = require('./logger');
 const split2 = require('split2');
 
-exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons, swarmCounter, daemonCounter}) => {
+exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons, swarmCounter, daemonCounter, configOptions = {}}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();
     const [getDaemons, setDaemons] = useState();
     const [getPrimary, setPrimary] = useState();
     const [getPeersList, setPeersList] = useState();
+    const [getConfigOptions, setConfigOptions] = useState();
     const swarmId = `swarm${swarmCounter()}`;
 
-    setDaemonConfigs(times(() => generateSwarmConfig({esrContractAddress, swarmId, daemonCounter}), numberOfDaemons));
+    setConfigOptions(configOptions);
+    setDaemonConfigs(times(() => generateSwarmConfig({esrContractAddress, swarmId, daemonCounter, configOptions}), numberOfDaemons));
     setPeersList(generatePeersList(getDaemonConfigs()));
     writePeersList(swarmId, getDaemonConfigs(), getPeersList());
     getDaemonConfigs().forEach(daemonConfig => copyDaemonBinary(swarmId, daemonConfig));
@@ -54,7 +56,7 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
     };
 
     async function generateAndSetNewDaemon({addToRegistry}) {
-        const newNode = generateSwarmConfig({esrContractAddress, swarmId, daemonCounter})
+        const newNode = generateSwarmConfig({esrContractAddress, swarmId, daemonCounter, configOptions: getConfigOptions()});
         setDaemonConfigs([...getDaemonConfigs(), newNode]);
         writePeersList(swarmId, [last(getDaemonConfigs())], getPeersList());
         setDaemons([...getDaemons(), generateDaemon(swarmId, last(getDaemonConfigs()))]);
@@ -172,15 +174,14 @@ const generateDaemon = (swarmId, daemonConfig) => {
 
 const copyDaemonBinary = (swarmId, daemonConfig) => copyToDaemonDir(swarmId, daemonConfig, resolvePath(__dirname, '../daemon-build/swarm'), 'swarm').run();
 
-const generateSwarmConfig = ({esrContractAddress, swarmId, daemonCounter}) => {
-    const currentDaemonCount = daemonCounter();
+const generateSwarmConfig = ({esrContractAddress, swarmId, daemonCounter, configOptions}) => {
 
     return pipe(
         () => writeDaemonConfigObject({
-            listener_port: harnessConfigs.initialDaemonListenerPort + currentDaemonCount,
+            listener_port: harnessConfigs.initialDaemonListenerPort,
             swarm_id: swarmId,
             swarm_info_esr_address: esrContractAddress
-        }, swarmId),
+        }, swarmId, daemonCounter, configOptions),
 
         daemonConfig => ({
             ...daemonConfig,
@@ -202,11 +203,20 @@ const writePeersList = (swarmId, daemonConfigs, peersList) => {
     daemonConfigs.forEach(daemonConfig => writeDaemonFile(daemonConfig, swarmId, 'peers.json', peersList).run());
 };
 
-const writeDaemonConfigObject = (config, swarmId) => {
-    getDaemonConfigTemplate()
-        .map(createDaemonConfigObject(config))
-        .flatMap(writeDaemonFile(config, swarmId, `bluzelle-${config.listener_port}.json`))
+const writeDaemonConfigObject = (baseConfig, swarmId, daemonCounter, options) => {
+    const currentDaemonCount = daemonCounter();
+
+    const config = getDaemonConfigTemplate()
+        .map(createDaemonConfigObject(baseConfig))
+        .map(overrideOptions(options))
+        .map(config => {
+            config.listener_port += currentDaemonCount;
+            return config})
         .run();
+
+    // responsible for creating swarmX and daemon-XXXXXX directories in path if they do not already exist
+    writeDaemonFile(config, swarmId, `bluzelle-${config.listener_port}.json`, config).run();
+
     return config;
 };
 
@@ -218,3 +228,5 @@ const createDaemonConfigObject = curry(({listener_port, swarm_info_esr_address, 
 }));
 
 const getDaemonConfigTemplate = () => IO.of(require('../resources/config-template'));
+
+const overrideOptions = curry((options, template) => ({...template, ...options}));
