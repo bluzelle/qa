@@ -130,6 +130,7 @@ describe('database management', function () {
 
         const testParams = {
             databaseSize: 5000,
+
             initialKey: 'hello',
             initialKeyValueSize: 3000,
 
@@ -156,6 +157,10 @@ describe('database management', function () {
                 expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize});
             });
 
+            it(`should show maxBytes of ${testParams.databaseSize}`, async function () {
+                expect(await this.api.size()).to.deep.include({maxBytes: testParams.databaseSize});
+            });
+
             it('should show bytes of 0', async function () {
                 expect(await this.api.size()).to.deep.include({bytes: 0});
             });
@@ -165,7 +170,6 @@ describe('database management', function () {
             });
 
             context(`creating a key of total size ${testParams.initialKeyTotal}`, function () {
-
 
                 before(`create key of value size ${testParams.initialKeyValueSize}`, async function () {
                     await this.api.create(testParams.initialKey, generateString(testParams.initialKeyValueSize));
@@ -221,6 +225,10 @@ describe('database management', function () {
                     await this.api.updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
                 });
 
+                it(`should show maxBytes of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
+                    expect(await this.api.size()).to.deep.include({maxBytes: testParams.databaseSize});
+                });
+
                 it(`should show correct remainingBytes`, async function () {
                     expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize + testParams.databaseIncreaseSize - (testParams.initialKeyTotal + testParams.extraKeysTotal)});
                 });
@@ -236,6 +244,25 @@ describe('database management', function () {
                 it('should be able to store value exceeding original space', async function () {
                     await this.api.create(testParams.largeKey, generateString(testParams.largeKeyValueSize));
                 });
+            });
+
+            context('full database', function () {
+
+                before('fill db to full', async function () {
+                    const {remainingBytes} = await this.api.size();
+                    const key = 'fill';
+
+                    await this.api.create(key, generateString(remainingBytes - key.length));
+                });
+
+                it('should report remainingBytes of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: 0});
+                });
+
+                it(`should report bytes of ${testParams.databaseSize + testParams.databaseIncreaseSize} `, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: 0});
+                });
+
             });
 
             context('deleting all keys', function () {
