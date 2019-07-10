@@ -128,30 +128,27 @@ describe('database management', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({createDB: false}));
 
-        context('with a limited db', async function () {
+        const testParams = {
+            databaseSize: 5000,
+            initialKey: 'hello',
+            initialKeyValueSize: 3000,
 
-            const testParams = {
-                databaseSize: 5000,
-                initialKey: 'hello',
-                initialKeyValueSize: 3000,
+            numberOfExtraKeys: 5,
 
-                numberOfExtraKeys: 5,
-                extraKeysValueSize: 5,
-                extraKeysKeySize: 2,
+            largeKey: 'large',
+            largeKeyValueSize: 3000,
 
-                largeKey: 'large',
-                largeKeyValueSize: 3000,
+            databaseIncreaseSize: 3000
+        };
 
-                databaseIncreaseSize: 3000
-            };
+        context(`with a limited db of size ${testParams.databaseSize}`, async function () {
 
             Object.defineProperties(testParams, {
-                'initialKeyTotal': {value: calculateTotalSize(calculateKeySize(testParams.initialKey), testParams.initialKeyValueSize)},
-                'extraKeysTotal': {value: calculateTotalSize(calculateKeySize(testParams.extraKeysKeySize), testParams.extraKeysValueSize) * testParams.numberOfExtraKeys},
-                'largeKeyTotal': {value: calculateTotalSize(calculateKeySize(testParams.largeKey), testParams.largeKeyValueSize)}
+                'initialKeyTotal': {value: testParams.initialKey.length + testParams.initialKeyValueSize},
+                'largeKeyTotal': {value: testParams.largeKey.length + testParams.largeKeyValueSize}
             });
 
-            before('createDB of size', async function () {
+            before(`createDB of size ${testParams.databaseSize}`, async function () {
                 await this.api.createDB(testParams.databaseSize)
             });
 
@@ -167,7 +164,7 @@ describe('database management', function () {
                 expect(await this.api.size()).to.deep.include({keys: 0});
             });
 
-            context('creating a key', function () {
+            context(`creating a key of total size ${testParams.initialKeyTotal}`, function () {
 
 
                 before(`create key of value size ${testParams.initialKeyValueSize}`, async function () {
@@ -190,8 +187,12 @@ describe('database management', function () {
             context('creating more keys', function () {
 
                 before(`creating ${testParams.numberOfExtraKeys} more keys`, async function () {
-                    // createKeys creates keys as create(base_string + i, 'value'), so a total size of base_string + 1 + 5. Passing in a single byte string will result in a 2 byte key.
-                    await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                    const totalKeysValue = keysAndValue.keys.reduce((total, key) => total += key.length, 0);
+
+                    Object.defineProperty(testParams, 'extraKeysTotal', {
+                        value: totalKeysValue + testParams.numberOfExtraKeys * keysAndValue.value.length
+                    });
                 });
 
                 it(`should show correct remainingBytes`, async function () {
@@ -214,7 +215,7 @@ describe('database management', function () {
                 });
             });
 
-            context('increasing db size limit', function () {
+            context(`increasing db size limit by ${testParams.databaseIncreaseSize}`, function () {
 
                 before('increase db limit', async function () {
                     await this.api.updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
@@ -325,20 +326,4 @@ function noDbExpectedFailureTests() {
             await this.api[cmd]('hello', 'world').should.be.rejectedWith('DATABASE_NOT_FOUND');
         });
     });
-};
-
-
-function calculateTotalSize(keyValueSize, valueSize) {
-    return keyValueSize + valueSize;
-}
-
-function calculateKeySize(key) {
-    let keyValueSize;
-    if (Number.isInteger(key)) {
-        keyValueSize = key;
-    } else if (typeof key === 'string') {
-        keyValueSize = key.length;
-    }
-
-    return keyValueSize
 };

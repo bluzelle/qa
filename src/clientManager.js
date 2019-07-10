@@ -31,10 +31,15 @@ const initializeClient = async ({log = false, logDetailed = false, createDB, eth
     return apis;
 };
 
-const createKeys = async (clientObj, numOfKeys = 10, base = 'batch', start = 0) => {
-    for (let j = start; j < numOfKeys; j++) {
-        await clientObj.api.create(`${base}${j}`, 'value')
-    }
+const createKeys = async (clientObj, numOfKeys, base = 'batch', value = 'value') => {
+
+    const keys = [...Array(numOfKeys).fill(base).map(concatenateValueWithIndex)];
+
+    await keys.reduce((p, key) =>
+        p.then(() => clientObj.api.create(key, value))
+            , Promise.resolve());
+
+    return {keys, value};
 };
 
 const queryPrimary = async (clientObj) => {
@@ -53,6 +58,8 @@ const queryPrimary = async (clientObj) => {
         throw wrappedError(err, 'Failed to parse status response JSON');
     }
 };
+
+const concatenateValueWithIndex = (v, i) => v + i;
 
 module.exports = {
     initializeClient,
