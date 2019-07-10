@@ -157,8 +157,8 @@ describe('database management', function () {
                 expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize});
             });
 
-            it(`should show maxBytes of ${testParams.databaseSize}`, async function () {
-                expect(await this.api.size()).to.deep.include({maxBytes: testParams.databaseSize});
+            it(`should show maxSize of ${testParams.databaseSize}`, async function () {
+                expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize});
             });
 
             it('should show bytes of 0', async function () {
@@ -225,8 +225,8 @@ describe('database management', function () {
                     await this.api.updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
                 });
 
-                it(`should show maxBytes of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
-                    expect(await this.api.size()).to.deep.include({maxBytes: testParams.databaseSize});
+                it(`should show maxSize of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
+                    expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize});
                 });
 
                 it(`should show correct remainingBytes`, async function () {

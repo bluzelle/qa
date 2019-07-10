@@ -9,7 +9,7 @@ describe('database management', function () {
 
     // ensure DB sizes > 4GiB does not cause issues for JS client
     const testParams = {
-        databaseSize: 4294967296,
+        databaseSize: 4294967296 + 1,
 
         numberOfKeysToCreate: 10,
         keysValueSize: 50000
@@ -22,7 +22,7 @@ describe('database management', function () {
         });
 
         it(`should correctly report maxSize of ${testParams.databaseSize}`, async function () {
-            expect(await this.api.size()).to.deep.include({maxBytes: testParams.databaseSize});
+            expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize});
         });
 
         it(`should correctly report remainingBytes of ${testParams.databaseSize}`, async function () {
@@ -42,18 +42,19 @@ describe('database management', function () {
             before('create keys', async function () {
                 const keysAndValue = await createKeys({api: this.api}, testParams.numberOfKeysToCreate, 'batch', generateString(testParams.keysValueSize))
                 const keysValue = keysAndValue.keys.reduce((total, key) => total += key.length, 0);
+
                 this.totalValue = keysValue + testParams.keysValueSize * testParams.numberOfKeysToCreate;
             });
 
-            it(`should correctly report remainingBytes of ${testParams.databaseSize - this.totalValue}`, async function () {
+            it(`should correctly report remainingBytes`, async function () {
                 expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize - this.totalValue});
             });
 
-            it(`should correctly report keys of 0`, async function () {
+            it(`should correctly report keys`, async function () {
                 expect(await this.api.size()).to.deep.include({keys: testParams.numberOfKeysToCreate});
             });
 
-            it(`should correctly report bytes of ${this.totalValue}`, async function () {
+            it(`should correctly report bytes`, async function () {
                 expect(await this.api.size()).to.deep.include({bytes: this.totalValue});
             });
 
