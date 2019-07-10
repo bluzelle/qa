@@ -56,10 +56,10 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
     stopSwarmsAndRemoveStateHook({afterHook, preserveSwarmState});
 };
 
-const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, createDB = true, log, logDetailed} = {}) {
+const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, createDB = true, log, logDetailed, configOptions} = {}) {
 
     const manager = await swarmManager();
-    const swarm = await manager.generateSwarm({numberOfDaemons: numOfNodes});
+    const swarm = await manager.generateSwarm({numberOfDaemons: numOfNodes, configOptions});
 
     await manager.startAll();
 
