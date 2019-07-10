@@ -21,6 +21,10 @@ before_install:
 install:
   - npm ci
 
+cache:
+  directories:
+    - "$HOME/.npm"
+
 before_script:
   - npm run setup-bluzelle-js
   - npm run setup-bluzelleESR
