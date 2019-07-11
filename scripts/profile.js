@@ -23,7 +23,7 @@ const TIMEOUT = process.env.PROFILE_TIMEOUT || 60000;
         console.log('Connected');
     } else {
         console.log('Connecting client to local swarm');
-        const {manager: _manager, api: _api} = await localSetup({numOfNodes: numberOfDaemons, log: true, logDetailed: true});
+        const {manager: _manager, api: _api} = await localSetup({numOfNodes: numberOfDaemons, log: false, logDetailed: false});
         this.swarmManager = _manager;
         this.api = _api;
         console.log('Connected');

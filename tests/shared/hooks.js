@@ -12,8 +12,8 @@ exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed =
 
     after('deleteDB', async function () {
         this.timeout(harnessConfigs.defaultAfterHookTimeout);
-        if (await this.api.hasDB()) {
-            await this.api.deleteDB();
+        if (await this.api._hasDB()) {
+            await this.api._deleteDB();
         }
     });
 };
@@ -31,10 +31,10 @@ const remoteSetup = exports.remoteSetup = async function ({createDB = true, log 
 
     try {
         if (createDB) {
-            if (await api.hasDB().timeout(harnessConfigs.clientOperationTimeout)) {
-                await api.deleteDB().timeout(harnessConfigs.clientOperationTimeout);
+            if (await api._hasDB().timeout(harnessConfigs.clientOperationTimeout)) {
+                await api._deleteDB().timeout(harnessConfigs.clientOperationTimeout);
             }
-            await api.createDB().timeout(harnessConfigs.clientOperationTimeout);
+            await api._createDB().timeout(harnessConfigs.clientOperationTimeout);
         }
     } catch (err) {
         throw wrappedError(err, 'Problem with handling DB')

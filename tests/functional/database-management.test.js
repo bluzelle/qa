@@ -1,119 +1,297 @@
 const {createKeys} = require('../../src/clientManager');
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
+const {generateString} = require('../../src/utils');
+const daemonConstants = require('../../resources/daemonConstants');
 
 
 describe('database management', function () {
 
-    context('with a new swarm per test', function () {
+    context('database creation and deletion', function () {
 
-        (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({beforeHook: beforeEach, afterHook: afterEach, createDB: false}));
+        context('with a new swarm per test', function () {
 
-        context('with no db', function () {
+            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({
+                beforeHook: beforeEach,
+                afterHook: afterEach,
+                createDB: false
+            }));
 
-            noDbTests();
+            context('with no db', function () {
 
-            it('should be able to createDB', async function () {
-                await this.api.createDB();
+                noDbTests();
+
+                it('should be able to createDB', async function () {
+                    await this.api._createDB();
+                });
+            });
+
+            context('with existing db', function () {
+
+                beforeEach('createDB', async function () {
+                    await this.api._createDB();
+                });
+
+                context('with keys in db', function () {
+
+                    beforeEach('load db', async function () {
+                        await createKeys({api: this.api}, 10);
+                    });
+
+                    context('basic functionality tests', function () {
+
+                        sharedTests.crudFunctionality.apply(this);
+                        sharedTests.miscFunctionality.apply(this);
+
+                        keysAndSizeShouldReturnGreaterThanZero(10);
+                    });
+
+                    context('should throw errors', function () {
+
+                        it('when attempting to createDB', async function () {
+                            await this.api._createDB().should.be.rejectedWith('DATABASE_EXISTS');
+                        });
+                    });
+                });
+
+                context('with empty db', function () {
+
+                    it('should be able to hasDB', async function () {
+                        expect(await this.api._hasDB()).to.be.true;
+                    });
+
+                    it('should be able to deleteDB', async function () {
+                        await this.api._deleteDB();
+                    });
+
+                    keysAndSizeShouldReturnZero();
+
+
+                    context('should throw errors', function () {
+
+                        it('when attempting to createDB', async function () {
+                            await this.api._createDB().should.be.rejectedWith('DATABASE_EXISTS');
+                        });
+                    });
+                });
+
+                context('with deleted DB', function () {
+
+                    beforeEach('deleteDB', async function () {
+                        await this.api._deleteDB();
+                    });
+
+                    noDbTests();
+
+                    it('should be able to createDB', async function () {
+                        await this.api._createDB();
+                    });
+                });
             });
         });
 
-        context('with existing db', function () {
+        (harnessConfigs.testRemoteSwarm ? context.only : context)('with a persisted swarm', function () {
 
-            beforeEach('createDB', async function () {
-                await this.api.createDB();
-            });
+            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({createDB: false}));
 
-            context('with keys in db', function () {
+            noDbTests();
 
-                beforeEach('load db', async function () {
-                    await createKeys({api: this.api}, 10);
+            context('after creating DB', function () {
+
+                before('createDB', async function () {
+                    await this.api._createDB();
                 });
+
+                keysAndSizeShouldReturnZero();
 
                 context('basic functionality tests', function () {
 
                     sharedTests.crudFunctionality.apply(this);
                     sharedTests.miscFunctionality.apply(this);
 
-                    keysAndSizeShouldReturnGreaterThanZero(10);
+                    keysAndSizeShouldReturnGreaterThanZero(7); // sharedTests tests create 7 keys
                 });
 
-                context('should throw errors', function () {
+                context('after deleting DB', function () {
 
-                    it('when attempting to createDB', async function () {
-                        await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
+                    before('deleteDB', async function () {
+                        await this.api._deleteDB();
                     });
-                });
-            });
 
-            context('with empty db', function () {
-
-                it('should be able to hasDB', async function () {
-                    expect(await this.api.hasDB()).to.be.true;
-                });
-
-                it('should be able to deleteDB', async function () {
-                    await this.api.deleteDB();
-                });
-
-                keysAndSizeShouldReturnZero();
-
-
-                context('should throw errors', function () {
-
-                    it('when attempting to createDB', async function () {
-                        await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
-                    });
-                });
-            });
-
-            context('with deleted DB', function () {
-
-                beforeEach('deleteDB', async function () {
-                    await this.api.deleteDB();
-                });
-
-                noDbTests();
-
-                it('should be able to createDB', async function () {
-                    await this.api.createDB();
+                    noDbTests();
                 });
             });
         });
     });
 
-    (harnessConfigs.testRemoteSwarm ? context.only : context)('with a persisted swarm', function () {
+    context('size restriction', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({createDB: false}));
 
-        noDbTests();
+        const testParams = {
+            databaseSize: 5000,
 
-        context('after creating DB', function () {
+            initialKey: 'hello',
+            initialKeyValueSize: 3000,
 
-            before('createDB', async function () {
-                await this.api.createDB();
+            numberOfExtraKeys: 5,
+
+            largeKey: 'large',
+            largeKeyValueSize: 3000,
+
+            databaseIncreaseSize: 3000
+        };
+
+        context(`with a limited db of size ${testParams.databaseSize}`, async function () {
+
+            Object.defineProperties(testParams, {
+                'initialKeyTotal': {value: testParams.initialKey.length + testParams.initialKeyValueSize},
+                'largeKeyTotal': {value: testParams.largeKey.length + testParams.largeKeyValueSize}
             });
 
-            keysAndSizeShouldReturnZero();
-
-            context('basic functionality tests', function () {
-
-                sharedTests.crudFunctionality.apply(this);
-                sharedTests.miscFunctionality.apply(this);
-
-                keysAndSizeShouldReturnGreaterThanZero(7); // sharedTests tests create 7 keys
+            before(`createDB of size ${testParams.databaseSize}`, async function () {
+                await this.api._createDB(testParams.databaseSize)
             });
 
-            context('after deleting DB', function () {
+            it(`should show remainingBytes of ${testParams.databaseSize}`, async function () {
+                expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize});
+            });
 
-                before('deleteDB', async function () {
-                    await this.api.deleteDB();
+            it(`should show maxSize of ${testParams.databaseSize}`, async function () {
+                expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize});
+            });
+
+            it('should show bytes of 0', async function () {
+                expect(await this.api.size()).to.deep.include({bytes: 0});
+            });
+
+            it('should show keys of 0', async function () {
+                expect(await this.api.size()).to.deep.include({keys: 0});
+            });
+
+            context(`creating a key of total size ${testParams.initialKeyTotal}`, function () {
+
+                before(`create key of value size ${testParams.initialKeyValueSize}`, async function () {
+                    await this.api.create(testParams.initialKey, generateString(testParams.initialKeyValueSize));
                 });
 
-                noDbTests();
+                it(`should show remainingBytes of ${testParams.databaseSize - testParams.initialKeyTotal}`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize - testParams.initialKeyTotal});
+                });
+
+                it(`should show bytes of ${testParams.initialKeyTotal}`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal});
+                });
+
+                it('should show keys of 1', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1});
+                });
+            });
+
+            context('creating more keys', function () {
+
+                before(`creating ${testParams.numberOfExtraKeys} more keys`, async function () {
+                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                    const totalKeysValue = keysAndValue.keys.reduce((total, key) => total += key.length, 0);
+
+                    Object.defineProperty(testParams, 'extraKeysTotal', {
+                        value: totalKeysValue + testParams.numberOfExtraKeys * keysAndValue.value.length
+                    });
+                });
+
+                it(`should show correct remainingBytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize - (testParams.initialKeyTotal + testParams.extraKeysTotal)});
+                });
+
+                it(`should show correct bytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal + testParams.extraKeysTotal});
+                });
+
+                it('should show correct amount of keys', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1 + testParams.numberOfExtraKeys});
+                });
+            });
+
+            context('overfilling allotted space in DB', function () {
+
+                it('should throw insufficient space error', async function () {
+                    await this.api.create('gigantic', generateString(testParams.largeKeyValueSize)).should.be.rejectedWith(daemonConstants.insufficientSpaceError);
+                });
+            });
+
+            context(`increasing db size limit by ${testParams.databaseIncreaseSize}`, function () {
+
+                before('increase db limit', async function () {
+                    await this.api._updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
+                });
+
+                it(`should show maxSize of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
+                    expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize + testParams.databaseIncreaseSize});
+                });
+
+                it(`should show correct remainingBytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize + testParams.databaseIncreaseSize - (testParams.initialKeyTotal + testParams.extraKeysTotal)});
+                });
+
+                it(`should show correct bytes`, async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: testParams.initialKeyTotal + testParams.extraKeysTotal});
+                });
+
+                it('should show correct amount of keys', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 1 + testParams.numberOfExtraKeys});
+                });
+
+                it('should be able to store value exceeding original space', async function () {
+                    await this.api.create(testParams.largeKey, generateString(testParams.largeKeyValueSize));
+                });
+            });
+
+            context('full database', function () {
+
+                before('fill db to full', async function () {
+                    const {remainingBytes} = await this.api.size();
+                    const key = 'fill';
+
+                    await this.api.create(key, generateString(remainingBytes - key.length));
+                });
+
+                it('should report remainingBytes of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: 0});
+                });
+
+                it(`should report bytes of ${testParams.databaseSize + testParams.databaseIncreaseSize} `, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: 0});
+                });
+
+            });
+
+            context('deleting all keys', function () {
+
+                before('fetch key list and delete all', async function () {
+                    this.timeout(harnessConfigs.defaultTestTimeout + (harnessConfigs.keyCreationTimeoutMultiplier * (testParams.numberOfExtraKeys + 2)));
+
+                    const keys = await this.api.keys();
+
+                    await keys.reduce((p, key) =>
+                            p.then(() => this.api.delete(key)),
+                        Promise.resolve());
+                });
+
+                it(`should show remainingBytes of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
+                    expect(await this.api.size()).to.deep.include({remainingBytes: testParams.databaseSize + testParams.databaseIncreaseSize});
+                });
+
+                it('should show bytes of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({bytes: 0});
+                });
+
+                it('should show keys of 0', async function () {
+                    expect(await this.api.size()).to.deep.include({keys: 0});
+                });
             });
         });
     });
+
 });
 
 function keysAndSizeShouldReturnZero() {
@@ -149,7 +327,7 @@ function keysAndSizeShouldReturnGreaterThanZero(numberOfKeys) {
 function noDbTests() {
 
     it('should be able to hasDB', async function () {
-        expect(await this.api.hasDB()).to.be.false;
+        expect(await this.api._hasDB()).to.be.false;
     });
 
     it('size should be rejected with DATABASE_NOT_FOUND', async function () {
@@ -159,7 +337,7 @@ function noDbTests() {
     context('should throw errors', function () {
 
         it('when attempting to deleteDB', async function () {
-            await this.api.deleteDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+            await this.api._deleteDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
         });
 
         noDbExpectedFailureTests();

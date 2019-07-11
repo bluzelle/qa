@@ -6,4 +6,6 @@ module.exports = {
     adoptCheckpoint: 'Adopting checkpoint',
     newPeerJoinsMembership: 'Successfully joined the swarm',
     ttlPurgeLoopInterval: 5000, // expired KVPs check interval
+
+    insufficientSpaceError: 'INSUFFICIENT_SPACE'
 };
