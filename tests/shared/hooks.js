@@ -3,29 +3,25 @@ const {initializeClient} = require('../../src/clientManager');
 const {wrappedError} = require('../../src/utils');
 
 
-exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed = false} = {}) {
+exports.remoteSwarmHook = function (clientArguments) {
     before('initialize client and setup db', async function () {
         this.timeout(harnessConfigs.defaultBeforeHookTimeout);
-        this.api = await remoteSetup({createDB, log, logDetailed});
+
+        this.api = await remoteSetup(clientArguments);
     });
 
     after('deleteDB', async function () {
         this.timeout(harnessConfigs.defaultAfterHookTimeout);
+
         if (await this.api.hasDB()) {
             await this.api.deleteDB();
         }
     });
 };
 
-const remoteSetup = exports.remoteSetup = async function ({createDB = true, log = false, logDetailed = false} = {}) {
-    const apis = await initializeClient({
-        ethereum_rpc: harnessConfigs.ethereumRpc,
-        esrContractAddress: harnessConfigs.esrContractAddress,
-        createDB: false,
-        log,
-        logDetailed
-    });
+const remoteSetup = exports.remoteSetup = async function ({createDB = true, ...clientArguments} = {}) {
 
+    const apis = await initializeClient(clientArguments);
     const api = apis[0];
 
     try {
@@ -42,11 +38,13 @@ const remoteSetup = exports.remoteSetup = async function ({createDB = true, log 
     return api;
 };
 
-exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false, log, logDetailed} = {}) {
+exports.localSwarmHooks = function (args = {}) {
+    const {beforeHook = before, afterHook = after, preserveSwarmState, ...swarmAndClientArguments} = args;
+
     beforeHook('start swarm and client, create db', async function () {
         this.timeout(harnessConfigs.defaultBeforeHookTimeout);
 
-        const {manager, swarm, api} = await localSetup({numOfNodes, createDB, log, logDetailed});
+        const {manager, swarm, api} = await localSetup(swarmAndClientArguments);
         this.swarmManager = manager;
         this.swarm = swarm;
         this.api = api;
@@ -55,20 +53,14 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
     stopSwarmsAndRemoveStateHook({afterHook, preserveSwarmState});
 };
 
-const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, createDB = true, log, logDetailed, configOptions} = {}) {
+const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, configOptions, createDB = true, ...clientArguments} = {}) {
 
     const manager = await swarmManager();
     const swarm = await manager.generateSwarm({numberOfDaemons: numOfNodes, configOptions});
 
     await manager.startAll();
 
-    const apis = await initializeClient({
-        ethereum_rpc: harnessConfigs.ethereumRpc,
-        esrContractAddress: manager.getEsrContractAddress(),
-        createDB: createDB,
-        log,
-        logDetailed
-    });
+    const apis = await initializeClient({esrContractAddress: manager.getEsrContractAddress(), createDB, ...clientArguments});
     const api = apis[0];
 
     return {manager, swarm, api}
@@ -82,7 +74,9 @@ const localTeardown = exports.localTeardown = async function (preserveSwarmState
     }
 };
 
-const stopSwarmsAndRemoveStateHook = exports.stopSwarmsAndRemoveStateHook = function ({afterHook = after, preserveSwarmState = false}) {
+const stopSwarmsAndRemoveStateHook = exports.stopSwarmsAndRemoveStateHook = function (args) {
+    const {afterHook = after, preserveSwarmState} = args;
+
     afterHook('stop daemons and remove state', async function () {
         this.timeout(harnessConfigs.defaultAfterHookTimeout);
         await localTeardown.call(this, preserveSwarmState);
