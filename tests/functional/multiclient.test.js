@@ -184,17 +184,17 @@ function remoteSwarmHook() {
         });
         this.api2 = client2Apis[0];
 
-        if (await this.api1.hasDB()) {
-            await this.api1.deleteDB();
+        if (await this.api1._hasDB()) {
+            await this.api1._deleteDB();
         }
 
-        await this.api1.createDB();
+        await this.api1._createDB();
 
-        if (await this.api2.hasDB()) {
-            await this.api2.deleteDB();
+        if (await this.api2._hasDB()) {
+            await this.api2._deleteDB();
         }
 
-        await this.api2.createDB();
+        await this.api2._createDB();
 
     });
 };

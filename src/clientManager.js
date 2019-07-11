@@ -21,7 +21,7 @@ const initializeClient = async ({log = false, logDetailed = false, createDB, eth
 
     if (createDB) {
         try {
-            await apis[0].createDB().timeout(harnessConfigs.clientOperationTimeout);
+            await apis[0]._createDB().timeout(harnessConfigs.clientOperationTimeout);
         } catch (err) {
             throw wrappedError(err, 'Client initialization createDB failed');
 
