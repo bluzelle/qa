@@ -4,7 +4,6 @@ const {generateKeys} = require('./crypto');
 const {IO} = require('monet');
 const {spawn} = require('child_process');
 const {resolve: resolvePath} = require('path');
-const pRetry = require('p-retry');
 const daemonConstants = require('../resources/daemonConstants');
 const swarmRegistry = require('./swarmRegistryAdapter');
 const {useState, wrappedError} = require('./utils');
@@ -114,42 +113,49 @@ const generateDaemon = (swarmId, daemonConfig) => {
 
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(swarmId, daemonConfig)}));
 
+        log.info(`Daemon ${daemonConfig.listener_port} started with PID ${getDaemonProcess().pid}`);
+
+        getDaemonProcess().on('error', (err) => {
+            log.crit(`Process error with daemon-${daemonConfig.listener_port}: ${err}`);
+            throw err;
+        });
+
         getDaemonProcess().stderr
             .pipe(split2())
             .on('data', line => {
+                if (line.includes('Warning:')) {
+                    log.warn(`Daemon stderr ${line}`);
+                } else {
+                    log.crit(`Daemon stderr ${line}`);
+                }
+            });
 
-            if (line.includes('Warning:')) {
-                log.warn(`Daemon stderr ${line}`);
+        getDaemonProcess().on('exit', (code, sgnl) => {
+            setRunning(false);
+            if (sgnl) {
+                if (sgnl === "SIGTERM") {
+                    log.warn(`Daemon-${daemonConfig.listener_port} terminated`);
+                } else {
+                    log.crit(`Daemon-${daemonConfig.listener_port} exited with signal "${sgnl}"`);
+                }
+            } else if (code !== 0) {
+                log.crit(`Daemon-${daemonConfig.listener_port} exited with code "${code}"`);
             } else {
-                log.crit(`Daemon stderr ${line}`);
+                log.info(`Daemon-${daemonConfig.listener_port} exited normally`);
             }
         });
 
-        await pRetry(async () => {
-            await new Promise((resolve, reject) => {
-                setTimeout(() => reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`)), harnessConfigs.daemonStartTimeout);
+        await new Promise((resolve, reject) => {
+            setTimeout(() => {
+                getDaemonProcess().kill();
+                reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`))
+            }, harnessConfigs.daemonStartTimeout);
 
-                getDaemonProcess().stdout
-                    .pipe(split2())
-                    .on('data', line => {
+            getDaemonProcess().stdout
+                .pipe(split2())
+                .on('data', line => {
                     line.includes(daemonConstants.startSuccessful) && (log.info(`Successfully started daemon ${daemonConfig.listener_port}`) || (setRunning(true) && resolve()));
                 });
-            });
-        }, {
-            onFailedAttempt: err => {
-                invoke('kill', getDaemonProcess());
-                log.warn(`${err.message} Attempt ${err.attemptNumber} failed, ${err.retriesLeft} retries left.`);
-            },
-            retries: 3
-        });
-
-        getDaemonProcess().on('close', (code) => {
-            log.info(`Daemon ${daemonConfig.listener_port} stopped`);
-
-            setRunning(false);
-            if (code !== 0) {
-                log.crit(`Daemon-${daemonConfig.listener_port} exited with ${code}`);
-            }
         });
 
         return getDaemonProcess;

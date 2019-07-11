@@ -1,6 +1,7 @@
 const {swarmManager} = require('../../src/swarmManager');
 const {initializeClient} = require('../../src/clientManager');
 const {wrappedError} = require('../../src/utils');
+const {log} = require('../../src/logger');
 
 
 exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed = false} = {}) {
@@ -76,6 +77,10 @@ const localSetup = exports.localSetup = async function ({numOfNodes = harnessCon
 
 
 const localTeardown = exports.localTeardown = async function (preserveSwarmState = false) {
+    if (this.swarmManager === undefined) {
+        log.info("No swarm manager (before hook likely failed), skipping teardown");
+        return;
+    }
     await this.swarmManager.stopAll();
     if (!preserveSwarmState) {
         this.swarmManager.removeSwarmState();
