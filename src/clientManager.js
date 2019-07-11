@@ -1,17 +1,18 @@
 const {wrappedError} = require('../src/utils');
 
-const initializeClient = async ({log = false, logDetailed = false, createDB, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, uuid = harnessConfigs.defaultUuid}) => {
+const initializeClient = async ({createDB, uuid = harnessConfigs.defaultUuid, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress = harnessConfigs.esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, log = false, logDetailed = false} = {}) => {
 
     let apis;
 
     try {
         apis = await bluzelle({
+            _connect_to_all: true,
+
             uuid,
             ethereum_rpc,
             contract_address: esrContractAddress,
             private_pem,
             public_pem,
-            _connect_to_all: true,
             log,
             logDetailed
         });
@@ -36,8 +37,8 @@ const createKeys = async (clientObj, numOfKeys, base = 'batch', value = 'value')
     const keys = [...Array(numOfKeys).fill(base).map(concatenateValueWithIndex)];
 
     await keys.reduce((p, key) =>
-        p.then(() => clientObj.api.create(key, value))
-            , Promise.resolve());
+            p.then(() => clientObj.api.create(key, value))
+        , Promise.resolve());
 
     return {keys, value};
 };

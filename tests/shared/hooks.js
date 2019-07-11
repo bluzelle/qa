@@ -4,29 +4,28 @@ const {wrappedError} = require('../../src/utils');
 const {log} = require('../../src/logger');
 
 
-exports.remoteSwarmHook = function ({createDB = true, log = false, logDetailed = false} = {}) {
+exports.remoteSwarmHook = function ({createDB, uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed}) {
+    const clientArguments = {uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed};
+
     before('initialize client and setup db', async function () {
         this.timeout(harnessConfigs.defaultBeforeHookTimeout);
-        this.api = await remoteSetup({createDB, log, logDetailed});
+
+        this.api = await remoteSetup({createDB, ...clientArguments});
     });
 
     after('deleteDB', async function () {
         this.timeout(harnessConfigs.defaultAfterHookTimeout);
+
         if (await this.api._hasDB()) {
             await this.api._deleteDB();
         }
     });
 };
 
-const remoteSetup = exports.remoteSetup = async function ({createDB = true, log = false, logDetailed = false} = {}) {
-    const apis = await initializeClient({
-        ethereum_rpc: harnessConfigs.ethereumRpc,
-        esrContractAddress: harnessConfigs.esrContractAddress,
-        createDB: false,
-        log,
-        logDetailed
-    });
+const remoteSetup = exports.remoteSetup = async function ({createDB = true, uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed} = {}) {
+    const clientArguments = {uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed};
 
+    const apis = await initializeClient({createDB: false, ...clientArguments});
     const api = apis[0];
 
     try {
@@ -43,11 +42,13 @@ const remoteSetup = exports.remoteSetup = async function ({createDB = true, log 
     return api;
 };
 
-exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, createDB = true, numOfNodes = harnessConfigs.numOfNodes, preserveSwarmState = false, log, logDetailed} = {}) {
+exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, createDB, configOptions, preserveSwarmState, uuid, ethereum_rpc, private_pem, public_pem, log, logDetailed} = {}) {
+
     beforeHook('start swarm and client, create db', async function () {
         this.timeout(harnessConfigs.defaultBeforeHookTimeout);
 
-        const {manager, swarm, api} = await localSetup({numOfNodes, createDB, log, logDetailed});
+        const clientArguments = {uuid, ethereum_rpc, private_pem, public_pem, log, logDetailed};
+        const {manager, swarm, api} = await localSetup({createDB, configOptions, ...clientArguments});
         this.swarmManager = manager;
         this.swarm = swarm;
         this.api = api;
@@ -56,25 +57,18 @@ exports.localSwarmHooks = function ({beforeHook = before, afterHook = after, cre
     stopSwarmsAndRemoveStateHook({afterHook, preserveSwarmState});
 };
 
-const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, createDB = true, log, logDetailed, configOptions} = {}) {
+const localSetup = exports.localSetup = async function ({numOfNodes = harnessConfigs.numOfNodes, configOptions, createDB = true, uuid, ethereum_rpc, private_pem, public_pem, log, logDetailed} = {}) {
 
     const manager = await swarmManager();
     const swarm = await manager.generateSwarm({numberOfDaemons: numOfNodes, configOptions});
-
     await manager.startAll();
 
-    const apis = await initializeClient({
-        ethereum_rpc: harnessConfigs.ethereumRpc,
-        esrContractAddress: manager.getEsrContractAddress(),
-        createDB: createDB,
-        log,
-        logDetailed
-    });
+    const clientArguments = {esrContractAddress: manager.getEsrContractAddress(), uuid, ethereum_rpc, private_pem, public_pem, log, logDetailed};
+    const apis = await initializeClient({createDB, ...clientArguments});
     const api = apis[0];
 
     return {manager, swarm, api}
 };
-
 
 const localTeardown = exports.localTeardown = async function (preserveSwarmState = false) {
     if (this.swarmManager === undefined) {
@@ -87,7 +81,7 @@ const localTeardown = exports.localTeardown = async function (preserveSwarmState
     }
 };
 
-const stopSwarmsAndRemoveStateHook = exports.stopSwarmsAndRemoveStateHook = function ({afterHook = after, preserveSwarmState = false}) {
+const stopSwarmsAndRemoveStateHook = exports.stopSwarmsAndRemoveStateHook = function ({afterHook = after, preserveSwarmState} = {}) {
     afterHook('stop daemons and remove state', async function () {
         this.timeout(harnessConfigs.defaultAfterHookTimeout);
         await localTeardown.call(this, preserveSwarmState);
