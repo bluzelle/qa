@@ -22,14 +22,14 @@ describe('database management', function () {
                 noDbTests();
 
                 it('should be able to createDB', async function () {
-                    await this.api.createDB();
+                    await this.api._createDB();
                 });
             });
 
             context('with existing db', function () {
 
                 beforeEach('createDB', async function () {
-                    await this.api.createDB();
+                    await this.api._createDB();
                 });
 
                 context('with keys in db', function () {
@@ -49,7 +49,7 @@ describe('database management', function () {
                     context('should throw errors', function () {
 
                         it('when attempting to createDB', async function () {
-                            await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
+                            await this.api._createDB().should.be.rejectedWith('DATABASE_EXISTS');
                         });
                     });
                 });
@@ -57,11 +57,11 @@ describe('database management', function () {
                 context('with empty db', function () {
 
                     it('should be able to hasDB', async function () {
-                        expect(await this.api.hasDB()).to.be.true;
+                        expect(await this.api._hasDB()).to.be.true;
                     });
 
                     it('should be able to deleteDB', async function () {
-                        await this.api.deleteDB();
+                        await this.api._deleteDB();
                     });
 
                     keysAndSizeShouldReturnZero();
@@ -70,7 +70,7 @@ describe('database management', function () {
                     context('should throw errors', function () {
 
                         it('when attempting to createDB', async function () {
-                            await this.api.createDB().should.be.rejectedWith('DATABASE_EXISTS');
+                            await this.api._createDB().should.be.rejectedWith('DATABASE_EXISTS');
                         });
                     });
                 });
@@ -78,13 +78,13 @@ describe('database management', function () {
                 context('with deleted DB', function () {
 
                     beforeEach('deleteDB', async function () {
-                        await this.api.deleteDB();
+                        await this.api._deleteDB();
                     });
 
                     noDbTests();
 
                     it('should be able to createDB', async function () {
-                        await this.api.createDB();
+                        await this.api._createDB();
                     });
                 });
             });
@@ -99,7 +99,7 @@ describe('database management', function () {
             context('after creating DB', function () {
 
                 before('createDB', async function () {
-                    await this.api.createDB();
+                    await this.api._createDB();
                 });
 
                 keysAndSizeShouldReturnZero();
@@ -115,7 +115,7 @@ describe('database management', function () {
                 context('after deleting DB', function () {
 
                     before('deleteDB', async function () {
-                        await this.api.deleteDB();
+                        await this.api._deleteDB();
                     });
 
                     noDbTests();
@@ -150,7 +150,7 @@ describe('database management', function () {
             });
 
             before(`createDB of size ${testParams.databaseSize}`, async function () {
-                await this.api.createDB(testParams.databaseSize)
+                await this.api._createDB(testParams.databaseSize)
             });
 
             it(`should show remainingBytes of ${testParams.databaseSize}`, async function () {
@@ -222,7 +222,7 @@ describe('database management', function () {
             context(`increasing db size limit by ${testParams.databaseIncreaseSize}`, function () {
 
                 before('increase db limit', async function () {
-                    await this.api.updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
+                    await this.api._updateDB(testParams.databaseSize + testParams.databaseIncreaseSize);
                 });
 
                 it(`should show maxSize of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
@@ -327,7 +327,7 @@ function keysAndSizeShouldReturnGreaterThanZero(numberOfKeys) {
 function noDbTests() {
 
     it('should be able to hasDB', async function () {
-        expect(await this.api.hasDB()).to.be.false;
+        expect(await this.api._hasDB()).to.be.false;
     });
 
     it('size should be rejected with DATABASE_NOT_FOUND', async function () {
@@ -337,7 +337,7 @@ function noDbTests() {
     context('should throw errors', function () {
 
         it('when attempting to deleteDB', async function () {
-            await this.api.deleteDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+            await this.api._deleteDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
         });
 
         noDbExpectedFailureTests();

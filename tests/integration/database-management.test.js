@@ -18,7 +18,7 @@ describe('database management', function () {
     context(`with a database of size ${testParams.databaseSize}`, function () {
 
         before(`createDB of size ${testParams.databaseSize}`, async function () {
-            await this.api.createDB(testParams.databaseSize)
+            await this.api._createDB(testParams.databaseSize)
         });
 
         it(`should correctly report maxSize of ${testParams.databaseSize}`, async function () {
