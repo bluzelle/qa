@@ -226,7 +226,7 @@ describe('database management', function () {
                 });
 
                 it(`should show maxSize of ${testParams.databaseSize + testParams.databaseIncreaseSize}`, async function () {
-                    expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize});
+                    expect(await this.api.size()).to.deep.include({maxSize: testParams.databaseSize + testParams.databaseIncreaseSize});
                 });
 
                 it(`should show correct remainingBytes`, async function () {
