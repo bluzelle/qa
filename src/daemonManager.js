@@ -114,16 +114,20 @@ const generateDaemon = (swarmId, daemonConfig) => {
 
         setDaemonProcess(spawn('./swarm', ['-c', `bluzelle-${daemonConfig.listener_port}.json`], {cwd: getDaemonOutputDir(swarmId, daemonConfig)}));
 
+        getDaemonProcess().on('error', (err) => {
+            log.crit(`Process error with daemon-${daemonConfig.listener_port}: ${err}`);
+            throw err;
+        });
+
         getDaemonProcess().stderr
             .pipe(split2())
             .on('data', line => {
-
-            if (line.includes('Warning:')) {
-                log.warn(`Daemon stderr ${line}`);
-            } else {
-                log.crit(`Daemon stderr ${line}`);
-            }
-        });
+                if (line.includes('Warning:')) {
+                    log.warn(`Daemon stderr ${line}`);
+                } else {
+                    log.crit(`Daemon stderr ${line}`);
+                }
+            });
 
         await pRetry(async () => {
             await new Promise((resolve, reject) => {
@@ -143,12 +147,17 @@ const generateDaemon = (swarmId, daemonConfig) => {
             retries: 3
         });
 
-        getDaemonProcess().on('close', (code) => {
-            log.info(`Daemon ${daemonConfig.listener_port} stopped`);
 
+        getDaemonProcess().on('exit', (code, sgnl) => {
+            log.info(`Daemon ${daemonConfig.listener_port} stopped`);
             setRunning(false);
-            if (code !== 0) {
-                log.crit(`Daemon-${daemonConfig.listener_port} exited with ${code}`);
+
+            if (sgnl) {
+                log.crit(`Daemon-${daemonConfig.listener_port} exited with signal "${sgnl}"`);
+            } else if (code !== 0) {
+                log.crit(`Daemon-${daemonConfig.listener_port} exited with code "${code}"`);
+            } else {
+                log.info(`Daemon-${daemonConfig.listener_port} exited normally`);
             }
         });
 
