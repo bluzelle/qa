@@ -145,18 +145,25 @@ const generateDaemon = (swarmId, daemonConfig) => {
             }
         });
 
-        await new Promise((resolve, reject) => {
-            setTimeout(() => {
-                getDaemonProcess().kill();
-                reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`))
-            }, harnessConfigs.daemonStartTimeout);
-
+        const startupTimeout = new Promise((_, reject) => {
+            setTimeout(
+                () => reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`)),
+                harnessConfigs.daemonStartTimeout
+            );
+        });
+        const startupSuccess = new Promise((resolve) => {
             getDaemonProcess().stdout
                 .pipe(split2())
                 .on('data', line => {
                     line.includes(daemonConstants.startSuccessful) && (log.info(`Successfully started daemon ${daemonConfig.listener_port}`) || (setRunning(true) && resolve()));
                 });
         });
+
+        await Promise.race([startupSuccess, startupTimeout])
+            .catch(err => {
+                getDaemonProcess().kill();
+                throw err;
+            });
 
         return getDaemonProcess;
     }
