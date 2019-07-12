@@ -213,7 +213,7 @@ const writeDaemonConfigObject = (config, swarmId) => {
 const createDaemonConfigObject = curry(({listener_port, swarm_info_esr_address, swarm_id}, template) => ({
     ...template,
     listener_port,
-    swarm_info_esr_address: swarm_info_esr_address.substr(2), // swarmDB option does not accept 0x prepended address
+    swarm_info_esr_address,
     swarm_id
 }));
 
