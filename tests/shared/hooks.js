@@ -4,7 +4,7 @@ const {wrappedError} = require('../../src/utils');
 const {log} = require('../../src/logger');
 
 
-exports.remoteSwarmHook = function ({createDB, uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed}) {
+exports.remoteSwarmHook = function ({createDB, uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed} = {}) {
     const clientArguments = {uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed};
 
     before('initialize client and setup db', async function () {
