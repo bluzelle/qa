@@ -145,13 +145,13 @@ const generateDaemon = (swarmId, daemonConfig) => {
             }
         });
 
-        let startupTimeout = new Promise((_, reject) => {
+        const startupTimeout = new Promise((_, reject) => {
             setTimeout(
                 () => reject(new Error(`Daemon-${daemonConfig.listener_port} failed to start in ${harnessConfigs.daemonStartTimeout}ms.`)),
                 harnessConfigs.daemonStartTimeout
             );
         });
-        let startupSuccess = new Promise((resolve) => {
+        const startupSuccess = new Promise((resolve) => {
             getDaemonProcess().stdout
                 .pipe(split2())
                 .on('data', line => {
