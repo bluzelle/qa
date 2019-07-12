@@ -1,9 +1,16 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
+const {initializeClient} = require('../../src/clientManager');
 
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('status', function () {
 
-    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks());
+    const testParams = {
+        numberOfNamespaces: 3,
+        namespaceSize: 5000,
+        maxSwarmStorage: 20000
+    };
+
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
 
     before('make status request', async function () {
         this.response = await this.api.status();
@@ -21,6 +28,29 @@ const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 
     it('moduleStatusJson[1] response should conform to crud schema', async  function () {
         expect(this.moduleStatusJson.module[1]).to.be.jsonSchema(crudModuleSchema);
+    });
+
+    context('crud module', function () {
+
+        before('create name spaces', async function () {
+            const uuids = [...Array(testParams.numberOfNamespaces)].map(() => `${Math.random()}`);
+            const clients = await Promise.all(uuids.map(uuid => initializeClient({uuid, esrContractAddress: this.swarmManager.getEsrContractAddress()})));
+            await Promise.all(clients.map(apis => apis[0]._createDB(testParams.namespaceSize)));
+        });
+
+        it('should report correct swarm_storage_usage', async function () {
+            const res = await this.api.status();
+
+            expect(JSON.parse(res.moduleStatusJson).module[1].status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
+        });
+
+        if (!harnessConfigs.testRemoteSwarm) {
+            it('should report correct swarm_storage_usage', async function () {
+                const res = await this.api.status();
+
+                expect(JSON.parse(res.moduleStatusJson).module[1].status).to.deep.include({'max_swarm_storage': testParams.maxSwarmStorage})
+            });
+        }
     });
 });
 
