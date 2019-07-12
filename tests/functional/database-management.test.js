@@ -1,4 +1,4 @@
-const {createKeys} = require('../../src/clientManager');
+const {createKeys, initializeClient} = require('../../src/clientManager');
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
@@ -8,6 +8,89 @@ const daemonConstants = require('../../resources/daemonConstants');
 describe('database management', function () {
 
     context('database creation and deletion', function () {
+
+        context('permissioning', function () {
+
+            const notMasterKeyPair = {
+                privateKey: 'MHQCAQEEIKyRad3bhvLOMC9/zajsk5+o9WIaQoWNZMPjN+RauDOSoAcGBSuBBAAKoUQDQgAEs/FPun/4jYE+vitiFOGxo/Wxy1Zsv1UjqDwVfnI45qehmPBd7VxvPyX9fHbwtFUZFp8S5+9B/gwBvKN/2+5R6g==',
+                publicKey: 'MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEs/FPun/4jYE+vitiFOGxo/Wxy1Zsv1UjqDwVfnI45qehmPBd7VxvPyX9fHbwtFUZFp8S5+9B/gwBvKN/2+5R6g=='
+            };
+
+            context('with matching client private key and daemon owner_public_key', function () {
+
+                localSwarmHooks({
+                    createDB: false,
+                    configOptions: {owner_public_key: harnessConfigs.masterPublicKey},
+                    private_pem: harnessConfigs.masterPrivateKey,
+                    public_pem: harnessConfigs.masterPublicKey
+                });
+
+                it('should be able to successfully createDB', async function () {
+                    await this.api._createDB()
+                });
+
+                it('should be able to successfully updateDB', async function () {
+                    await this.api._updateDB(5000)
+                });
+
+                it('should be able to successfully deleteDB', async function () {
+                    await this.api._deleteDB();
+                });
+            });
+
+            context('with mismatching client private key and daemon owner_public_key', function () {
+
+                localSwarmHooks({
+                    createDB: false,
+                    configOptions: {owner_public_key: harnessConfigs.masterPublicKey},
+                    private_pem: notMasterKeyPair.privateKey,
+                    public_pem: notMasterKeyPair.publicKey
+                });
+
+                before('create "owner" client', async function () {
+                    const apis = await initializeClient({
+                        createDB: false,
+                        esrContractAddress: this.swarmManager.getEsrContractAddress(),
+                        private_pem: harnessConfigs.masterPrivateKey,
+                        public_pem: harnessConfigs.masterPublicKey
+                    });
+
+                    this.ownerApi = apis[0];
+                });
+
+                it('should fail to createDB', async function () {
+                    await this.api._createDB().should.be.rejectedWith('ACCESS_DENIED')
+                });
+
+                it('should fail to updateDB', async function () {
+                    await this.api._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+
+                it('should fail to deleteDB', async function () {
+                    await this.api._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                });
+
+                context('with an existing database', function () {
+
+                    before('createDB with owner client', async function () {
+                        await this.ownerApi._createDB();
+                    });
+
+                    it('should fail to createDB', async function () {
+                        await this.api._createDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+
+                    it('should fail to updateDB', async function () {
+                        await this.api._updateDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+
+                    it('should fail to deleteDB', async function () {
+                        await this.api._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+                });
+            });
+
+        });
 
         context('with a new swarm per test', function () {
 
@@ -191,7 +274,7 @@ describe('database management', function () {
             context('creating more keys', function () {
 
                 before(`creating ${testParams.numberOfExtraKeys} more keys`, async function () {
-                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(1));
                     const totalKeysValue = keysAndValue.keys.reduce((total, key) => total += key.length, 0);
 
                     Object.defineProperty(testParams, 'extraKeysTotal', {
