@@ -1,8 +1,8 @@
 {
   "scripts": {
-    "profile" : "node --no-warnings ./scripts/profile.js",
-    "calibrate-and-run" : "./scripts/set-calibration-env.sh",
-    "test-target" : "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts $TEST_TARGET; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
+    "profile": "node --no-warnings ./scripts/profile.js",
+    "calibrate-and-run": "./scripts/set-calibration-env.sh",
+    "test-target": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts $TEST_TARGET; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/**/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test-functional": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/functional/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
     "test-integration": "if [ -d ./daemon-build ]; then mocha --opts tests/mocha.opts tests/integration/*test.js; else echo \"Please run npm run link-daemon first.\"; exit 1; fi",
@@ -24,7 +24,7 @@
     "dotenv": "^6.1.0",
     "fs": "^0.0.1-security",
     "fs-extra": "^7.0.1",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.14",
     "mocha": "^5.2.0",
     "monet": "^0.9.0",
     "poll-until-promise": "^1.3.1",
