@@ -14,20 +14,19 @@ const {initializeClient} = require('../../src/clientManager');
 
     before('make status request', async function () {
         this.response = await this.api.status();
-
-        this.moduleStatusJson = JSON.parse(this.response.moduleStatusJson)
+        this.firstResponseModuleStatusJson = JSON.parse(this.response.moduleStatusJson);
     });
 
-    it('status response should conform to status schema', async function () {
+    it('status response should conform to status schema', function () {
         expect(this.response).to.be.jsonSchema(statusSchema);
     });
 
-    it('moduleStatusJson[0] response should conform to status schema', async function () {
-        expect(this.moduleStatusJson.module[0]).to.be.jsonSchema(pbftModuleSchema);
+    it('moduleStatusJson[0] response should conform to status schema', function () {
+        expect(this.firstResponseModuleStatusJson.module[0]).to.be.jsonSchema(pbftModuleSchema);
     });
 
-    it('moduleStatusJson[1] response should conform to crud schema', async  function () {
-        expect(this.moduleStatusJson.module[1]).to.be.jsonSchema(crudModuleSchema);
+    it('moduleStatusJson[1] response should conform to crud schema', function () {
+        expect(this.firstResponseModuleStatusJson.module[1]).to.be.jsonSchema(crudModuleSchema);
     });
 
     context('crud module', function () {
@@ -36,19 +35,18 @@ const {initializeClient} = require('../../src/clientManager');
             const uuids = [...Array(testParams.numberOfNamespaces)].map(() => `${Math.random()}`);
             const clients = await Promise.all(uuids.map(uuid => initializeClient({uuid, esrContractAddress: this.swarmManager.getEsrContractAddress()})));
             await Promise.all(clients.map(apis => apis[0]._createDB(testParams.namespaceSize)));
+
+            this.secondResponse = await this.api.status();
+            this.secondResponseModuleStatusJson = JSON.parse(this.secondResponse.moduleStatusJson);
         });
 
-        it('should report correct swarm_storage_usage', async function () {
-            const res = await this.api.status();
-
-            expect(JSON.parse(res.moduleStatusJson).module[1].status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
+        it('should report correct swarm_storage_usage', function () {
+            expect(this.secondResponseModuleStatusJson.module[1].status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
         });
 
         if (!harnessConfigs.testRemoteSwarm) {
-            it('should report correct swarm_storage_usage', async function () {
-                const res = await this.api.status();
-
-                expect(JSON.parse(res.moduleStatusJson).module[1].status).to.deep.include({'max_swarm_storage': testParams.maxSwarmStorage})
+            it('should report correct swarm_storage_usage', function () {
+                expect(this.secondResponseModuleStatusJson.module[1].status).to.deep.include({'max_swarm_storage': testParams.maxSwarmStorage})
             });
         }
     });
