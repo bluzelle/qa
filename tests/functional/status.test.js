@@ -1,5 +1,6 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {initializeClient} = require('../../src/clientManager');
+const {find} = require('lodash');
 
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('status', function () {
@@ -7,27 +8,36 @@ const {initializeClient} = require('../../src/clientManager');
     const testParams = {
         numberOfNamespaces: 3,
         namespaceSize: 5000,
-        maxSwarmStorage: 20000
+        maxSwarmStorage: harnessConfigs.maxSwarmStorage
     };
+
+    const modules = [];
 
     (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
 
     before('make status request', async function () {
         this.response = await this.api.status();
-        this.firstResponseModuleStatusJson = JSON.parse(this.response.moduleStatusJson);
+        JSON.parse(this.response.moduleStatusJson).module.forEach(module => modules.push(module));
     });
 
     it('status response should conform to status schema', function () {
         expect(this.response).to.be.jsonSchema(statusSchema);
     });
 
-    it('moduleStatusJson[0] response should conform to status schema', function () {
-        expect(this.firstResponseModuleStatusJson.module[0]).to.be.jsonSchema(pbftModuleSchema);
-    });
+    // dummy test to force tests to be generated async
+    it('tests after status request', function (done) {
 
-    it('moduleStatusJson[1] response should conform to crud schema', function () {
-        expect(this.firstResponseModuleStatusJson.module[1]).to.be.jsonSchema(crudModuleSchema);
-    });
+        describe('module tests', function () {
+
+            modules.forEach(module => {
+
+                it(`${module.name} response should conform to ${module.name} schema`, function () {
+                    expect(module).to.be.jsonSchema(schemas[`${module.name}ModuleSchema`]);
+                });
+            })
+        })
+        done();
+    })
 
     context('crud module', function () {
 
@@ -36,22 +46,19 @@ const {initializeClient} = require('../../src/clientManager');
             const clients = await Promise.all(uuids.map(uuid => initializeClient({uuid, esrContractAddress: this.swarmManager.getEsrContractAddress()})));
             await Promise.all(clients.map(apis => apis[0]._createDB(testParams.namespaceSize)));
 
-            this.secondResponse = await this.api.status();
-            this.secondResponseModuleStatusJson = JSON.parse(this.secondResponse.moduleStatusJson);
+            const response = await this.api.status();
+            this.crudModuleResponse = find(JSON.parse(response.moduleStatusJson).module, (module) => module.name === 'crud');
         });
 
         it('should report correct swarm_storage_usage', function () {
-            expect(this.secondResponseModuleStatusJson.module[1].status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
+            expect(this.crudModuleResponse.status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
         });
 
-        if (!harnessConfigs.testRemoteSwarm) {
-            it('should report correct swarm_storage_usage', function () {
-                expect(this.secondResponseModuleStatusJson.module[1].status).to.deep.include({'max_swarm_storage': testParams.maxSwarmStorage})
-            });
-        }
+        it('should report correct max_swarm_storage', function () {
+            expect(this.crudModuleResponse.status).to.deep.include({'max_swarm_storage': testParams.maxSwarmStorage})
+        });
     });
 });
-
 
 const statusSchema = {
     properties: {
@@ -187,3 +194,9 @@ const crudModuleSchema = {
     required: ['name', 'status'],
     additionalProperties: false
 };
+
+const schemas = {
+    statusSchema,
+    pbftModuleSchema,
+    crudModuleSchema
+}
