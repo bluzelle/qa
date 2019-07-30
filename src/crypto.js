@@ -5,7 +5,7 @@ const {pipe, invoke} = require('lodash/fp');
 exports.generateKeys = (path) => {
 
     try {
-        execSync(`openssl ecparam -name secp256r1 -genkey -noout -out ${path}/private-key.pem`);
+        execSync(`openssl ecparam -name prime256v1 -genkey -noout -out ${path}/private-key.pem`);
         execSync(`openssl ec -in ${path}/private-key.pem -pubout -out ${path}/public-key.pem > /dev/null 2>&1`);
     } catch (err) {
         throw new Error(`Error generating Daemon keys \n${err}`)

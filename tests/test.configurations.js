@@ -18,8 +18,8 @@ const harnessConfigs = global.harnessConfigs = {
     testRemoteSwarm: process.env.TEST_REMOTE_SWARM ? process.env.TEST_REMOTE_SWARM : false,
 
     defaultUuid: process.env.DEFAULT_UUID ? process.env.DEFAULT_UUID : '96dd6297-d8ed-4bd1-a91e-ed2958cda3c7',
-    masterPrivateKey: process.env.MASTER_PRIVATE_KEY ? process.env.MASTER_PRIVATE_KEY : 'MHQCAQEEIEOd7E9zSxgJjtpGzK/gHl0vVSOZ2iF3TY50InD67BnHoAcGBSuBBAAKoUQDQgAEE/Yeq9sYdyeou+TnNEJjMnuntrzqcFIfIHd49LW461d55TY4hVX66ZXXGvAWRqMVMeELtYuKGYU44bPaxTb1ig==',
-    masterPublicKey: process.env.MASTER_PUBLIC_KEY ? process.env.MASTER_PUBLIC_KEY : 'MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEE/Yeq9sYdyeou+TnNEJjMnuntrzqcFIfIHd49LW461d55TY4hVX66ZXXGvAWRqMVMeELtYuKGYU44bPaxTb1ig==',
+    masterPrivateKey: process.env.MASTER_PRIVATE_KEY ? process.env.MASTER_PRIVATE_KEY : 'MHcCAQEEIN1Bl1ZucJkJvkLeQXtnYeoERlrIF2OuNCo0mYi+G6tToAoGCCqGSM49AwEHoUQDQgAEWsFngpYif/xTFzASKJhdGF8QuGb2kyD+F/eVpJdWA3wQqMod/DzdCVrIl7PLJktS6UDTdh7o/h2eZYYXvI0p8w==',
+    masterPublicKey: process.env.MASTER_PUBLIC_KEY ? process.env.MASTER_PUBLIC_KEY : 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWsFngpYif/xTFzASKJhdGF8QuGb2kyD+F/eVpJdWA3wQqMod/DzdCVrIl7PLJktS6UDTdh7o/h2eZYYXvI0p8w==',
 
     ethereumRpc: process.env.ETHEREUM_RPC ? process.env.ETHEREUM_RPC : 'http://127.0.0.1:8545',
     esrContractAddress: process.env.ESR_CONTRACT_ADDRESS ? process.env.ESR_CONTRACT_ADDRESS : '0x7FDbE549D8b47b8285ff106E060Eb9C43Fd879e5',
