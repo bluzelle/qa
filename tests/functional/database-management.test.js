@@ -3,7 +3,7 @@ const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
 const daemonConstants = require('../../resources/daemonConstants');
-
+const {generateKeys: generateEllipticCurveKeys} = require('../../src/crypto');
 
 describe('database management', function () {
 
@@ -13,9 +13,10 @@ describe('database management', function () {
 
             const randomUuid = `${Math.random()}`;
 
+            const [pubKey, privKey] = generateEllipticCurveKeys(`/tmp`);
             const notMasterKeyPair = {
-                privateKey: 'MHQCAQEEIKyRad3bhvLOMC9/zajsk5+o9WIaQoWNZMPjN+RauDOSoAcGBSuBBAAKoUQDQgAEs/FPun/4jYE+vitiFOGxo/Wxy1Zsv1UjqDwVfnI45qehmPBd7VxvPyX9fHbwtFUZFp8S5+9B/gwBvKN/2+5R6g==',
-                publicKey: 'MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEs/FPun/4jYE+vitiFOGxo/Wxy1Zsv1UjqDwVfnI45qehmPBd7VxvPyX9fHbwtFUZFp8S5+9B/gwBvKN/2+5R6g=='
+                privateKey: privKey,
+                publicKey: pubKey
             };
 
             (harnessConfigs.testRemoteSwarm
@@ -34,8 +35,20 @@ describe('database management', function () {
 
             context('with matching client private key and daemon owner_public_key', function () {
 
+                it('should not have DB', async function () {
+                    (await this.api._hasDB()).should.be.false;
+                });
+
                 it('should be able to successfully createDB', async function () {
                     await this.api._createDB()
+                });
+
+                it('should have DB', async function () {
+                    (await this.api._hasDB()).should.be.true;
+                });
+
+                it('should be able to successfully create key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world');
                 });
 
                 it('should be able to successfully updateDB', async function () {
@@ -44,6 +57,14 @@ describe('database management', function () {
 
                 it('should be able to successfully deleteDB', async function () {
                     await this.api._deleteDB();
+                });
+
+                it('should not have DB', async function () {
+                    (await this.api._hasDB()).should.be.false;
+                });
+
+                it('should fail to create key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
                 });
             });
 
@@ -68,12 +89,20 @@ describe('database management', function () {
                     await this.noAccessApi._createDB().should.be.rejectedWith('ACCESS_DENIED')
                 });
 
+                it('should fail to create key with master key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+
                 it('should fail to updateDB', async function () {
-                    await this.noAccessApi._updateDB().should.be.rejectedWith('ACCESS_DENIED')
+                    await this.noAccessApi._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
                 });
 
                 it('should fail to deleteDB', async function () {
                     await this.noAccessApi._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                });
+
+                it('should fail to create key with master key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
                 });
 
                 context('with an existing database', function () {
@@ -87,11 +116,15 @@ describe('database management', function () {
                     });
 
                     it('should fail to updateDB', async function () {
-                        await this.noAccessApi._updateDB().should.be.rejectedWith('ACCESS_DENIED')
+                        await this.noAccessApi._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
                     });
 
                     it('should fail to deleteDB', async function () {
                         await this.noAccessApi._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+
+                    it('should be able to successfully create key', async function () {
+                        await this.api.create(`${Math.random()}`, 'world');
                     });
                 });
             });
