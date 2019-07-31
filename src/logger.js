@@ -1,4 +1,5 @@
 const chalk = require('chalk');
+const {harnessConfigs} = require('../resources/harness-configurations');
 
 const LOG_LEVEL_ENUM = Object.freeze({info: 1, warn: 2, crit: 3});
 const LOG_LEVEL_CHALK_MAP = Object.freeze({info: "green", warn: "yellow", crit: "red"});

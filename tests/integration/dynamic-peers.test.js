@@ -4,6 +4,7 @@ const PollUntil = require('poll-until-promise');
 const {last} = require('lodash/fp');
 const daemonConstants = require('../../resources/daemonConstants');
 const {stopSwarmsAndRemoveStateHook, localSetup} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 

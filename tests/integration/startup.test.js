@@ -4,6 +4,7 @@ const split2 = require('split2');
 const {getDaemonOutputDir} = require('../../src/FileService');
 const {editConfigFile} = require('../../src/utils');
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 const DAEMON_OBJ = {
     listener_port: 50000,

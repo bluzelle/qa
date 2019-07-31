@@ -60,3 +60,7 @@ function recordTransaction(description, receipt, display) {
 
     receipts.push([description, receipt]);
 };
+
+exports.disconnect = function () {
+    web3.currentProvider.disconnect();
+};

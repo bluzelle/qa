@@ -5,6 +5,7 @@ const {stopSwarmsAndRemoveStateHook, localSetup} = require('../shared/hooks');
 const PollUntil = require('poll-until-promise');
 const {log} = require('../../src/logger');
 const {wrappedError} = require('../../src/utils');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 const NEW_PRIMARY_TEST_TIMEOUT = 60000;
 

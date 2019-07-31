@@ -1,6 +1,7 @@
 const fs = require('fs');
 const sharedTests = require('../shared/tests');
 const {localSwarmHooks, remoteSwarmHook} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 const numOfNodes = harnessConfigs.numOfNodes;

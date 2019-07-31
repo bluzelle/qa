@@ -2,6 +2,7 @@ const {swarmManager} = require('../../src/swarmManager');
 const {initializeClient} = require('../../src/clientManager');
 const {wrappedError} = require('../../src/utils');
 const {log} = require('../../src/logger');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 exports.remoteSwarmHook = function ({createDB, uuid, ethereum_rpc, esrContractAddress, private_pem, public_pem, log, logDetailed} = {}) {

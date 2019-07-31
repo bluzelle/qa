@@ -4,6 +4,7 @@ const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
 const daemonConstants = require('../../resources/daemonConstants');
 const {generateKeys: generateEllipticCurveKeys} = require('../../src/crypto');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 describe('database management', function () {
 
