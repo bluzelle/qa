@@ -34,6 +34,7 @@ exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons
     return {
         start: () => Promise.all(getDaemons().map(invoke('start'))),
         stop: () => Promise.all(getDaemons().map(invoke('stop'))),
+        restart: () => Promise.all(getDaemons().map(invoke('restart'))),
         startPartial: (numberOfDaemonsToStart) =>
             Promise.all(take(numberOfDaemonsToStart, getDaemons())
                 .map(invoke('start'))
@@ -157,7 +158,7 @@ const generateDaemon = (swarmId, daemonConfig) => {
             getDaemonProcess().stdout
                 .pipe(split2())
                 .on('data', line => {
-                    line.includes(daemonConstants.startSuccessful) && (log.info(`Successfully started daemon ${daemonConfig.listener_port}`) || (setRunning(true) && resolve()));
+                    line.includes(daemonConstants.startSuccessful) && (setRunning(true) && resolve());
                 });
         });
 
