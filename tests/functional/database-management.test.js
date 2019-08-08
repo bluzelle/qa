@@ -1,21 +1,148 @@
-const {createKeys} = require('../../src/clientManager');
+const {createKeys, initializeClient} = require('../../src/clientManager');
 const sharedTests = require('../shared/tests');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
 const daemonConstants = require('../../resources/daemonConstants');
-
+const {generateKeys: generateEllipticCurveKeys} = require('../../src/crypto');
 
 describe('database management', function () {
 
     context('database creation and deletion', function () {
 
+        (harnessConfigs.testRemoteSwarm ? context.skip : context)('permissioning', function () {
+
+            const randomUuid = `${Math.random()}`;
+
+            const [pubKey, privKey] = generateEllipticCurveKeys(`/tmp`);
+            const notMasterKeyPair = {
+                privateKey: privKey,
+                publicKey: pubKey
+            };
+
+            (harnessConfigs.testRemoteSwarm
+                ? remoteSwarmHook({
+                    createDB: false,
+                    uuid: randomUuid,
+                    private_pem: harnessConfigs.masterPrivateKey,
+                    public_pem: harnessConfigs.masterPublicKey
+                })
+                : localSwarmHooks({
+                    createDB: false,
+                    configOptions: {owner_public_key: harnessConfigs.masterPublicKey},
+                    private_pem: harnessConfigs.masterPrivateKey,
+                    public_pem: harnessConfigs.masterPublicKey
+                }));
+
+            context('with matching client private key and daemon owner_public_key', function () {
+
+                it('should not have DB', async function () {
+                    (await this.api._hasDB()).should.be.false;
+                });
+
+                it('should be able to successfully createDB', async function () {
+                    await this.api._createDB()
+                });
+
+                it('should have DB', async function () {
+                    (await this.api._hasDB()).should.be.true;
+                });
+
+                it('should be able to successfully create key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world');
+                });
+
+                it('should be able to successfully updateDB', async function () {
+                    await this.api._updateDB(5000)
+                });
+
+                it('should be able to successfully deleteDB', async function () {
+                    await this.api._deleteDB();
+                });
+
+                it('should not have DB', async function () {
+                    (await this.api._hasDB()).should.be.false;
+                });
+
+                it('should fail to create key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+            });
+
+            context('with mismatching client private key and daemon owner_public_key', function () {
+
+                before('create "no access" client', async function () {
+
+                    this.esrAddress = harnessConfigs.testRemoteSwarm ? harnessConfigs.esrContractAddress : this.swarmManager.getEsrContractAddress();
+
+                    const apis = await initializeClient({
+                        createDB: false,
+                        uuid: randomUuid,
+                        esrContractAddress: this.esrAddress,
+                        private_pem: notMasterKeyPair.privateKey,
+                        public_pem: notMasterKeyPair.publicKey
+                    });
+
+                    this.noAccessApi = apis[0];
+                });
+
+                it('should fail to createDB', async function () {
+                    await this.noAccessApi._createDB().should.be.rejectedWith('ACCESS_DENIED')
+                });
+
+                it('should fail to create key with master key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+
+                it('should fail to updateDB', async function () {
+                    await this.noAccessApi._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+
+                it('should fail to deleteDB', async function () {
+                    await this.noAccessApi._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                });
+
+                it('should fail to create key with master key', async function () {
+                    await this.api.create(`${Math.random()}`, 'world').should.be.rejectedWith('DATABASE_NOT_FOUND')
+                });
+
+                context('with an existing database', function () {
+
+                    before('createDB with owner client', async function () {
+                        await this.api._createDB();
+                    });
+
+                    it('should fail to createDB', async function () {
+                        await this.noAccessApi._createDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+
+                    it('should fail to updateDB', async function () {
+                        await this.noAccessApi._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+                    });
+
+                    it('should fail to deleteDB', async function () {
+                        await this.noAccessApi._deleteDB().should.be.rejectedWith('ACCESS_DENIED')
+                    });
+
+                    it('should be able to successfully create key', async function () {
+                        await this.api.create(`${Math.random()}`, 'world');
+                    });
+                });
+            });
+
+        });
+
         context('with a new swarm per test', function () {
 
-            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({
-                beforeHook: beforeEach,
-                afterHook: afterEach,
-                createDB: false
-            }));
+            (harnessConfigs.testRemoteSwarm
+                ? remoteSwarmHook({
+                    createDB: false,
+                    uuid: `${Math.random()}`
+                })
+                : localSwarmHooks({
+                    beforeHook: beforeEach,
+                    afterHook: afterEach,
+                    createDB: false
+                }));
 
             context('with no db', function () {
 
@@ -92,7 +219,12 @@ describe('database management', function () {
 
         (harnessConfigs.testRemoteSwarm ? context.only : context)('with a persisted swarm', function () {
 
-            (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false}) : localSwarmHooks({createDB: false}));
+            (harnessConfigs.testRemoteSwarm
+                ? remoteSwarmHook({
+                    createDB: false,
+                    uuid: `${Math.random()}`
+                })
+                : localSwarmHooks({createDB: false}));
 
             noDbTests();
 
@@ -191,7 +323,7 @@ describe('database management', function () {
             context('creating more keys', function () {
 
                 before(`creating ${testParams.numberOfExtraKeys} more keys`, async function () {
-                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(  1));
+                    const keysAndValue = await createKeys({api: this.api}, testParams.numberOfExtraKeys, generateString(1));
                     const totalKeysValue = keysAndValue.keys.reduce((total, key) => total += key.length, 0);
 
                     Object.defineProperty(testParams, 'extraKeysTotal', {
