@@ -260,7 +260,7 @@ describe('database management', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({createDB: false, uuid: `${Math.random()}`}) : localSwarmHooks({createDB: false}));
 
-        const NUMBER_OF_DATABASES = 50;
+        const NUMBER_OF_DATABASES = 25;
 
         before('createDBs', async function () {
             this.timeout(harnessConfigs.keyCreationTimeoutMultiplier * NUMBER_OF_DATABASES);
@@ -268,28 +268,28 @@ describe('database management', function () {
 
             const esrContractAddress = harnessConfigs.testRemoteSwarm ? harnessConfigs.esrContractAddress : this.swarmManager.getEsrContractAddress()
             this.clients = await Promise.all(uuids.map(uuid => initializeClient({uuid, esrContractAddress})));
-            await Promise.all(this.clients.map(apis => apis[0]._createDB()));
+            await Promise.all(this.clients.map(apis => apis[0]._createDB().timeout(harnessConfigs.clientOperationTimeout)));
         });
 
         it('clients should be able to create', async function () {
             this.timeout(harnessConfigs.keyCreationTimeoutMultiplier * NUMBER_OF_DATABASES);
-            await Promise.all(this.clients.map(apis => apis[0].create('hello', 'world')));
+            await Promise.all(this.clients.map(apis => apis[0].create('hello', 'world').timeout(harnessConfigs.clientOperationTimeout)));
         });
 
         it('clients should be able to read', async function () {
             this.timeout(harnessConfigs.keyCreationTimeoutMultiplier * NUMBER_OF_DATABASES);
-            const res = await Promise.all(this.clients.map(apis => apis[0].read('hello')));
+            const res = await Promise.all(this.clients.map(apis => apis[0].read('hello').timeout(harnessConfigs.clientOperationTimeout)));
             expect(res.every(value => value === 'world')).to.be.true;
         });
 
         it('clients should be able to update', async function () {
             this.timeout(harnessConfigs.keyCreationTimeoutMultiplier * NUMBER_OF_DATABASES);
-            await Promise.all(this.clients.map(apis => apis[0].update('hello', 'universe')));
+            await Promise.all(this.clients.map(apis => apis[0].update('hello', 'universe').timeout(harnessConfigs.clientOperationTimeout)));
         });
 
         it('clients should be able to delete', async function () {
             this.timeout(harnessConfigs.keyCreationTimeoutMultiplier * NUMBER_OF_DATABASES);
-            await Promise.all(this.clients.map(apis => apis[0].delete('hello')));
+            await Promise.all(this.clients.map(apis => apis[0].delete('hello').timeout(harnessConfigs.clientOperationTimeout)));
         });
     });
 
