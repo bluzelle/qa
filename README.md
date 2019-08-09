@@ -26,6 +26,15 @@ ESR_CONTRACT_ADDRESS=0xf039E760a4E97b1E50689ea6572DD74a46359aD9
 npm run test-functional
 ```
 
+### Spawning a standalone swarm for "remote" testing
+```
+# defaults to 3 node swarm, can adjust number of nodes with a positional argument
+npm run spawn-swarm
+
+# npm run spawn-swarm 5
+```
+
+
 ### Network performance testing
 
 The performance of the swarm can vary a lot depending on the host(s). A profiling script is used to test the average swarm response time. It can also be ran against a remote swarm. Follow instructions above.
