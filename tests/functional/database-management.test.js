@@ -9,7 +9,7 @@ describe('database management', function () {
 
     context('database creation and deletion', function () {
 
-        (harnessConfigs.testRemoteSwarm ? context.skip : context)('permissioning', function () {
+        (harnessConfigs.testRemoteSwarm ? context.only : context)('permissioning', function () {
 
             const randomUuid = `${Math.random()}`;
 
@@ -22,7 +22,6 @@ describe('database management', function () {
             (harnessConfigs.testRemoteSwarm
                 ? remoteSwarmHook({
                     createDB: false,
-                    uuid: randomUuid,
                     private_pem: harnessConfigs.masterPrivateKey,
                     public_pem: harnessConfigs.masterPublicKey
                 })
