@@ -11,8 +11,6 @@ describe('database management', function () {
 
         (harnessConfigs.testRemoteSwarm ? context.only : context)('permissioning', function () {
 
-            const randomUuid = `${Math.random()}`;
-
             const [pubKey, privKey] = generateEllipticCurveKeys(`/tmp`);
             const notMasterKeyPair = {
                 privateKey: privKey,
@@ -75,7 +73,6 @@ describe('database management', function () {
 
                     const apis = await initializeClient({
                         createDB: false,
-                        uuid: randomUuid,
                         esrContractAddress: this.esrAddress,
                         private_pem: notMasterKeyPair.privateKey,
                         public_pem: notMasterKeyPair.publicKey
@@ -115,7 +112,7 @@ describe('database management', function () {
                     });
 
                     it('should fail to updateDB', async function () {
-                        await this.noAccessApi._updateDB().should.be.rejectedWith('DATABASE_NOT_FOUND')
+                        await this.noAccessApi._updateDB().should.be.rejectedWith('ACCESS_DENIED')
                     });
 
                     it('should fail to deleteDB', async function () {

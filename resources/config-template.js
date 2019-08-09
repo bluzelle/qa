@@ -12,5 +12,6 @@ module.exports = {
     "chaos_testing_enabled" : false,
     "logfile_rotation_size" : "5MB",
     "logfile_max_size" : "20MB",
-    "swarm_info_esr_url" : "http://127.0.0.1:8545"
+    "swarm_info_esr_url" : "http://127.0.0.1:8545",
+    "owner_public_key" : "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWsFngpYif/xTFzASKJhdGF8QuGb2kyD+F/eVpJdWA3wQqMod/DzdCVrIl7PLJktS6UDTdh7o/h2eZYYXvI0p8w=="
 };
