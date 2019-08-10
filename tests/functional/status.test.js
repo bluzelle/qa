@@ -13,9 +13,10 @@ const {find} = require('lodash');
 
     const modules = [];
 
-    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({createDB: false, configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
 
     before('make status request', async function () {
+        await this.api._createDB(Math.floor(testParams.maxSwarmStorage/testParams.numberOfNamespaces));
         this.response = await this.api.status();
         JSON.parse(this.response.moduleStatusJson).module.forEach(module => modules.push(module));
     });
@@ -51,7 +52,7 @@ const {find} = require('lodash');
         });
 
         it('should report correct swarm_storage_usage', function () {
-            expect(this.crudModuleResponse.status).to.deep.include({'swarm_storage_usage': testParams.namespaceSize * testParams.numberOfNamespaces})
+            expect(this.crudModuleResponse.status).to.deep.include({'swarm_storage_usage': Math.floor(testParams.maxSwarmStorage / testParams.numberOfNamespaces)+ testParams.namespaceSize * testParams.numberOfNamespaces})
         });
 
         it('should report correct max_swarm_storage', function () {

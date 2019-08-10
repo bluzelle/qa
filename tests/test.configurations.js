@@ -23,7 +23,7 @@ const harnessConfigs = global.harnessConfigs = {
 
     ethereumRpc: process.env.ETHEREUM_RPC ? process.env.ETHEREUM_RPC : 'http://127.0.0.1:8545',
     esrContractAddress: process.env.ESR_CONTRACT_ADDRESS ? process.env.ESR_CONTRACT_ADDRESS : '0x7FDbE549D8b47b8285ff106E060Eb9C43Fd879e5',
-    maxSwarmStorage: process.env.MAX_SWARM_STORAGE ? process.env.MAX_SWARM_STORAGE : 20000,
+    maxSwarmStorage: process.env.MAX_SWARM_STORAGE ? process.env.MAX_SWARM_STORAGE : 200000,
 
     initialDaemonListenerPort: 50000,
 
