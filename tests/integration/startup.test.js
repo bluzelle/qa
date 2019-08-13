@@ -97,18 +97,22 @@ describe('daemon startup', function () {
 
         context('should be configurable with swarm_info_esr_url', function () {
 
-            beforeEach('edit config file', function (done) {
+            beforeEach('edit config file and launch daemon', function (done) {
                 editConfigFile(DAEMON_OBJ, [['swarm_info_esr_url', 'http://127.0.0.1:8545']]);
 
                 this.output = '';
 
-                launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
+                this.daemon = launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
                     .pipe(split2())
                     .on('data', line => {
                         this.output += line;
                     });
 
                 setTimeout(done, 2000);
+            });
+
+            afterEach('kill daemon', function () {
+                this.daemon.kill();
             });
 
             it('should connect to passed address', function (done) {
