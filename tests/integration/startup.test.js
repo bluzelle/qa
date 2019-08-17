@@ -112,6 +112,9 @@ describe('daemon startup', function () {
             });
 
             afterEach('kill daemon', function () {
+                if (this.daemon === undefined) {
+                    return
+                }
                 this.daemon.kill();
             });
 
