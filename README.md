@@ -28,7 +28,7 @@ npm run test-functional
 
 ### Spawning a standalone swarm for "remote" testing
 ```
-# defaults to 3 node swarm, can adjust number of nodes with a positional argument
+# defaults to numOfNodes set in test.configurations.js, can override with a positional argument
 npm run spawn-swarm
 
 # npm run spawn-swarm 5
