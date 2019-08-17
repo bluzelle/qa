@@ -152,14 +152,14 @@ const delay = require('delay');
                 (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({preserveSwarmState: false}));
 
                 before('create keys', function () {
-                    this.timeout(testCases.hookTimeout(ctx));
+                    this.timeout(testCases.hookTimeout(ctx) * 2);
 
                     this.expiryTimes = generateExpiryTimes(ctx.numOfKeys, testCases.minimumDelay(ctx), ctx.expiryMultiplier);
                     this.sortedExpiryTimes = this.expiryTimes.slice().sort((a, b) => a - b);
                     this.medianDelay = this.sortedExpiryTimes[this.sortedExpiryTimes.length / 2];
 
                     return this.expiryTimes.reduce((p, expiryTime, idx) =>
-                            p.then(() => this.api.create(`expiry-${idx}`, generateString(ctx.valueSize), expiryTime)),
+                            p.then(() => this.api.create(`expiry-${idx}`, generateString(ctx.valueSize), expiryTime).timeout(harnessConfigs.clientOperationTimeout)),
                         Promise.resolve());
                 });
 
