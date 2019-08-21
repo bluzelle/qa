@@ -13,9 +13,13 @@ const {find} = require('lodash');
 
     const modules = [];
 
-    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
+    (harnessConfigs.testRemoteSwarm ? remoteSwarmHook() : localSwarmHooks({createDB: false, configOptions: {max_swarm_storage: testParams.maxSwarmStorage}}));
 
     before('make status request', async function () {
+        if (testParams.maxSwarmStorage <= (testParams.numberOfNamespaces * testParams.namespaceSize)) {
+            throw new Error('maxSwarmStorage must be greater than numberOfNamespaces * namespaceSize')
+        };
+        await this.api._createDB(testParams.namespaceSize);
         this.response = await this.api.status();
         JSON.parse(this.response.moduleStatusJson).module.forEach(module => modules.push(module));
     });
@@ -42,7 +46,7 @@ const {find} = require('lodash');
     context('crud module', function () {
 
         before('create name spaces', async function () {
-            const uuids = [...Array(testParams.numberOfNamespaces)].map(() => `${Math.random()}`);
+            const uuids = [...Array(testParams.numberOfNamespaces - 1 /* minus the one already created*/)].map(() => `${Math.random()}`);
             const clients = await Promise.all(uuids.map(uuid => initializeClient({uuid, esrContractAddress: this.swarmManager.getEsrContractAddress()})));
             await Promise.all(clients.map(apis => apis[0]._createDB(testParams.namespaceSize)));
 
