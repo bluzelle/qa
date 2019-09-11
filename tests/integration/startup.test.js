@@ -102,7 +102,9 @@ describe('daemon startup', function () {
 
                 this.output = '';
 
-                this.daemon = launchDaemon(['-c', DAEMON_OBJ.config_name]).stdout
+                this.daemon = launchDaemon(['-c', DAEMON_OBJ.config_name]);
+
+                this.daemon.stdout
                     .pipe(split2())
                     .on('data', line => {
                         this.output += line;
