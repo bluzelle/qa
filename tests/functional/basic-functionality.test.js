@@ -32,19 +32,19 @@ const {generateString} = require('../../src/utils');
 
                     it(`should be able to create`, async function () {
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            await this.api.create(`key-${i}`, VALUE)
+                            await this.api.create(`key-${i}`, VALUE).timeout(harnessConfigs.clientOperationTimeout)
                         }
                     });
 
                     it(`should be able to read`, async function () {
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            (await this.api.read(`key-${i}`)).should.be.equal(VALUE);
+                            (await this.api.read(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout)).should.be.equal(VALUE);
                         }
                     });
 
                     it(`should be able to quickread`, async function () {
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            (await this.api.quickread(`key-${i}`)).should.be.equal(VALUE);
+                            (await this.api.quickread(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout)).should.be.equal(VALUE);
                         }
                     });
 
@@ -54,21 +54,21 @@ const {generateString} = require('../../src/utils');
                         const NEW_VALUE = VALUE.slice(0, -1) + 'A';
 
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            await this.api.update(`key-${i}`, NEW_VALUE);
+                            await this.api.update(`key-${i}`, NEW_VALUE).timeout(harnessConfigs.clientOperationTimeout);
                         }
 
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            (await this.api.read(`key-${i}`)).should.be.equal(NEW_VALUE);
+                            (await this.api.read(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout)).should.be.equal(NEW_VALUE);
                         }
                     });
 
                     it(`should be able to get all keys`, async function () {
-                        (await this.api.keys()).should.have.lengthOf(numberOfKeys);
+                        (await this.api.keys().timeout(harnessConfigs.clientOperationTimeout)).should.have.lengthOf(numberOfKeys);
                     });
 
                     it(`should be able to has all keys`, async function () {
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            await this.api.has(`key-${i}`);
+                            await this.api.has(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout);
                         }
                     });
 
@@ -76,13 +76,13 @@ const {generateString} = require('../../src/utils');
                         this.timeout(numberOfKeys * harnessConfigs.keyCreationTimeoutMultiplier * 2);
 
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            await this.api.delete(`key-${i}`);
+                            await this.api.delete(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout);
                         }
 
                         (await this.api.keys()).should.have.lengthOf(0);
 
                         for (let i = 0; i < numberOfKeys; i ++) {
-                            (await this.api.has(`key-${i}`)).should.be.equal(false);
+                            (await this.api.has(`key-${i}`).timeout(harnessConfigs.clientOperationTimeout)).should.be.equal(false);
                         }
                     });
                 });
