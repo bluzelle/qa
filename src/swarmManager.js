@@ -23,6 +23,7 @@ exports.swarmManager = async () => {
         startAll: () => executeAll('start'),
         stopAll: () => executeAll('stop'),
         removeSwarmState: () => removeDaemonDirectory().run(),
+        disconnectEsr: swarmRegistry.disconnect
     };
 
     async function generateSwarmAndSetState({numberOfDaemons, configOptions}) {

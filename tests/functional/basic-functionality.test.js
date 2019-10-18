@@ -2,9 +2,9 @@ const sharedTests = require('../shared/tests');
 const {localTeardown, localSetup, remoteSetup} = require('../shared/hooks');
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {generateString} = require('../../src/utils');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('basic functionality', function () {
-
     context('smoke test', function () {
 
         (harnessConfigs.testRemoteSwarm ? remoteSwarmHook({log: false, logDetailed: false}) : localSwarmHooks());

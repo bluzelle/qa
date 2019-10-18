@@ -1,6 +1,7 @@
 const {swarmManager} = require('../../src/swarmManager');
 const {initializeClient} = require('../../src/clientManager');
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 const numOfNodes = harnessConfigs.numOfNodes;
 const UUIDS = {

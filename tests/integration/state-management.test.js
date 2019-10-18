@@ -3,6 +3,7 @@ const {initializeClient, createKeys, queryPrimary} = require('../../src/clientMa
 const {invoke, take} = require('lodash/fp');
 const {orderBy} = require('lodash');
 const daemonConstants = require('../../resources/daemonConstants');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 describe('state management', function () {
 

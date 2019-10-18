@@ -4,6 +4,7 @@ const {spawn} = require('child_process');
 const {initializeClient, createKeys} = require('../../src/clientManager');
 const {readDaemonDirectory, getDaemonOutputDir, readDaemonFileSize} = require('../../src/FileService');
 const {stopSwarmsAndRemoveStateHook} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 describe('logging', function () {

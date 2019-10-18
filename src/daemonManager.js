@@ -9,6 +9,7 @@ const swarmRegistry = require('./swarmRegistryAdapter');
 const {useState, wrappedError} = require('./utils');
 const {log} = require('./logger');
 const split2 = require('split2');
+const {harnessConfigs} = require('../resources/harness-configurations');
 
 exports.generateSwarm = async ({esrContractAddress, esrInstance, numberOfDaemons, swarmCounter, daemonCounter, configOptions = {}}) => {
     const [getDaemonConfigs, setDaemonConfigs] = useState();

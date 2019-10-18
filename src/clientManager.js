@@ -1,4 +1,5 @@
 const {wrappedError} = require('../src/utils');
+const {harnessConfigs} = require('../resources/harness-configurations');
 
 const initializeClient = async ({createDB, uuid = harnessConfigs.defaultUuid, ethereum_rpc = harnessConfigs.ethereumRpc, esrContractAddress = harnessConfigs.esrContractAddress, private_pem = harnessConfigs.masterPrivateKey, public_pem = harnessConfigs.masterPublicKey, log = false, logDetailed = false} = {}) => {
 

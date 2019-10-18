@@ -4,6 +4,7 @@ const {generateString} = require('../../src/utils');
 const {find} = require('lodash');
 const split2 = require('split2');
 const daemonConstants = require('../../resources/daemonConstants');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 describe('database management', function () {

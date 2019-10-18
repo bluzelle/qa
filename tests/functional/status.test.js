@@ -1,6 +1,7 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
 const {initializeClient} = require('../../src/clientManager');
 const {find} = require('lodash');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('status', function () {

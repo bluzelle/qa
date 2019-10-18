@@ -3,6 +3,7 @@ const sharedTests = require('../shared/tests');
 const {generateString} = require('../../src/utils');
 const daemonConstants = require('../../resources/daemonConstants');
 const delay = require('delay');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('time to live', function () {
 

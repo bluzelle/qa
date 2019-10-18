@@ -1,4 +1,5 @@
 const {remoteSwarmHook, localSwarmHooks} = require('../shared/hooks');
+const {harnessConfigs} = require('../../resources/harness-configurations');
 
 
 (harnessConfigs.testRemoteSwarm ? describe.only : describe)('quick read', function () {
